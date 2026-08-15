@@ -1943,7 +1943,9 @@ function GameMenu({ onSelect }) {
 }
 
 function SplashScreen({ fadingOut }) {
-  return (
+  const [frase] = useState(() => randChoice(FRASES_CARGA));
+    
+    return (
     <div
       className="fixed inset-0 z-[100] flex flex-col items-center justify-center transition-all duration-300"
       style={{
@@ -1965,7 +1967,7 @@ function SplashScreen({ fadingOut }) {
           className="text-2xl sm:text-3xl mb-1"
           style={{ fontFamily: "'Fraunces', serif", fontWeight: 600, color: 'var(--text-primary)' }}
         >
-          Cuaderno de matemáticas financieras
+          Proyecto de Matematicas Discretas
         </div>
         <div
           className="text-xs uppercase tracking-[0.2em] font-semibold mb-8"
@@ -1977,8 +1979,14 @@ function SplashScreen({ fadingOut }) {
           <div className="h-full splash-bar" style={{ background: 'var(--accent-primary)' }} />
         </div>
         <div className="text-[11px] mt-3" style={{ color: 'var(--text-faint)' }}>
-          Cargando expediente contable…
+          Cargando datos y archivos contables…
         </div>
+        <div
+        className="text-[12px] mt-4 max-w-xs italic"
+          style={{ color: 'var(--text-muted)', fontFamily: "'Fraunces', serif" }}
+        >
+            "{frase}"
+            </div>
       </div>
     </div>
   );
