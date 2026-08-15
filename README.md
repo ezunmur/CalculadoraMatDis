@@ -1,4 +1,4 @@
-# Cuaderno de Matemáticas Financieras
+# Proyecto de Matemáticas discretas aplicadas a las finanzas (Tablas de amortización y expandido a clases de Matemáticas financieras) 
 
 Calculadora de cuotas a pagar en base a préstamos crediticios. Proyecto desarrollado para la materia de Matemáticas Discretas (ESPOL).
 
