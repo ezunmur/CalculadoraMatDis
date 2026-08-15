@@ -44,17 +44,30 @@ const ESPOL_LOGO = 'logo.svg';
 // Frases a ocupar 
 const FRASES_CARGA = [
   'El interés compuesto no descansa, ni siquiera los domingos.',
-  'Calculando cuánto cuesta el "cómprate algo bonito".',
   'Convirtiendo excusas en tasas efectivas anuales.',
   'Sin comisiones ocultas, esta vez sí.',
-  'Amortizando tus dudas, una cuota a la vez.',
+  'Amortizando dudas, una cuota a la vez.',
   'El capital inicial también fue joven alguna vez.',
   'Nadie lee los términos y condiciones, ni este cuaderno.',
-  'Cuadrando la caja antes de que se dé cuenta el profesor.',
   'La tasa nominal miente; la efectiva, no tanto.',
   'Un periodo más y esto compone solo.',
   'Aquí nadie te va a vender un seguro que no pediste.',
   'Redondeando hacia arriba, como todo banco honesto.',
+  'Buscando el valor presente de tus malas decisiones financieras.',
+  'Despejando el tiempo (n) con logaritmos y sin llorar en el intento.',
+  'Cobrando la comisión por mantenimiento de esta pantalla de carga.',
+  'La banca siempre gana, al menos aprendes cómo.',
+  'Evaluando si ese "gustito" de ayer cuenta como gasto hormiga.',
+  'Tu dinero pierde valor por culpa de la inflación mientras miras esta barra.',
+  'Aprobando Discretas en cómodas cuotas sin intereses.',
+  'Capitalizando esperanzas a una tasa nominal del 0%.',
+  'Simulando que tenemos capital inicial para empezar a invertir.',
+  'Llamando al departamento de cobranzas... ah no, espera, es un simulador.',
+  'Tranquilo, tu historial crediticio no será juzgado en esta aplicación. Todavía',
+  'Haciendo que la tasa de interés trabaje para ti (teoricamente hablando, claro).',
+  'Si desintalas la banca móvil, la deuda de la tarjeta desaparece mágicamente.',
+  'Bloquear al chulquero en WhatsApp reduce automáticamente la tasa de interés, por un tiempo.',
+  'Puedes declarar las bielas de la reunión como "gastos de representación" ante el SRI'
 ]; 
 // ---------- Utilidades ----------
 const fmt = (n) => {
@@ -484,6 +497,18 @@ function ListaVariables({ items, compact }) {
         </div>
       ))}
     </dl>
+  );
+}
+
+// Renderiza **negritas** simples dentro de los enunciados de los quizzes
+function TextoConNegritas({ texto }) {
+  const partes = texto.split('**');
+  return (
+    <>
+      {partes.map((p, i) =>
+        i % 2 === 1 ? <strong key={i} style={{ color: 'var(--text-primary)' }}>{p}</strong> : <span key={i}>{p}</span>
+      )}
+    </>
   );
 }
 
@@ -1527,7 +1552,7 @@ function genInteresSimpleInteres() {
   const I = P * r * tMeses;
   return {
     categoria: 'Interés simple',
-    enunciado: `Un capital de ${fmt(P)} se invierte a una tasa simple del ${tasaAnualPct}% anual durante ${tMeses} meses. ¿Cuál es el interés (I) generado al final del plazo?`,
+    enunciado: `Un capital de ${fmt(P)} se invierte a una tasa simple del ${tasaAnualPct}% anual durante ${tMeses} meses. **¿Cuál es el interés (I) generado al final del plazo?**`,
     unidad: '$',
     respuesta: round2(I),
     solucion: [
@@ -1545,7 +1570,7 @@ function genInteresSimpleMonto() {
   const F = P * (1 + r * tMeses);
   return {
     categoria: 'Interés simple',
-    enunciado: `Se depositan ${fmt(P)} en una cuenta que paga una tasa simple del ${tasaAnualPct}% anual. ¿Cuál es el monto acumulado (F) después de ${tMeses} meses?`,
+    enunciado: `Se depositan ${fmt(P)} en una cuenta que paga una tasa simple del ${tasaAnualPct}% anual. **¿Cuál es el monto acumulado (F) después de ${tMeses} meses?**`,
     unidad: '$',
     respuesta: round2(F),
     solucion: [
@@ -1566,7 +1591,7 @@ function genInteresCompuestoMonto() {
   const F = valorFuturoLumpSum(P, r, n);
   return {
     categoria: 'Interés compuesto',
-    enunciado: `Un capital de ${fmt(P)} se coloca a una tasa nominal anual del ${tasaNominalPct}%, capitalizable de forma ${temporalidad}, durante ${anios} ${anios === 1 ? 'año' : 'años'}. ¿Cuál es el monto final (F)?`,
+    enunciado: `Un capital de ${fmt(P)} se coloca a una tasa nominal anual del ${tasaNominalPct}%, capitalizable de forma ${temporalidad}, durante ${anios} ${anios === 1 ? 'año' : 'años'}. **¿Cuál es el monto final (F)?**`,
     unidad: '$',
     respuesta: round2(F),
     solucion: [
@@ -1588,7 +1613,7 @@ function genInteresCompuestoPeriodos() {
   const n = periodosNecesarios(P, F, r);
   return {
     categoria: 'Cálculo de periodos',
-    enunciado: `¿Cuántos periodos (n) de capitalización ${temporalidad} se necesitan para que un capital de ${fmt(P)} crezca hasta ${fmt(F)}, si la tasa nominal anual es del ${tasaNominalPct}%?`,
+    enunciado: `**¿Cuántos periodos (n) de capitalización ${temporalidad} se necesitan para que un capital de ${fmt(P)} crezca hasta ${fmt(F)}, si la tasa nominal anual es del ${tasaNominalPct}%?**`,
     unidad: 'periodos',
     respuesta: round2(n),
     solucion: [
@@ -1605,7 +1630,7 @@ function genTasaEfectivaAnual() {
   const tea = tasaEfectivaAnual(tasaNominalPct, temporalidad) * 100;
   return {
     categoria: 'Tasas equivalentes',
-    enunciado: `Un banco ofrece una tasa nominal anual del ${tasaNominalPct}%, capitalizable de forma ${temporalidad}. ¿Cuál es la tasa efectiva anual (TEA) equivalente?`,
+    enunciado: `Un banco ofrece una tasa nominal anual del ${tasaNominalPct}%, capitalizable de forma ${temporalidad}. **¿Cuál es la tasa efectiva anual (TEA) equivalente?**`,
     unidad: '%',
     respuesta: round2(tea),
     solucion: [
@@ -1622,7 +1647,7 @@ function genTasaNominalDesdeEfectiva() {
   const j = tasaNominalDesdeEfectivaAnual(teaPct / 100, temporalidad);
   return {
     categoria: 'Tasas equivalentes',
-    enunciado: `Si la tasa efectiva anual (TEA) de una inversión es del ${teaPct}%, ¿cuál es la tasa nominal anual equivalente capitalizable de forma ${temporalidad}?`,
+    enunciado: `Si la tasa efectiva anual (TEA) de una inversión es del ${teaPct}%, **¿cuál es la tasa nominal anual equivalente capitalizable de forma ${temporalidad}?**`,
     unidad: '%',
     respuesta: round2(j),
     solucion: [
@@ -1643,7 +1668,7 @@ function genValorPresente() {
   const P = valorPresente(F, r, n);
   return {
     categoria: 'Valor presente',
-    enunciado: `¿Qué capital (P) se debe invertir hoy, a una tasa nominal anual del ${tasaNominalPct}% capitalizable ${temporalidad}, para contar con ${fmt(F)} dentro de ${anios} ${anios === 1 ? 'año' : 'años'}?`,
+    enunciado: `**¿Qué capital (P) se debe invertir hoy, a una tasa nominal anual del ${tasaNominalPct}% capitalizable ${temporalidad}, para contar con ${fmt(F)} dentro de ${anios} ${anios === 1 ? 'año' : 'años'}?**`,
     unidad: '$',
     respuesta: round2(P),
     solucion: [
@@ -1661,7 +1686,7 @@ function genCuotaFrancesa() {
   const cuota = cuotaFrancesa(P, r, n);
   return {
     categoria: 'Anualidades',
-    enunciado: `Un préstamo de ${fmt(P)} se paga en ${n} cuotas mensuales iguales bajo el sistema francés, con una tasa nominal anual del ${tasaNominalPct}% capitalizable mensualmente. ¿Cuál es el valor de la cuota fija?`,
+    enunciado: `Un préstamo de ${fmt(P)} se paga en ${n} cuotas mensuales iguales bajo el sistema francés, con una tasa nominal anual del ${tasaNominalPct}% capitalizable mensualmente. **¿Cuál es el valor de la cuota fija?**`,
     unidad: '$',
     respuesta: round2(cuota),
     solucion: [
@@ -1683,7 +1708,7 @@ function genMixtoTiempoAnios() {
   const anios = n / t.m;
   return {
     categoria: 'Tasas + periodos',
-    enunciado: `Con una tasa nominal anual del ${tasaNominalPct}% capitalizable de forma ${temporalidad}, ¿en cuántos años un capital de ${fmt(P)} se convertirá en al menos ${fmt(F)}?`,
+    enunciado: `Con una tasa nominal anual del ${tasaNominalPct}% capitalizable de forma ${temporalidad}, **¿en cuántos años un capital de ${fmt(P)} se convertirá en al menos ${fmt(F)}?**`,
     unidad: 'años',
     respuesta: round2(anios),
     solucion: [
@@ -1694,11 +1719,25 @@ function genMixtoTiempoAnios() {
   };
 }
 
-const NOMBRES_DESTINO = ['Mateo', 'Valentina', 'Camila', 'Joel', 'Doménica', 'Emilio', 'Ariana', 'Josué'];
+const NOMBRES_DESTINO = [
+  'Mateo', 'Valentina', 'Camila', 'Joel', 'Doménica', 'Emilio', 'Ariana', 'Josué',
+  'Andrea', 'Carlos', 'Kevin', 'María José', 'Luis', 'Steven', 'Génesis', 'Xavier', 'Fernando',
+];
 const DESTINOS_DESTINO = ['un viaje a Galápagos', 'la entrada de un vehículo', 'el enganche de un departamento', 'una maestría en el extranjero', 'abrir un pequeño emprendimiento de repostería'];
+const RELLENOS_DESTINO = [
+  'que trabaja en una empresa de exportación de camarón',
+  'que acaba de terminar sus prácticas preprofesionales',
+  'que administra una pequeña cevichería en el centro',
+  'que estudia en la ESPOL por las mañanas y trabaja por las tardes',
+  'que acaba de recibir un bono de fin de año',
+  'que colecciona estampillas desde niño/a, aunque eso no viene al caso',
+  'cuyo perro se llama Firulais',
+  'que siempre llega diez minutos tarde a las reuniones familiares',
+];
 
 function genDestinoVerborrea() {
   const nombre = randChoice(NOMBRES_DESTINO);
+  const relleno = randChoice(RELLENOS_DESTINO);
   const destino = randChoice(DESTINOS_DESTINO);
   const P = randInt(3, 25) * 500;
   const edad = randInt(20, 45);
@@ -1714,12 +1753,12 @@ function genDestinoVerborrea() {
   const bancoImaginario = randChoice(['Banco del Litoral', 'Cooperativa Andina', 'Financiera del Pacífico', 'Banco San Rafael']);
 
   const enunciado =
-    `${nombre} tiene ${edad} años y, desde hace un tiempo, ha estado pensando seriamente en organizar sus finanzas personales para cumplir una meta que le ilusiona: ${destino}. ` +
+    `${nombre} tiene ${edad} años, ${relleno}, y desde hace un tiempo ha estado pensando seriamente en organizar sus finanzas personales para cumplir una meta que le ilusiona: ${destino}. ` +
     `Actualmente destina alrededor de ${fmt(gastoMensualIrrelevante)} mensuales a gastos varios que no piensa modificar por ahora, así que esa cifra no debería alterar el cálculo que se le pide a continuación. ` +
     `Después de revisar varias opciones en el mercado financiero, decidió abrir un depósito a plazo en ${bancoImaginario}, colocando de una sola vez ${fmt(P)} de sus ahorros. ` +
     `Esta entidad le ofreció una tasa nominal anual del ${tasaNominalPct}%, capitalizable de forma ${temporalidad}, y ${nombre} no piensa retirar ni un centavo hasta alcanzar su objetivo. ` +
     `Se ha propuesto que, cuando el saldo de ese depósito llegue a ${fmt(F)}, retirará el dinero para financiar su meta. ` +
-    `Suponiendo que la tasa se mantiene constante durante todo el plazo y que no realiza depósitos ni retiros adicionales, ¿cuántos años como mínimo deberá esperar ${nombre} para que el depósito alcance ese monto?`;
+    `Suponiendo que la tasa se mantiene constante durante todo el plazo y que no realiza depósitos ni retiros adicionales, **¿cuántos años como mínimo deberá esperar ${nombre} para que el depósito alcance ese monto?**`;
 
   return {
     categoria: 'Problema de destino',
@@ -1817,7 +1856,7 @@ function QuizTab() {
         <div className="flex items-center gap-2 cx-text-accent-primary-text font-semibold text-xs uppercase tracking-wide">
           <Lightbulb size={14} /> {pregunta.categoria} · Nivel {nivel}
         </div>
-        <p className="text-[15px] cx-text-text-strong-gray leading-relaxed">{pregunta.enunciado}</p>
+        <p className="text-[15px] cx-text-text-strong-gray leading-relaxed"><TextoConNegritas texto={pregunta.enunciado} /></p>
 
         <div className="flex flex-col sm:flex-row gap-3 sm:items-end">
           <label className="flex-1 flex flex-col gap-1">
@@ -2377,9 +2416,13 @@ function FinanzasApp() {
             }}
           />
           <div className="relative flex items-center justify-between gap-3 flex-wrap">
-            <div className="inline-flex items-center gap-2 text-[#D9C98A] text-xs uppercase tracking-[0.15em] font-semibold bg-white/10 rounded-md px-3 py-1">
+            <button
+              onClick={volver}
+              className="inline-flex items-center gap-2 text-[#D9C98A] text-xs uppercase tracking-[0.15em] font-semibold bg-white/10 hover:bg-white/20 rounded-md px-3 py-1 transition-colors"
+              aria-label="Volver al menú principal"
+            >
               <Calculator size={14} /> Proyecto de Matemáticas Discretas · Finanzas para todos
-            </div>
+            </button>
             <div className="flex items-center gap-2">
               <button
                 onClick={toggleTheme}
@@ -2406,7 +2449,7 @@ function FinanzasApp() {
         {acercaDeOpen && (
           <Modal onClose={() => setAcercaDeOpen(false)}>
             <div className="flex items-center gap-2 cx-text-accent-primary font-semibold text-sm mb-1" style={{ fontFamily: "'Fraunces', sans-serif" }}>
-              <Calculator size={16} /> Proyecto de Proyecto de Matemáticas Discretas · Finanzas para todos
+              <Calculator size={16} /> Proyecto de Matemáticas Discretas · Finanzas para todos
             </div>
             <h3 className="text-2xl mb-3" style={{ fontFamily: "'Fraunces', sans-serif", fontWeight: 600, color: 'var(--text-primary)' }}>
               PROTOTIPO PARA PROYECTO DE MATEMATICAS DISCRETAS
