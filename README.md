@@ -1,4 +1,4 @@
-# 🧮 Cuaderno de Matemáticas Financieras
+# Cuaderno de Matemáticas Financieras
 
 Calculadora de cuotas a pagar en base a préstamos crediticios. Proyecto desarrollado para la materia de Matemáticas Discretas (ESPOL).
 
