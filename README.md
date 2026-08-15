@@ -24,7 +24,7 @@ La cantidad de cuotas a pagar, acordadas entre el prestador y el prestatario.
 
 ---
 
-## ✨ Características Principales de la App
+## Características Principales de la App
 
 *   **Interés Simple vs. Compuesto:** Visualiza la diferencia entre el crecimiento de tu dinero.
 *   **Conversor de Tasas:** Calcula Tasas Efectivas Anuales (TEA) y sus tasas nominales equivalentes en distintas capitalizaciones.
@@ -34,8 +34,12 @@ La cantidad de cuotas a pagar, acordadas entre el prestador y el prestatario.
 
 ---
 
-## ⚠️ Descargo de Responsabilidad
+## Descargo de Responsabilidad
 
-Este cuaderno fue desarrollado con fines estrictamente **académicos y educativos**. Las cifras, tasas y resultados son ilustrativos y se calculan con fórmulas matemáticas simplificadas. **No constituyen asesoría financiera, legal, ni una oferta de productos financieros reales.** 
+Este cuaderno fue desarrollado por EAZM con fines estrictamente **académicos y educativos**. Las cifras, tasas y resultados son ilustrativos y se calculan con fórmulas matemáticas simplificadas. **NO constituyen asesoría financiera real, legal, ni una oferta de productos financieros reales.** 
 
-Verifica siempre las condiciones y tasas con una institución financiera antes de tomar decisiones con dinero real.
+Verifica siempre las condiciones y tasas con una institución financiera donde se encuentre tu dinero antes de tomar decisiones con dinero real.
+
+
+Lo más importante, es que reconozcan lo útil del uso de la recurrencia junto a las series aritmeticas y geometricas en las finanzas actuales.
+Ezequiel Zuñiga Murillo.
