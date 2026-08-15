@@ -41,7 +41,21 @@ import {
 // Logo de la universidad (ESPOL), incrustado como data URI para que el
 // archivo funcione de forma autónoma sin depender de un asset externo.
 const ESPOL_LOGO = 'logo.svg';
-
+// Frases a ocupar 
+const FRASES_CARGA = [
+  'El interés compuesto no descansa, ni siquiera los domingos.',
+  'Calculando cuánto cuesta el "cómprate algo bonito".',
+  'Convirtiendo excusas en tasas efectivas anuales.',
+  'Sin comisiones ocultas, esta vez sí.',
+  'Amortizando tus dudas, una cuota a la vez.',
+  'El capital inicial también fue joven alguna vez.',
+  'Nadie lee los términos y condiciones, ni este cuaderno.',
+  'Cuadrando la caja antes de que se dé cuenta el profesor.',
+  'La tasa nominal miente; la efectiva, no tanto.',
+  'Un periodo más y esto compone solo.',
+  'Aquí nadie te va a vender un seguro que no pediste.',
+  'Redondeando hacia arriba, como todo banco honesto.',
+]; 
 // ---------- Utilidades ----------
 const fmt = (n) => {
   if (!isFinite(n)) return '—';
@@ -2356,7 +2370,7 @@ function FinanzasApp() {
           />
           <div className="relative flex items-center justify-between gap-3 flex-wrap">
             <div className="inline-flex items-center gap-2 text-[#D9C98A] text-xs uppercase tracking-[0.15em] font-semibold bg-white/10 rounded-md px-3 py-1">
-              <Calculator size={14} /> Matemáticas discretas · finanzas para todos
+              <Calculator size={14} /> Proyecto de Matemáticas Discretas · Finanzas para todos
             </div>
             <div className="flex items-center gap-2">
               <button
@@ -2384,16 +2398,16 @@ function FinanzasApp() {
         {acercaDeOpen && (
           <Modal onClose={() => setAcercaDeOpen(false)}>
             <div className="flex items-center gap-2 cx-text-accent-primary font-semibold text-sm mb-1" style={{ fontFamily: "'Fraunces', sans-serif" }}>
-              <Calculator size={16} /> Matemáticas discretas · finanzas para todos
+              <Calculator size={16} /> Proyecto de Proyecto de Matemáticas Discretas · Finanzas para todos
             </div>
             <h3 className="text-2xl mb-3" style={{ fontFamily: "'Fraunces', sans-serif", fontWeight: 600, color: 'var(--text-primary)' }}>
-              Cuaderno de matemáticas financieras
+              PROTOTIPO PARA PROYECTO DE MATEMATICAS DISCRETAS
             </h3>
             <p className="text-sm leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
               Organizado por carpetas, con modo tutorial y espacio para tus clases grabadas. Explora cómo funcionan el interés simple, el interés compuesto, las tasas equivalentes y los préstamos en cuotas — con explicaciones simples y una calculadora que te muestra exactamente cómo se obtuvo cada número.
             </p>
             <p className="text-xs mt-4 pt-4 border-t" style={{ color: 'var(--text-faint)', borderColor: 'var(--border)' }}>
-              Prototipo educativo · las cifras son ilustrativas y no constituyen asesoría financiera.
+              Prototipo educativo · las cifras son ilustrativas y NO constituyen asesoría financiera.
             </p>
           </Modal>
         )}
@@ -2424,7 +2438,7 @@ function FinanzasApp() {
           <div
             className="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide cx-text-text-secondary mb-1.5"
           >
-            <AlertTriangle size={12} /> Prototipo educativo — no es asesoría financiera
+            <AlertTriangle size={12} /> Prototipo educativo — Esto NO es NINGUN tipo de asesoría financiera
           </div>
           <p className="text-[11px] cx-text-text-faint max-w-xl mx-auto leading-relaxed">
             Este cuaderno fue desarrollado con fines académicos para Matemáticas Discretas, Escuela Superior Politécnica del Litoral (ESPOL).
