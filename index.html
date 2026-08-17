@@ -44,31 +44,17 @@ const ESPOL_LOGO = 'logo.svg';
 // Frases a ocupar 
 const FRASES_CARGA = [
   'El interés compuesto no descansa, ni siquiera los domingos.',
+  'Calculando cuánto cuesta el "cómprate algo bonito".',
   'Convirtiendo excusas en tasas efectivas anuales.',
   'Sin comisiones ocultas, esta vez sí.',
-  'Amortizando dudas, una cuota a la vez.',
+  'Amortizando tus dudas, una cuota a la vez.',
   'El capital inicial también fue joven alguna vez.',
   'Nadie lee los términos y condiciones, ni este cuaderno.',
+  'Cuadrando la caja antes de que se dé cuenta el profesor.',
   'La tasa nominal miente; la efectiva, no tanto.',
   'Un periodo más y esto compone solo.',
   'Aquí nadie te va a vender un seguro que no pediste.',
   'Redondeando hacia arriba, como todo banco honesto.',
-  'Buscando el valor presente de tus malas decisiones financieras.',
-  'Despejando el tiempo (n) con logaritmos y sin llorar en el intento.',
-  'Cobrando la comisión por mantenimiento de esta pantalla de carga.',
-  'La banca siempre gana, al menos aprendes cómo.',
-  'Evaluando si ese "gustito" de ayer cuenta como gasto hormiga.',
-  'Tu dinero pierde valor por culpa de la inflación mientras miras esta barra.',
-  'Aprobando Discretas en cómodas cuotas sin intereses.',
-  'Capitalizando esperanzas a una tasa nominal del 0%.',
-  'Simulando que tenemos capital inicial para empezar a invertir.',
-  'Llamando al departamento de cobranzas... ah no, espera, es un simulador.',
-  'Tranquilo, tu historial crediticio no será juzgado en esta aplicación. Todavía',
-  'Haciendo que la tasa de interés trabaje para ti (teoricamente hablando, claro).',
-  'Si desintalas la banca móvil, la deuda de la tarjeta desaparece mágicamente.',
-  'Bloquear al chulquero en WhatsApp reduce automáticamente la tasa de interés, por un tiempo.',
-  'Puedes declarar las bielas de la reunión como "gastos de representación" ante el SRI',
-  'Advirtiendo a la gente sobre FILANBANCO desde 1909'
 ]; 
 // ---------- Utilidades ----------
 const fmt = (n) => {
@@ -528,20 +514,30 @@ function PillButton({ active, onClick, children }) {
 }
 
 function Field({ label, suffix, value, onChange, min, step }) {
+  const [texto, setTexto] = useState(value === 0 ? '' : String(value));
+
+  const manejarCambio = (e) => {
+    const t = e.target.value;
+    setTexto(t);
+    const num = parseFloat(t);
+    onChange(isNaN(num) ? 0 : num);
+  };
+
   return (
-    <label className="flex flex-col gap-1">
-      <span className="text-xs uppercase tracking-wide cx-text-text-muted font-semibold">{label}</span>
-      <div className="flex items-center border-2 cx-border-border rounded-lg cx-bg-surface focus-within:cx-border-accent-primary overflow-hidden">
+    <label className="flex flex-col gap-1 min-w-0">
+      <span className="text-[11px] cx-text-text-muted font-medium">{label}</span>
+      <div className="flex items-center border-2 cx-border-border rounded-lg cx-bg-surface focus-within:cx-border-accent-primary overflow-hidden min-w-0">
         <input
           type="number"
-          value={value}
+          value={texto}
           min={min}
           step={step}
-          onChange={(e) => onChange(parseFloat(e.target.value) || 0)}
-          className="w-full px-3 py-2.5 outline-none bg-transparent cx-text-text-primary"
-          style={{ fontFamily: "'JetBrains Mono', monospace" }}
+          onChange={manejarCambio}
+          placeholder="-,--"
+          className="w-full min-w-0 px-3 py-2.5 outline-none bg-transparent cx-text-text-primary"
+          style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '1.15rem', fontWeight: 600, letterSpacing: '-0.01em' }}
         />
-        {suffix && <span className="pr-3 text-sm cx-text-text-faint">{suffix}</span>}
+        {suffix && <span className="pr-3 text-sm cx-text-text-faint flex-shrink-0">{suffix}</span>}
       </div>
     </label>
   );
@@ -555,8 +551,8 @@ function StatCard({ label, value, accent }) {
   };
   return (
     <div className={`px-4 py-3 rounded-lg ${colors[accent]}`}>
-      <div className="text-[11px] uppercase tracking-wide font-semibold opacity-80">{label}</div>
-      <div className="text-xl mt-1" style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 600 }}>{value}</div>
+      <div className="text-[10.5px] font-medium opacity-70">{label}</div>
+      <div className="text-[26px] leading-tight mt-0.5 truncate" style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, letterSpacing: '-0.02em' }}>{value}</div>
     </div>
   );
 }
@@ -2354,6 +2350,11 @@ function FinanzasApp() {
         .finapp-root, .finapp-root * {
           transition: background-color 200ms ease, border-color 200ms ease, color 200ms ease;
         }
+        .finapp-root input::placeholder {
+          color: var(--text-faint);
+          opacity: 1;
+          font-weight: 500;
+        }
         .finapp-root {
           color: var(--text-primary);
           color-scheme: light;
@@ -2450,7 +2451,7 @@ function FinanzasApp() {
         {acercaDeOpen && (
           <Modal onClose={() => setAcercaDeOpen(false)}>
             <div className="flex items-center gap-2 cx-text-accent-primary font-semibold text-sm mb-1" style={{ fontFamily: "'Fraunces', sans-serif" }}>
-              <Calculator size={16} /> Proyecto de Matemáticas Discretas · Finanzas para todos
+              <Calculator size={16} /> Proyecto de Proyecto de Matemáticas Discretas · Finanzas para todos
             </div>
             <h3 className="text-2xl mb-3" style={{ fontFamily: "'Fraunces', sans-serif", fontWeight: 600, color: 'var(--text-primary)' }}>
               PROTOTIPO PARA PROYECTO DE MATEMATICAS DISCRETAS
