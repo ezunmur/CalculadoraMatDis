@@ -93,19 +93,6 @@ function tasaPeriodica(tasaNominalPct, temporalidadKey) {
   return (tasaNominalPct / 100) / t.m;
 }
 
-function tasaEfectivaAnual(tasaNominalPct, temporalidadKey) {
-  const j = tasaNominalPct / 100;
-  const t = getTemporalidad(temporalidadKey);
-  if (t.key === 'continua') return Math.exp(j) - 1;
-  return Math.pow(1 + j / t.m, t.m) - 1;
-}
-
-function tasaNominalDesdeEfectivaAnual(tea, temporalidadKey) {
-  const t = getTemporalidad(temporalidadKey);
-  if (t.key === 'continua') return Math.log(1 + tea) * 100;
-  return (Math.pow(1 + tea, 1 / t.m) - 1) * t.m * 100;
-}
-
 // Conversión general de tasas: soporta las 4 combinaciones nominal/efectiva en origen y destino.
 // tipoOrigen / tipoDestino: 'nominal' | 'efectiva'
 function calcularTEADesdeOrigen(tasaPct, tipoOrigen, temporalidadOrigenKey) {
@@ -561,6 +548,25 @@ function Field({ label, suffix, value, onChange, min, step }) {
   );
 }
 
+// Select reutilizable con estilo consistente (reemplaza los <select> repetidos por toda la app)
+function SelectField({ label, value, onChange, options }) {
+  return (
+    <label className="flex flex-col gap-1 min-w-0">
+      <span className="text-xs uppercase tracking-wide cx-text-text-muted font-semibold">{label}</span>
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="border-2 cx-border-border rounded-lg px-3 py-2.5 cx-bg-surface cx-text-text-primary text-sm"
+        style={{ backgroundColor: 'var(--surface)', color: 'var(--text-primary)' }}
+      >
+        {options.map((op) => (
+          <option key={op.value} value={op.value}>{op.label}</option>
+        ))}
+      </select>
+    </label>
+  );
+}
+
 function StatCard({ label, value, accent }) {
   const colors = {
     teal: 'cx-text-accent-green-text cx-bg-accent-green-bg',
@@ -951,8 +957,8 @@ function TasasEquivalentesTab() {
     'Tasa equivalente': calcularTasaDestinoDesdeTEA(tea, tipoDestino, t.key),
   }));
 
-  const selectClass = "border-2 cx-border-border rounded-lg px-3 py-2.5 cx-bg-surface cx-text-text-primary text-sm";
-  const selectStyle = { backgroundColor: 'var(--surface)', color: 'var(--text-primary)' };
+  const opcionesTemporalidad = TEMPORALIDADES.map((t) => ({ value: t.key, label: t.label }));
+  const opcionesTipo = [{ value: 'nominal', label: 'Nominal' }, { value: 'efectiva', label: 'Efectiva' }];
 
   return (
     <div className="space-y-6">
@@ -968,41 +974,19 @@ function TasasEquivalentesTab() {
           step={0.1}
         />
         <div className="grid grid-cols-2 gap-3">
-          <label className="flex flex-col gap-1">
-            <span className="text-xs uppercase tracking-wide cx-text-text-muted font-semibold">Capitalización origen</span>
-            <select value={origen} onChange={(e) => setOrigen(e.target.value)} className={selectClass} style={selectStyle}>
-              {TEMPORALIDADES.map((t) => <option key={t.key} value={t.key}>{t.label}</option>)}
-            </select>
-          </label>
-          <label className="flex flex-col gap-1">
-            <span className="text-xs uppercase tracking-wide cx-text-text-muted font-semibold">Capitalización destino</span>
-            <select value={destino} onChange={(e) => setDestino(e.target.value)} className={selectClass} style={selectStyle}>
-              {TEMPORALIDADES.map((t) => <option key={t.key} value={t.key}>{t.label}</option>)}
-            </select>
-          </label>
+          <SelectField label="Capitalización origen" value={origen} onChange={setOrigen} options={opcionesTemporalidad} />
+          <SelectField label="Capitalización destino" value={destino} onChange={setDestino} options={opcionesTemporalidad} />
         </div>
 
         <div className="sm:col-span-2 flex items-end justify-center gap-3 pt-1">
-          <label className="flex flex-col gap-1">
-            <span className="text-xs uppercase tracking-wide cx-text-text-muted font-semibold">Tipo origen</span>
-            <select value={tipoOrigen} onChange={(e) => setTipoOrigen(e.target.value)} className={selectClass} style={selectStyle}>
-              <option value="nominal">Nominal</option>
-              <option value="efectiva">Efectiva</option>
-            </select>
-          </label>
+          <SelectField label="Tipo origen" value={tipoOrigen} onChange={setTipoOrigen} options={opcionesTipo} />
           <span
             className="pb-2.5 text-sm italic cx-text-text-muted"
             style={{ fontFamily: "'Fraunces', serif" }}
           >
             a
           </span>
-          <label className="flex flex-col gap-1">
-            <span className="text-xs uppercase tracking-wide cx-text-text-muted font-semibold">Tipo destino</span>
-            <select value={tipoDestino} onChange={(e) => setTipoDestino(e.target.value)} className={selectClass} style={selectStyle}>
-              <option value="nominal">Nominal</option>
-              <option value="efectiva">Efectiva</option>
-            </select>
-          </label>
+          <SelectField label="Tipo destino" value={tipoDestino} onChange={setTipoDestino} options={opcionesTipo} />
         </div>
       </div>
 
@@ -1083,7 +1067,9 @@ function AnualidadesTab() {
 
   const t = getTemporalidad(temporalidad);
   const r = tasaPeriodica(tasaNominal, temporalidad);
-  const opcionesTemporalidad = TEMPORALIDADES.filter((x) => x.key !== 'continua');
+  const opcionesTemporalidad = TEMPORALIDADES
+    .filter((x) => x.key !== 'continua')
+    .map((x) => ({ value: x.key, label: x.label }));
 
   const resultado = useMemo(() => calcularAmortizacion(P, r, n, sistema), [P, r, n, sistema]);
 
@@ -1106,17 +1092,7 @@ function AnualidadesTab() {
       <div className="grid sm:grid-cols-4 gap-4 cx-bg-surface p-4 rounded-lg border cx-border-border">
         <Field label="Monto del préstamo" value={P} onChange={setP} min={0} step={100} />
         <Field label="Tasa nominal anual" suffix="%" value={tasaNominal} onChange={setTasaNominal} min={0} step={0.1} />
-        <label className="flex flex-col gap-1">
-          <span className="text-xs uppercase tracking-wide cx-text-text-muted font-semibold">Capitalización</span>
-          <select
-            value={temporalidad}
-            onChange={(e) => setTemporalidad(e.target.value)}
-            className="border-2 cx-border-border rounded-lg px-3 py-2.5 cx-bg-surface cx-text-text-primary"
-            style={{ backgroundColor: 'var(--surface)', color: 'var(--text-primary)' }}
-          >
-            {opcionesTemporalidad.map((op) => <option key={op.key} value={op.key}>{op.label}</option>)}
-          </select>
-        </label>
+        <SelectField label="Capitalización" value={temporalidad} onChange={setTemporalidad} options={opcionesTemporalidad} />
         <Field
           label={`Número de periodos (${t.periodoPlural})`}
           value={n}
@@ -1696,7 +1672,7 @@ function genTasaEfectivaAnual() {
   const tasaNominalPct = randInt(10, 42);
   const temporalidad = randChoice(['mensual', 'trimestral', 'semestral', 'bimestral']);
   const t = getTemporalidad(temporalidad);
-  const tea = tasaEfectivaAnual(tasaNominalPct, temporalidad) * 100;
+  const tea = calcularTEADesdeOrigen(tasaNominalPct, 'nominal', temporalidad) * 100;
   return {
     categoria: 'Tasas equivalentes',
     enunciado: `Un banco ofrece una tasa nominal anual del ${tasaNominalPct}%, capitalizable de forma ${temporalidad}. **¿Cuál es la tasa efectiva anual (TEA) equivalente?**`,
@@ -1713,7 +1689,7 @@ function genTasaNominalDesdeEfectiva() {
   const teaPct = randInt(15, 45);
   const temporalidad = randChoice(['mensual', 'trimestral', 'semestral']);
   const t = getTemporalidad(temporalidad);
-  const j = tasaNominalDesdeEfectivaAnual(teaPct / 100, temporalidad);
+  const j = calcularTasaDestinoDesdeTEA(teaPct / 100, 'nominal', temporalidad);
   return {
     categoria: 'Tasas equivalentes',
     enunciado: `Si la tasa efectiva anual (TEA) de una inversión es del ${teaPct}%, **¿cuál es la tasa nominal anual equivalente capitalizable de forma ${temporalidad}?**`,
