@@ -35,7 +35,7 @@ import {
   Eye, X, Calculator, Target, PiggyBank, CreditCard, Landmark, Wallet,
   TrendingUp, AlertTriangle, Sparkles, ArrowRight, RotateCcw, Plus,
   GraduationCap, ChevronLeft, ChevronRight, Youtube, Lightbulb, Home,
-  Settings2, Check, ArrowLeftRight, Sun, Moon, Info
+  Settings2, Check, ArrowLeftRight, Sun, Moon, Info, Printer, FileText
 } from 'lucide-react';
 
 // Logo de la universidad (ESPOL), incrustado como data URI para que el
@@ -56,6 +56,7 @@ const FRASES_CARGA = [
   'Aquí nadie te va a vender un seguro que no pediste.',
   'Redondeando hacia arriba, como todo banco honesto.',
 ]; 
+
 // ---------- Utilidades ----------
 const fmt = (n) => {
   if (!isFinite(n)) return '—';
@@ -93,8 +94,6 @@ function tasaPeriodica(tasaNominalPct, temporalidadKey) {
   return (tasaNominalPct / 100) / t.m;
 }
 
-// Conversión general de tasas: soporta las 4 combinaciones nominal/efectiva en origen y destino.
-// tipoOrigen / tipoDestino: 'nominal' | 'efectiva'
 function calcularTEADesdeOrigen(tasaPct, tipoOrigen, temporalidadOrigenKey) {
   const t = getTemporalidad(temporalidadOrigenKey);
   const tasaFrac = tasaPct / 100;
@@ -1576,6 +1575,102 @@ function dentroDeTolerancia(valorUsuario, correcto, unidad) {
   return Math.abs(valorUsuario - correcto) <= Math.abs(correcto) * 0.02;
 }
 
+const DATOS_FORMULARIO = [
+  {
+    tema: '1. Interés Simple',
+    formulas: [
+      {
+        nombre: 'Monto Final',
+        componente: <><Var>F</Var> = <Var>P</Var> · (1 + <Var>r</Var> · <Var>t</Var>)</>,
+        variables: [
+          { simbolo: 'P', desc: 'Capital inicial' },
+          { simbolo: 'r', desc: 'Tasa de interés periódica' },
+          { simbolo: 't', desc: 'Número de periodos' },
+          { simbolo: 'F', desc: 'Monto final acumulado' }
+        ]
+      },
+      {
+        nombre: 'Interés Generado',
+        componente: <><Var>I</Var> = <Var>P</Var> · <Var>r</Var> · <Var>t</Var></>,
+        variables: [
+          { simbolo: 'I', desc: 'Interés total generado' },
+          { simbolo: 'P', desc: 'Capital inicial' },
+          { simbolo: 'r', desc: 'Tasa periódica' },
+          { simbolo: 't', desc: 'Número de periodos' }
+        ]
+      }
+    ]
+  },
+  {
+    tema: '2. Interés Compuesto',
+    formulas: [
+      {
+        nombre: 'Monto Final',
+        componente: <><Var>F</Var> = <Var>P</Var> · <Pow base={<>(1 + <Var>r</Var>)</>} exp={<Var>t</Var>} /></>,
+        variables: [
+          { simbolo: 'P', desc: 'Capital inicial' },
+          { simbolo: 'r', desc: 'Tasa periódica' },
+          { simbolo: 't', desc: 'Número de periodos' },
+          { simbolo: 'F', desc: 'Monto final con interés sobre interés' }
+        ]
+      },
+      {
+        nombre: 'Capitalización Continua',
+        componente: <><Var>F</Var> = <Var>P</Var> · <Pow base="e" exp={<><Var>r</Var> · <Var>t</Var></>} /></>,
+        variables: [
+          { simbolo: 'P', desc: 'Capital inicial' },
+          { simbolo: 'e', desc: 'Constante matemática (aprox. 2.71828)' },
+          { simbolo: 'r', desc: 'Tasa nominal anual' },
+          { simbolo: 't', desc: 'Tiempo en años' }
+        ]
+      }
+    ]
+  },
+  {
+    tema: '3. Tasas Equivalentes',
+    formulas: [
+      {
+        nombre: 'Tasa Efectiva Anual (TEA)',
+        componente: <>TEA = <Pow base={<>(1 + <Frac num={<Var>j</Var>} den={<Var>m</Var>} />)</>} exp={<Var>m</Var>} /> − 1</>,
+        variables: [
+          { simbolo: 'j', desc: 'Tasa nominal anual' },
+          { simbolo: 'm', desc: 'Frecuencia de capitalización al año' }
+        ]
+      },
+      {
+        nombre: 'Tasa Nominal desde Efectiva',
+        componente: <><Var>j</Var><Sub>2</Sub> = (<Pow base="(1+TEA)" exp={<Frac num="1" den={<><Var>m</Var><Sub>2</Sub></>} />} /> − 1) · <Var>m</Var><Sub>2</Sub></>,
+        variables: [
+          { simbolo: 'TEA', desc: 'Tasa Efectiva Anual en decimal' },
+          { simbolo: 'm₂', desc: 'Capitalizaciones del nuevo periodo' }
+        ]
+      }
+    ]
+  },
+  {
+    tema: '4. Anualidades y Amortización',
+    formulas: [
+      {
+        nombre: 'Cuota Fija (Sistema Francés)',
+        componente: <>Pago = <Frac num={<><Var>P</Var> · <Var>r</Var></>} den={<>1 − <Pow base={<>(1+<Var>r</Var>)</>} exp={<>−<Var>n</Var></>} /></>} /></>,
+        variables: [
+          { simbolo: 'P', desc: 'Monto total del préstamo' },
+          { simbolo: 'r', desc: 'Tasa periódica' },
+          { simbolo: 'n', desc: 'Número total de cuotas' }
+        ]
+      },
+      {
+        nombre: 'Amortización (Sistema Alemán)',
+        componente: <>Capital = <Frac num={<Var>P</Var>} den={<Var>n</Var>} /></>,
+        variables: [
+          { simbolo: 'P', desc: 'Monto total del préstamo' },
+          { simbolo: 'n', desc: 'Número total de cuotas' }
+        ]
+      }
+    ]
+  }
+];
+
 const NIVELES_META = [
   { nivel: 1, titulo: 'Interés simple · interés generado', tag: 'Interés simple' },
   { nivel: 2, titulo: 'Interés simple · monto final', tag: 'Interés simple' },
@@ -1962,12 +2057,122 @@ function QuizTab() {
   );
 }
 
+function FormularioTab() {
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 cx-bg-surface border cx-border-border p-5 rounded-lg">
+        <div className="w-full sm:w-auto">
+          <h3 className="font-semibold text-lg cx-text-text-primary mb-1" style={{ fontFamily: "'Fraunces', serif" }}>Formulario de Fórmulas</h3>
+          <p className="text-sm cx-text-text-secondary">Todas las fórmulas organizadas por tema. Descárgalas para tus apuntes.</p>
+        </div>
+        <button 
+          onClick={() => window.print()} 
+          className="w-full sm:w-auto px-5 py-3 sm:py-2.5 rounded-lg text-sm font-semibold text-white flex justify-center items-center gap-2 hover:opacity-90 transition-opacity shadow-sm shadow-black/20"
+          style={{ background: 'var(--accent-primary)' }}
+        >
+          <Printer size={16} /> Generar PDF
+        </button>
+      </div>
+
+      <div className="grid gap-5">
+        {DATOS_FORMULARIO.map(tema => (
+          <div key={tema.tema} className="cx-bg-surface border cx-border-border rounded-lg p-4 sm:p-5">
+            <h4 className="text-base sm:text-[17px] font-bold mb-4 cx-text-accent-primary border-b cx-border-border pb-2" style={{ fontFamily: "'Fraunces', serif" }}>{tema.tema}</h4>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {tema.formulas.map(f => (
+                <div key={f.nombre} className="cx-bg-surface-alt rounded-lg p-4 border cx-border-border flex flex-col">
+                  <div className="text-xs font-bold mb-3 cx-text-text-primary uppercase tracking-wide">{f.nombre}</div>
+                  <div className="mb-4 bg-white dark:bg-black/20 p-3 rounded-lg border cx-border-border flex justify-center items-center shadow-inner overflow-x-auto">
+                    <MathBlock>{f.componente}</MathBlock>
+                  </div>
+                  <div className="text-[10px] font-semibold uppercase tracking-wide cx-text-text-muted mb-2">Variables:</div>
+                  <ListaVariables items={f.variables} compact={true} />
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+      <p className="text-xs text-center cx-text-text-faint">En móvil, usa la opción "Guardar como PDF" que aparece en el menú de impresión de tu dispositivo.</p>
+    </div>
+  );
+}
+
+function PrintableFormulario() {
+  return (
+    <div 
+      className="hidden print:block w-full bg-white text-black p-4 sm:p-8"
+      style={{ 
+        fontFamily: "'Inter', sans-serif",
+        '--text-primary': '#000000',
+        '--text-secondary': '#333333',
+        '--text-muted': '#555555',
+        '--border': '#cccccc'
+      }}
+    >
+      <style>{`
+        @media print {
+          @page { margin: 15mm; size: A4; }
+          body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+          .print-container { min-width: 750px; }
+          .avoid-page-break { page-break-inside: avoid; }
+        }
+      `}</style>
+      
+      <div className="print-container">
+        <div className="text-center mb-8 border-b-2 border-black pb-4">
+          <h1 className="text-2xl sm:text-3xl font-bold mb-2" style={{ fontFamily: "'Fraunces', serif" }}>Formulario de Matemáticas Financieras</h1>
+          <p className="text-gray-600 font-semibold uppercase tracking-widest text-xs">Proyecto de Matemáticas Discretas · ESPOL</p>
+        </div>
+
+        {DATOS_FORMULARIO.map(tema => (
+          <div key={tema.tema} className="mb-8 avoid-page-break">
+            <h2 className="text-lg sm:text-xl font-bold mb-3 border-l-4 border-black pl-3" style={{ fontFamily: "'Fraunces', serif" }}>{tema.tema}</h2>
+            
+            <table className="w-full border-collapse border-2 border-black text-sm">
+              <thead>
+                <tr className="bg-gray-100">
+                  <th className="border border-black p-2 sm:p-3 text-left w-2/5 uppercase tracking-wide text-xs">Fórmula</th>
+                  <th className="border border-black p-2 sm:p-3 text-left w-3/5 uppercase tracking-wide text-xs">Descripción de Elementos</th>
+                </tr>
+              </thead>
+              <tbody>
+                {tema.formulas.map(f => (
+                  <tr key={f.nombre} className="border-b border-gray-400">
+                    <td className="border border-black p-3 sm:p-4 align-top">
+                      <div className="font-bold text-gray-900 mb-3 underline decoration-gray-300 underline-offset-4">{f.nombre}</div>
+                      <div className="text-center px-1 sm:px-2 py-3 sm:py-4 bg-gray-50 rounded border border-gray-200">
+                        <MathInline>{f.componente}</MathInline>
+                      </div>
+                    </td>
+                    <td className="border border-black p-3 sm:p-4 align-top bg-white">
+                      <ul className="space-y-2">
+                        {f.variables.map(v => (
+                          <li key={v.simbolo} className="flex gap-2 text-xs sm:text-sm">
+                            <strong className="min-w-[24px] text-center bg-gray-100 border border-gray-300 rounded px-1 font-serif italic">{v.simbolo}</strong>
+                            <span className="text-gray-700"> = {v.desc}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 const FOLDERS = [
   { key: 'interes', label: 'Interés simple y compuesto', desc: 'Cómo crece el dinero: interés lineal vs. exponencial, con capitalizaciones.', icon: PiggyBank, accent: '#2F8F5B' },
   { key: 'tasas', label: 'Tasas de interés equivalentes', desc: 'Convierte una tasa nominal entre distintas capitalizaciones.', icon: ArrowLeftRight, accent: '#2B4570' },
   { key: 'anualidades', label: 'Anualidades y préstamos', desc: 'Sistemas de amortización: francesa, alemana y americana.', icon: Landmark, accent: '#A3402E' },
   { key: 'simulador', label: 'Simulador de destinos', desc: 'Compara caminos de ahorro y deuda con tus propios números.', icon: Target, accent: '#8A6D1F' },
   { key: 'quizzes', label: 'Quizzes y ejercicios', desc: '10 niveles de dificultad: desde interés simple hasta problemas de destino con enunciados largos.', icon: GraduationCap, accent: '#6B4FA0' },
+  { key: 'formulario', label: 'Formulario y PDF', desc: 'Todas las fórmulas separadas por tema y listas para exportar a PDF.', icon: FileText, accent: '#D97706' },
 ];
 
 function GameMenu({ onSelect }) {
@@ -2104,7 +2309,7 @@ const TUTORIALES = {
     { titulo: '¿Dónde estás?', texto: 'Esta carpeta compara dos formas de hacer crecer (o cobrar) dinero en el tiempo: interés simple e interés compuesto. Usa los botones de arriba para alternar entre ambos.', consejo: 'Cambia entre "Interés simple" y "Interés compuesto" y observa cómo cambia la forma de la gráfica: una línea recta vs. una curva.' },
     {
       titulo: 'La tasa y su capitalización',
-      texto: 'La tasa que ingresas es nominal anual. La solapa "Capitalización" define cada cuánto se aplica esa tasa (mensual, trimestral, continua, etc.), lo que cambia la tasa periódica real que se usa en los cálculos.',
+      texto: 'La tasa que ingresas es nominal anual. La solapa "Capitalización" define cada cuánto se aplica esa tasa (mensual, trimestral, continua, etc.), lo que cambia la tasa periódica real que se usa en calculations.',
       formula: <MathInline><Var>r</Var> = <Frac num={<Var>j</Var>} den={<Var>m</Var>} /></MathInline>,
       variables: [
         { simbolo: 'j', desc: 'tasa nominal anual' },
@@ -2322,237 +2527,240 @@ function FinanzasApp() {
   };
 
   return (
-    <div
-      className="finapp-root min-h-screen w-full"
-      data-theme={theme}
-      style={{
-        background:
-          'radial-gradient(1100px 500px at 85% -10%, rgba(31,77,58,0.07), transparent 60%), radial-gradient(900px 500px at -10% 10%, rgba(138,109,31,0.06), transparent 55%), var(--bg)',
-      }}
-    >
-      {!splashDone && <SplashScreen fadingOut={!booting} />}
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&family=STIX+Two+Text:ital,wght@0,400;0,500;0,600;1,400;1,500&display=swap');
-        body { font-family: 'Inter', sans-serif; }
-        @keyframes fillbar { from { width: 0%; } to { width: 100%; } }
-        .splash-bar { width: 0%; animation: fillbar 1.6s ease-out forwards; }
-        .espol-logo { transition: filter 200ms ease; }
-        .finapp-root[data-theme='dark'] .espol-logo { filter: invert(1) brightness(1.7); }
+    <>
+      <div
+        className="finapp-root min-h-screen w-full print:hidden"
+        data-theme={theme}
+        style={{
+          background:
+            'radial-gradient(1100px 500px at 85% -10%, rgba(31,77,58,0.07), transparent 60%), radial-gradient(900px 500px at -10% 10%, rgba(138,109,31,0.06), transparent 55%), var(--bg)',
+        }}
+      >
+        {!splashDone && <SplashScreen fadingOut={!booting} />}
+        <style>{`
+          @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&family=STIX+Two+Text:ital,wght@0,400;0,500;0,600;1,400;1,500&display=swap');
+          body { font-family: 'Inter', sans-serif; }
+          @keyframes fillbar { from { width: 0%; } to { width: 100%; } }
+          .splash-bar { width: 0%; animation: fillbar 1.6s ease-out forwards; }
+          .espol-logo { transition: filter 200ms ease; }
+          .finapp-root[data-theme='dark'] .espol-logo { filter: invert(1) brightness(1.7); }
 
-        .finapp-root {
-          --bg: #F1ECDC;
-          --surface: #FBF8EF;
-          --surface-alt: #E7EEE4;
-          --surface-hover: #EFE9D6;
-          --surface-hover-2: #E7DFC5;
-          --surface-hover-3: #DCD2AF;
-          --border: #D9CFAE;
-          --border-hover: #B7A876;
-          --text-primary: #241D12;
-          --text-secondary: #5B5138;
-          --text-muted: #85795A;
-          --text-faint: #ACA080;
-          --text-strong-gray: #4A4128;
-          --accent-primary: #1F4D3A;
-          --accent-primary-bg: #E3ECE3;
-          --accent-primary-bg-hover: #D2E1D2;
-          --accent-primary-text: #163A2B;
-          --accent-green: #2F8F5B;
-          --accent-green-bg: #E4F1E7;
-          --accent-green-text: #1D6B44;
-          --accent-coral: #A3402E;
-          --accent-coral-bg: #F3E3DC;
-          --accent-coral-text: #832E20;
-          --accent-coral-border: #DDB9A6;
-          --chart-grid: #E1D8BC;
-          --chart-axis: #9C8F6E;
-        }
-        .finapp-root[data-theme='dark'] {
-          --bg: #17140C;
-          --surface: #201B10;
-          --surface-alt: #202A22;
-          --surface-hover: #262014;
-          --surface-hover-2: #2E2718;
-          --surface-hover-3: #3A311D;
-          --border: #3A3018;
-          --border-hover: #5C4E28;
-          --text-primary: #F1EAD3;
-          --text-secondary: #D0C4A0;
-          --text-muted: #A4977A;
-          --text-faint: #786D53;
-          --text-strong-gray: #C7BB98;
-          --accent-primary: #6FCB9F;
-          --accent-primary-bg: #22362A;
-          --accent-primary-bg-hover: #2C4433;
-          --accent-primary-text: #8FE0B7;
-          --accent-green: #6FCB9F;
-          --accent-green-bg: #1E3327;
-          --accent-green-text: #8FE0B7;
-          --accent-coral: #E0997F;
-          --accent-coral-bg: #392419;
-          --accent-coral-text: #F0B79E;
-          --accent-coral-border: #5A3A27;
-          --chart-grid: #3A3018;
-          --chart-axis: #8C7F5D;
-        }
-        .finapp-root, .finapp-root * {
-          transition: background-color 200ms ease, border-color 200ms ease, color 200ms ease;
-        }
-        .finapp-root input::placeholder {
-          color: var(--text-faint);
-          opacity: 1;
-          font-weight: 500;
-        }
-        .finapp-root {
-          color: var(--text-primary);
-          color-scheme: light;
-          background-image: repeating-linear-gradient(
-            to bottom,
-            rgba(120, 105, 60, 0.05),
-            rgba(120, 105, 60, 0.05) 1px,
-            transparent 1px,
-            transparent 28px
-          );
-        }
-        .finapp-root[data-theme='dark'] {
-          color-scheme: dark;
-        }
+          .finapp-root {
+            --bg: #F1ECDC;
+            --surface: #FBF8EF;
+            --surface-alt: #E7EEE4;
+            --surface-hover: #EFE9D6;
+            --surface-hover-2: #E7DFC5;
+            --surface-hover-3: #DCD2AF;
+            --border: #D9CFAE;
+            --border-hover: #B7A876;
+            --text-primary: #241D12;
+            --text-secondary: #5B5138;
+            --text-muted: #85795A;
+            --text-faint: #ACA080;
+            --text-strong-gray: #4A4128;
+            --accent-primary: #1F4D3A;
+            --accent-primary-bg: #E3ECE3;
+            --accent-primary-bg-hover: #D2E1D2;
+            --accent-primary-text: #163A2B;
+            --accent-green: #2F8F5B;
+            --accent-green-bg: #E4F1E7;
+            --accent-green-text: #1D6B44;
+            --accent-coral: #A3402E;
+            --accent-coral-bg: #F3E3DC;
+            --accent-coral-text: #832E20;
+            --accent-coral-border: #DDB9A6;
+            --chart-grid: #E1D8BC;
+            --chart-axis: #9C8F6E;
+          }
+          .finapp-root[data-theme='dark'] {
+            --bg: #17140C;
+            --surface: #201B10;
+            --surface-alt: #202A22;
+            --surface-hover: #262014;
+            --surface-hover-2: #2E2718;
+            --surface-hover-3: #3A311D;
+            --border: #3A3018;
+            --border-hover: #5C4E28;
+            --text-primary: #F1EAD3;
+            --text-secondary: #D0C4A0;
+            --text-muted: #A4977A;
+            --text-faint: #786D53;
+            --text-strong-gray: #C7BB98;
+            --accent-primary: #6FCB9F;
+            --accent-primary-bg: #22362A;
+            --accent-primary-bg-hover: #2C4433;
+            --accent-primary-text: #8FE0B7;
+            --accent-green: #6FCB9F;
+            --accent-green-bg: #1E3327;
+            --accent-green-text: #8FE0B7;
+            --accent-coral: #E0997F;
+            --accent-coral-bg: #392419;
+            --accent-coral-text: #F0B79E;
+            --accent-coral-border: #5A3A27;
+            --chart-grid: #3A3018;
+            --chart-axis: #8C7F5D;
+          }
+          .finapp-root, .finapp-root * {
+            transition: background-color 200ms ease, border-color 200ms ease, color 200ms ease;
+          }
+          .finapp-root input::placeholder {
+            color: var(--text-faint);
+            opacity: 1;
+            font-weight: 500;
+          }
+          .finapp-root {
+            color: var(--text-primary);
+            color-scheme: light;
+            background-image: repeating-linear-gradient(
+              to bottom,
+              rgba(120, 105, 60, 0.05),
+              rgba(120, 105, 60, 0.05) 1px,
+              transparent 1px,
+              transparent 28px
+            );
+          }
+          .finapp-root[data-theme='dark'] {
+            color-scheme: dark;
+          }
 
-        .cx-bg-surface-hover-2 { background-color: var(--surface-hover-2); }
-        .cx-hover-bg-surface-hover-3:hover { background-color: var(--surface-hover-3); }
-        .cx-hover-bg-surface-hover-2:hover { background-color: var(--surface-hover-2); }
-        .cx-bg-surface { background-color: var(--surface); }
-        .cx-text-text-secondary { color: var(--text-secondary); }
-        .cx-border-20-accent-green { border-color: color-mix(in srgb, var(--accent-green) 20%, transparent); }
-        .cx-bg-accent-green-bg { background-color: var(--accent-green-bg); }
-        .cx-border-20-accent-primary { border-color: color-mix(in srgb, var(--accent-primary) 20%, transparent); }
-        .cx-bg-accent-primary-bg { background-color: var(--accent-primary-bg); }
-        .cx-text-accent-green-text { color: var(--accent-green-text); }
-        .cx-text-accent-primary { color: var(--accent-primary); }
-        .cx-text-text-strong-gray { color: var(--text-strong-gray); }
-        .cx-border-accent-primary { border-color: var(--accent-primary); }
-        .cx-border-border { border-color: var(--border); }
-        .cx-text-text-muted { color: var(--text-muted); }
-        .cx-text-text-faint { color: var(--text-faint); }
-        .cx-text-text-primary { color: var(--text-primary); }
-        .cx-hover-border-border-hover:hover { border-color: var(--border-hover); }
-        .cx-focusw-border-accent-primary:focus-within { border-color: var(--accent-primary); }
-        .cx-text-accent-coral-text { color: var(--accent-coral-text); }
-        .cx-bg-accent-coral-bg { background-color: var(--accent-coral-bg); }
-        .cx-text-accent-primary-text { color: var(--accent-primary-text); }
-        .cx-hover-bg-accent-primary-bg-hover:hover { background-color: var(--accent-primary-bg-hover); }
-        .cx-border-border-hover { border-color: var(--border-hover); }
-        .cx-bg-surface-alt { background-color: var(--surface-alt); }
-        .cx-focus-border-accent-primary:focus { border-color: var(--accent-primary); }
-        .cx-hover-bg-surface-hover:hover { background-color: var(--surface-hover); }
-        .cx-hover-bg-surface-alt:hover { background-color: var(--surface-alt); }
-        .cx-hover-bg-accent-coral-bg:hover { background-color: var(--accent-coral-bg); }
-        .cx-hover-text-accent-coral-text:hover { color: var(--accent-coral-text); }
-        .cx-border-accent-green { border-color: var(--accent-green); }
-        .cx-border-15-accent-primary { border-color: color-mix(in srgb, var(--accent-primary) 15%, transparent); }
-        .cx-border-accent-coral-border { border-color: var(--accent-coral-border); }
-        .cx-hover-text-accent-primary:hover { color: var(--accent-primary); }
-      `}</style>
-      <div className="max-w-5xl mx-auto px-4 py-6 sm:py-8" style={{ fontFamily: "'Inter', sans-serif" }}>
-        <header
-          className="relative overflow-hidden rounded-lg mb-5 px-5 py-6 sm:px-8 sm:py-8"
-          style={{ background: 'linear-gradient(135deg, #1F4D3A 0%, #2A6349 55%, #163A2B 100%)' }}
-        >
-          <div
-            className="absolute inset-0 opacity-[0.05] pointer-events-none"
-            style={{
-              backgroundImage:
-                'repeating-linear-gradient(to bottom, transparent, transparent 27px, #fff 27px, #fff 28px)',
-            }}
-          />
-          <div className="relative flex items-center justify-between gap-3 flex-wrap">
-            <button
-              onClick={volver}
-              className="inline-flex items-center gap-2 text-[#D9C98A] text-xs uppercase tracking-[0.15em] font-semibold bg-white/10 hover:bg-white/20 rounded-md px-3 py-1 transition-colors"
-              aria-label="Volver al menú principal"
-            >
-              <Calculator size={14} /> Proyecto de Matemáticas Discretas · Finanzas para todos
-            </button>
-            <div className="flex items-center gap-2">
+          .cx-bg-surface-hover-2 { background-color: var(--surface-hover-2); }
+          .cx-hover-bg-surface-hover-3:hover { background-color: var(--surface-hover-3); }
+          .cx-hover-bg-surface-hover-2:hover { background-color: var(--surface-hover-2); }
+          .cx-bg-surface { background-color: var(--surface); }
+          .cx-text-text-secondary { color: var(--text-secondary); }
+          .cx-border-20-accent-green { border-color: color-mix(in srgb, var(--accent-green) 20%, transparent); }
+          .cx-bg-accent-green-bg { background-color: var(--accent-green-bg); }
+          .cx-border-20-accent-primary { border-color: color-mix(in srgb, var(--accent-primary) 20%, transparent); }
+          .cx-bg-accent-primary-bg { background-color: var(--accent-primary-bg); }
+          .cx-text-accent-green-text { color: var(--accent-green-text); }
+          .cx-text-accent-primary { color: var(--accent-primary); }
+          .cx-text-text-strong-gray { color: var(--text-strong-gray); }
+          .cx-border-accent-primary { border-color: var(--accent-primary); }
+          .cx-border-border { border-color: var(--border); }
+          .cx-text-text-muted { color: var(--text-muted); }
+          .cx-text-text-faint { color: var(--text-faint); }
+          .cx-text-text-primary { color: var(--text-primary); }
+          .cx-hover-border-border-hover:hover { border-color: var(--border-hover); }
+          .cx-focusw-border-accent-primary:focus-within { border-color: var(--accent-primary); }
+          .cx-text-accent-coral-text { color: var(--accent-coral-text); }
+          .cx-bg-accent-coral-bg { background-color: var(--accent-coral-bg); }
+          .cx-text-accent-primary-text { color: var(--accent-primary-text); }
+          .cx-hover-bg-accent-primary-bg-hover:hover { background-color: var(--accent-primary-bg-hover); }
+          .cx-border-border-hover { border-color: var(--border-hover); }
+          .cx-bg-surface-alt { background-color: var(--surface-alt); }
+          .cx-focus-border-accent-primary:focus { border-color: var(--accent-primary); }
+          .cx-hover-bg-surface-hover:hover { background-color: var(--surface-hover); }
+          .cx-hover-bg-surface-alt:hover { background-color: var(--surface-alt); }
+          .cx-hover-bg-accent-coral-bg:hover { background-color: var(--accent-coral-bg); }
+          .cx-hover-text-accent-coral-text:hover { color: var(--accent-coral-text); }
+          .cx-border-accent-green { border-color: var(--accent-green); }
+          .cx-border-15-accent-primary { border-color: color-mix(in srgb, var(--accent-primary) 15%, transparent); }
+          .cx-border-accent-coral-border { border-color: var(--accent-coral-border); }
+          .cx-hover-text-accent-primary:hover { color: var(--accent-primary); }
+        `}</style>
+        <div className="max-w-5xl mx-auto px-4 py-6 sm:py-8" style={{ fontFamily: "'Inter', sans-serif" }}>
+          <header
+            className="relative overflow-hidden rounded-lg mb-5 px-5 py-6 sm:px-8 sm:py-8"
+            style={{ background: 'linear-gradient(135deg, #1F4D3A 0%, #2A6349 55%, #163A2B 100%)' }}
+          >
+            <div
+              className="absolute inset-0 opacity-[0.05] pointer-events-none"
+              style={{
+                backgroundImage:
+                  'repeating-linear-gradient(to bottom, transparent, transparent 27px, #fff 27px, #fff 28px)',
+              }}
+            />
+            <div className="relative flex items-center justify-between gap-3 flex-wrap">
               <button
-                onClick={toggleTheme}
-                className="inline-flex items-center gap-1.5 text-white text-xs font-semibold bg-white/10 hover:bg-white/20 rounded-md px-3.5 py-1.5 transition-colors"
-                aria-label="Cambiar entre tema claro y oscuro"
+                onClick={volver}
+                className="inline-flex items-center gap-2 text-[#D9C98A] text-xs uppercase tracking-[0.15em] font-semibold bg-white/10 hover:bg-white/20 rounded-md px-3 py-1 transition-colors"
+                aria-label="Volver al menú principal"
               >
-                {theme === 'dark' ? <Sun size={13} /> : <Moon size={13} />}
-                {theme === 'dark' ? 'Claro' : 'Oscuro'}
+                <Calculator size={14} /> Proyecto de Matemáticas Discretas · Finanzas para todos
               </button>
-              <button
-                onClick={() => setAcercaDeOpen(true)}
-                className="inline-flex items-center gap-1.5 text-white text-xs font-semibold bg-white/10 hover:bg-white/20 rounded-md px-3.5 py-1.5 transition-colors"
-              >
-                <Info size={13} /> Acerca de
-              </button>
-            </div>
-          </div>
-          <div className="absolute left-0 right-0 bottom-0">
-            <div className="h-[3px]" style={{ background: '#D9C98A', opacity: 0.9 }} />
-            <div className="h-px mt-[3px]" style={{ background: '#D9C98A', opacity: 0.5 }} />
-          </div>
-        </header>
-
-        {acercaDeOpen && (
-          <Modal onClose={() => setAcercaDeOpen(false)}>
-            <div className="flex items-center gap-2 cx-text-accent-primary font-semibold text-sm mb-1" style={{ fontFamily: "'Fraunces', sans-serif" }}>
-              <Calculator size={16} /> Proyecto de Proyecto de Matemáticas Discretas · Finanzas para todos
-            </div>
-            <h3 className="text-2xl mb-3" style={{ fontFamily: "'Fraunces', sans-serif", fontWeight: 600, color: 'var(--text-primary)' }}>
-              PROTOTIPO PARA PROYECTO DE MATEMATICAS DISCRETAS
-            </h3>
-            <p className="text-sm leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
-              Organizado por carpetas, con modo tutorial y espacio para tus clases grabadas. Explora cómo funcionan el interés simple, el interés compuesto, las tasas equivalentes y los préstamos en cuotas — con explicaciones simples y una calculadora que te muestra exactamente cómo se obtuvo cada número.
-            </p>
-            <p className="text-xs mt-4 pt-4 border-t" style={{ color: 'var(--text-faint)', borderColor: 'var(--border)' }}>
-              Prototipo educativo · las cifras son ilustrativas y NO constituyen asesoría financiera.
-            </p>
-          </Modal>
-        )}
-
-        <div ref={shellRef} className="cx-bg-surface rounded-lg border cx-border-border p-4 sm:p-6 shadow-lg shadow-black/[0.08] relative">
-          <div style={contentStyle}>
-            {folder === null ? (
-              <GameMenu onSelect={abrirFolder} />
-            ) : (
-              <div>
-                <FolderHeader folder={folderDef} tutorialOn={tutorialOn} onToggleTutorial={toggleTutorial} onBack={volver} />
-                <VideoPlaceholder tema={folderDef.label} folderKey={folder} />
-                {folder === 'interes' && <InteresTab />}
-                {folder === 'tasas' && <TasasEquivalentesTab />}
-                {folder === 'anualidades' && <AnualidadesTab />}
-                {folder === 'simulador' && <SimuladorTab />}
-                {folder === 'quizzes' && <QuizTab />}
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={toggleTheme}
+                  className="inline-flex items-center gap-1.5 text-white text-xs font-semibold bg-white/10 hover:bg-white/20 rounded-md px-3.5 py-1.5 transition-colors"
+                  aria-label="Cambiar entre tema claro y oscuro"
+                >
+                  {theme === 'dark' ? <Sun size={13} /> : <Moon size={13} />}
+                  {theme === 'dark' ? 'Claro' : 'Oscuro'}
+                </button>
+                <button
+                  onClick={() => setAcercaDeOpen(true)}
+                  className="inline-flex items-center gap-1.5 text-white text-xs font-semibold bg-white/10 hover:bg-white/20 rounded-md px-3.5 py-1.5 transition-colors"
+                >
+                  <Info size={13} /> Acerca de
+                </button>
               </div>
+            </div>
+            <div className="absolute left-0 right-0 bottom-0">
+              <div className="h-[3px]" style={{ background: '#D9C98A', opacity: 0.9 }} />
+              <div className="h-px mt-[3px]" style={{ background: '#D9C98A', opacity: 0.5 }} />
+            </div>
+          </header>
+
+          {acercaDeOpen && (
+            <Modal onClose={() => setAcercaDeOpen(false)}>
+              <div className="flex items-center gap-2 cx-text-accent-primary font-semibold text-sm mb-1" style={{ fontFamily: "'Fraunces', sans-serif" }}>
+                <Calculator size={16} /> Proyecto de Proyecto de Matemáticas Discretas · Finanzas para todos
+              </div>
+              <h3 className="text-2xl mb-3" style={{ fontFamily: "'Fraunces', sans-serif", fontWeight: 600, color: 'var(--text-primary)' }}>
+                PROTOTIPO PARA PROYECTO DE MATEMATICAS DISCRETAS
+              </h3>
+              <p className="text-sm leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
+                Organizado por carpetas, con modo tutorial y espacio para tus clases grabadas. Explora cómo funcionan el interés simple, el interés compuesto, las tasas equivalentes y los préstamos en cuotas — con explicaciones simples y una calculadora que te muestra exactamente cómo se obtuvo cada número.
+              </p>
+              <p className="text-xs mt-4 pt-4 border-t" style={{ color: 'var(--text-faint)', borderColor: 'var(--border)' }}>
+                Prototipo educativo · las cifras son ilustrativas y NO constituyen asesoría financiera.
+              </p>
+            </Modal>
+          )}
+
+          <div ref={shellRef} className="cx-bg-surface rounded-lg border cx-border-border p-4 sm:p-6 shadow-lg shadow-black/[0.08] relative">
+            <div style={contentStyle}>
+              {folder === null ? (
+                <GameMenu onSelect={abrirFolder} />
+              ) : (
+                <div>
+                  <FolderHeader folder={folderDef} tutorialOn={tutorialOn} onToggleTutorial={toggleTutorial} onBack={volver} />
+                  {folder !== 'formulario' && <VideoPlaceholder tema={folderDef.label} folderKey={folder} />}
+                  {folder === 'interes' && <InteresTab />}
+                  {folder === 'tasas' && <TasasEquivalentesTab />}
+                  {folder === 'anualidades' && <AnualidadesTab />}
+                  {folder === 'simulador' && <SimuladorTab />}
+                  {folder === 'quizzes' && <QuizTab />}
+                  {folder === 'formulario' && <FormularioTab />}
+                </div>
+              )}
+            </div>
+            {folder && tutorialOn && folder !== 'formulario' && (
+              <TutorialDrawer steps={steps} index={tutorialStep} setIndex={setTutorialStep} onClose={() => setTutorialOn(false)} />
             )}
           </div>
-          {folder && tutorialOn && (
-            <TutorialDrawer steps={steps} index={tutorialStep} setIndex={setTutorialStep} onClose={() => setTutorialOn(false)} />
-          )}
-        </div>
 
-        <footer className="mt-8 pt-6 border-t cx-border-border text-center">
-          <img src={ESPOL_LOGO} alt="ESPOL" className="espol-logo w-9 mx-auto mb-3 opacity-60" />
-          <div
-            className="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide cx-text-text-secondary mb-1.5"
-          >
-            <AlertTriangle size={12} /> Prototipo educativo — Esto NO es NINGUN tipo de asesoría financiera
-          </div>
-          <p className="text-[11px] cx-text-text-faint max-w-xl mx-auto leading-relaxed">
-            Este cuaderno fue desarrollado con fines académicos para Matemáticas Discretas, Escuela Superior Politécnica del Litoral (ESPOL).
-            Las cifras, tasas y resultados son ilustrativos y se calculan con fórmulas simplificadas — no constituyen asesoría financiera,
-            legal ni una oferta de productos financieros reales. Verifica siempre condiciones y tasas con una institución financiera antes
-            de tomar decisiones con dinero real.
-          </p>
-        </footer>
+          <footer className="mt-8 pt-6 border-t cx-border-border text-center">
+            <img src={ESPOL_LOGO} alt="ESPOL" className="espol-logo w-9 mx-auto mb-3 opacity-60" />
+            <div
+              className="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide cx-text-text-secondary mb-1.5"
+            >
+              <AlertTriangle size={12} /> Prototipo educativo — Esto NO es NINGUN tipo de asesoría financiera
+            </div>
+            <p className="text-[11px] cx-text-text-faint max-w-xl mx-auto leading-relaxed">
+              Este cuaderno fue desarrollado con fines académicos para Matemáticas Discretas, Escuela Superior Politécnica del Litoral (ESPOL).
+              Las cifras, tasas y resultados son ilustrativos y se calculan con fórmulas simplificadas — no constituyen asesoría financiera,
+              legal ni una oferta de productos financieros reales. Verifica siempre condiciones y tasas con una institución financiera antes
+              de tomar decisiones con dinero real.
+            </p>
+          </footer>
+        </div>
       </div>
-    </div>
+      <PrintableFormulario />
+    </>
   );
 }
-
 
 const root = createRoot(document.getElementById('root'));
 root.render(<FinanzasApp />);
