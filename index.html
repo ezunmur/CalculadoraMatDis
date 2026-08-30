@@ -19,11 +19,14 @@
       }
     </script>
     <style>
-        body { margin: 0; padding: 0; min-height: 100vh; }
+        body { margin: 0; padding: 0; min-height: 100vh; background: #F1ECDC; }
+        #root { min-height: 100vh; display: flex; align-items: center; justify-content: center; }
+        .loading-text { color: #4A4128; font-family: 'Inter', sans-serif; font-size: 1.1rem; }
     </style>
 </head>
-<body class="m-0 p-0">
-    <div id="root"></div>
+<body>
+    <div id="root"><div class="loading-text">Cargando aplicación...</div></div>
+
     <script type="text/babel" data-type="module">
 // ============================================================
 // 1. IMPORTS
@@ -32,19 +35,20 @@ import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { createRoot } from 'react-dom/client';
 import {
   ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
-  Legend, LineChart, Line, ReferenceLine
+  Legend, LineChart, Line
 } from 'recharts';
 import {
   Eye, X, Calculator, Target, PiggyBank, CreditCard, Landmark, Wallet,
   TrendingUp, AlertTriangle, Sparkles, ArrowRight, RotateCcw, Plus,
   GraduationCap, ChevronLeft, ChevronRight, Youtube, Lightbulb, Home,
-  Settings2, Check, ArrowLeftRight, Sun, Moon, Info, Printer, FileText
+  Settings2, Check, ArrowLeftRight, Sun, Moon, Info, Printer
 } from 'lucide-react';
 
 // ============================================================
 // 2. CONSTANTES Y UTILIDADES
 // ============================================================
 const ESPOL_LOGO = 'logo.svg';
+const QR_CODE = 'QR.png';
 
 const FRASES_CARGA = [
   'El interés compuesto no descansa, ni siquiera los domingos.',
@@ -59,7 +63,7 @@ const FRASES_CARGA = [
   'Un periodo más y esto compone solo.',
   'Aquí nadie te va a vender un seguro que no pediste.',
   'Redondeando hacia arriba, como todo banco honesto.',
-]; 
+];
 
 const fmt = (n) => {
   if (!isFinite(n)) return '—';
@@ -79,17 +83,13 @@ const monthsToYears = (m) => {
 const TEMPORALIDADES = [
   { key: 'anual', label: 'Anual', m: 1, periodo: 'año', periodoPlural: 'años' },
   { key: 'semestral', label: 'Semestral', m: 2, periodo: 'semestre', periodoPlural: 'semestres' },
-  { key: 'cuatrimestral', label: 'Cuatrimestral', m: 3, periodo: 'cuatrimestre', periodoPlural: 'cuatrimestres' },
   { key: 'trimestral', label: 'Trimestral', m: 4, periodo: 'trimestre', periodoPlural: 'trimestres' },
-  { key: 'bimestral', label: 'Bimestral', m: 6, periodo: 'bimestre', periodoPlural: 'bimestres' },
-  { key: 'bimensual', label: 'Bimensual (quincenal)', m: 24, periodo: 'quincena', periodoPlural: 'quincenas' },
   { key: 'mensual', label: 'Mensual', m: 12, periodo: 'mes', periodoPlural: 'meses' },
-  { key: 'semanal', label: 'Semanal', m: 52, periodo: 'semana', periodoPlural: 'semanas' },
   { key: 'diaria', label: 'Diaria', m: 365, periodo: 'día', periodoPlural: 'días' },
   { key: 'continua', label: 'Continua', m: null, periodo: 'año', periodoPlural: 'años' },
 ];
 
-const getTemporalidad = (key) => TEMPORALIDADES.find((t) => t.key === key) || TEMPORALIDADES[6];
+const getTemporalidad = (key) => TEMPORALIDADES.find((t) => t.key === key) || TEMPORALIDADES[3];
 
 function tasaPeriodica(tasaNominalPct, temporalidadKey) {
   const t = getTemporalidad(temporalidadKey);
@@ -115,7 +115,7 @@ function calcularTasaDestinoDesdeTEA(tea, tipoDestino, temporalidadDestinoKey) {
 function calcularContinuo(P, tasaNominalPct, anios) {
   const r = tasaNominalPct / 100;
   const F = P * Math.exp(r * anios);
-  return { F, interes: F - P, r, anios };
+  return { F, interes: F - P };
 }
 
 function calcularAmortizacion(P, r, n, sistema) {
@@ -141,7 +141,7 @@ function calcularAmortizacion(P, r, n, sistema) {
       rows.push({ t, saldoInicial: saldo, pago, interes, capital: capitalFijo, saldoFinal });
       saldo = saldoFinal;
     }
-  } else { 
+  } else {
     for (let t = 1; t <= n; t++) {
       const interes = saldo * r;
       const capital = t === n ? saldo : 0;
@@ -245,8 +245,8 @@ function simularCamino({ tipo, monto, base, tasaAnual = 0, extraMensual = 0, ext
 function Modal({ onClose, children, wide }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(31,41,55,0.55)' }} onClick={onClose}>
-      <div className={`cx-bg-surface rounded-lg shadow-xl w-full ${wide ? 'max-w-2xl' : 'max-w-lg'} max-h-[88vh] overflow-y-auto relative`} style={{ backgroundColor: 'var(--surface)', color: 'var(--text-primary)' }} onClick={(e) => e.stopPropagation()}>
-        <button onClick={onClose} className="absolute top-4 right-4 p-2 rounded-full cx-bg-surface-hover-2 cx-hover-bg-surface-hover-3 cx-text-text-secondary z-10" aria-label="Cerrar"><X size={18} /></button>
+      <div className={`bg-white rounded-lg shadow-xl w-full ${wide ? 'max-w-2xl' : 'max-w-lg'} max-h-[88vh] overflow-y-auto relative`} onClick={(e) => e.stopPropagation()}>
+        <button onClick={onClose} className="absolute top-4 right-4 p-2 rounded-full hover:bg-gray-100 text-gray-500 z-10"><X size={18} /></button>
         <div className="p-6 sm:p-8">{children}</div>
       </div>
     </div>
@@ -264,16 +264,15 @@ function Frac({ num, den }) {
     </span>
   );
 }
-function MathBlock({ children }) { return <div className="text-lg sm:text-xl cx-text-text-primary text-center px-2 py-1.5" style={{ fontFamily: "'STIX Two Text', 'Cambria Math', 'Times New Roman', serif" }}>{children}</div>; }
-function MathInline({ children }) { return <span className="text-[15px]" style={{ fontFamily: "'STIX Two Text', 'Cambria Math', 'Times New Roman', serif" }}>{children}</span>; }
+function MathBlock({ children }) { return <div className="text-lg sm:text-xl text-center px-2 py-1.5" style={{ fontFamily: "'Times New Roman', serif" }}>{children}</div>; }
 
 function ListaVariables({ items, compact }) {
   return (
     <dl className={`grid ${compact ? 'grid-cols-1' : 'sm:grid-cols-2'} gap-x-4 gap-y-1.5 mt-2`}>
       {items.map((v) => (
         <div key={v.simbolo} className="flex items-baseline gap-2">
-          <dt className="text-[15px] cx-text-accent-primary flex-shrink-0" style={{ fontFamily: "'STIX Two Text', 'Cambria Math', 'Times New Roman', serif" }}><Var>{v.simbolo}</Var></dt>
-          <dd className="text-[12.5px] cx-text-text-secondary leading-snug">{v.desc}</dd>
+          <dt className="text-[15px] text-emerald-700 flex-shrink-0" style={{ fontFamily: "'Times New Roman', serif" }}><Var>{v.simbolo}</Var></dt>
+          <dd className="text-[12.5px] text-gray-600 leading-snug">{v.desc}</dd>
         </div>
       ))}
     </dl>
@@ -282,12 +281,12 @@ function ListaVariables({ items, compact }) {
 
 function TextoConNegritas({ texto }) {
   const partes = texto.split('**');
-  return <>{partes.map((p, i) => i % 2 === 1 ? <strong key={i} style={{ color: 'var(--text-primary)' }}>{p}</strong> : <span key={i}>{p}</span>)}</>;
+  return <>{partes.map((p, i) => i % 2 === 1 ? <strong key={i}>{p}</strong> : <span key={i}>{p}</span>)}</>;
 }
 
 function PillButton({ active, onClick, children }) {
   return (
-    <button onClick={onClick} className={`px-4 py-2 rounded-md text-sm font-semibold border-2 transition-colors ${active ? 'text-white border-transparent shadow-sm shadow-black/20' : 'cx-bg-surface cx-text-text-secondary cx-border-border cx-hover-border-border-hover'}`} style={{ background: active ? 'var(--accent-primary)' : undefined }}>
+    <button onClick={onClick} className={`px-4 py-2 rounded-md text-sm font-semibold border-2 transition-colors ${active ? 'text-white border-transparent shadow-sm' : 'bg-white text-gray-600 border-gray-300 hover:border-gray-400'}`} style={{ background: active ? '#1F4D3A' : undefined }}>
       {children}
     </button>
   );
@@ -299,10 +298,10 @@ function Field({ label, suffix, value, onChange, min, step }) {
     const t = e.target.value; setTexto(t); const num = parseFloat(t); onChange(isNaN(num) ? 0 : num);
   };
   return (
-    <label className="flex flex-wrap items-end gap-x-2 gap-y-0.5 border-b-2 cx-border-border cx-focusw-border-accent-primary min-w-0 pb-1">
-      <span className="text-[11px] cx-text-text-muted font-medium whitespace-nowrap">{label}</span>
-      <input type="number" value={texto} min={min} step={step} onChange={manejarCambio} placeholder="-,--" className="flex-1 min-w-[64px] text-right px-0.5 outline-none bg-transparent cx-text-text-primary" style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '1.1rem', fontWeight: 600, letterSpacing: '-0.01em' }} />
-      {suffix && <span className="text-sm cx-text-text-faint flex-shrink-0">{suffix}</span>}
+    <label className="flex flex-wrap items-end gap-x-2 gap-y-0.5 border-b-2 border-gray-300 focus-within:border-emerald-600 min-w-0 pb-1">
+      <span className="text-[11px] text-gray-500 font-medium whitespace-nowrap">{label}</span>
+      <input type="number" value={texto} min={min} step={step} onChange={manejarCambio} placeholder="-,--" className="flex-1 min-w-[64px] text-right px-0.5 outline-none bg-transparent text-gray-800" style={{ fontFamily: "'Courier New', monospace", fontSize: '1.1rem', fontWeight: 600, letterSpacing: '-0.01em' }} />
+      {suffix && <span className="text-sm text-gray-400 flex-shrink-0">{suffix}</span>}
     </label>
   );
 }
@@ -310,8 +309,8 @@ function Field({ label, suffix, value, onChange, min, step }) {
 function SelectField({ label, value, onChange, options }) {
   return (
     <label className="flex flex-col gap-1 min-w-0">
-      <span className="text-xs uppercase tracking-wide cx-text-text-muted font-semibold">{label}</span>
-      <select value={value} onChange={(e) => onChange(e.target.value)} className="border-2 cx-border-border rounded-lg px-3 py-2.5 cx-bg-surface cx-text-text-primary text-sm" style={{ backgroundColor: 'var(--surface)', color: 'var(--text-primary)' }}>
+      <span className="text-xs uppercase tracking-wide text-gray-500 font-semibold">{label}</span>
+      <select value={value} onChange={(e) => onChange(e.target.value)} className="border-2 border-gray-300 rounded-lg px-3 py-2.5 bg-white text-gray-800 text-sm">
         {options.map((op) => <option key={op.value} value={op.value}>{op.label}</option>)}
       </select>
     </label>
@@ -320,14 +319,14 @@ function SelectField({ label, value, onChange, options }) {
 
 function StatCard({ label, value, accent }) {
   const colors = {
-    teal: 'cx-text-accent-green-text cx-bg-accent-green-bg',
-    coral: 'cx-text-accent-coral-text cx-bg-accent-coral-bg',
-    blue: 'cx-text-accent-primary-text cx-bg-accent-primary-bg',
+    teal: 'bg-emerald-50 text-emerald-700',
+    coral: 'bg-red-50 text-red-700',
+    blue: 'bg-blue-50 text-blue-700',
   };
   return (
-    <div className={`px-4 py-3 rounded-lg ${colors[accent]}`}>
+    <div className={`px-4 py-3 rounded-lg ${colors[accent] || colors.blue}`}>
       <div className="text-[10.5px] font-medium opacity-70">{label}</div>
-      <div className="text-[26px] leading-tight mt-0.5 truncate" style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, letterSpacing: '-0.02em' }}>{value}</div>
+      <div className="text-[26px] leading-tight mt-0.5 truncate" style={{ fontFamily: "'Courier New', monospace", fontWeight: 700, letterSpacing: '-0.02em' }}>{value}</div>
     </div>
   );
 }
@@ -338,13 +337,13 @@ function CapitalizacionSolapa({ temporalidad, onChange, opciones }) {
   const actual = getTemporalidad(temporalidad);
   return (
     <div>
-      <button type="button" onClick={() => setOpen((o) => !o)} className="flex items-center gap-1.5 text-xs font-semibold cx-text-accent-primary cx-bg-accent-primary-bg cx-hover-bg-accent-primary-bg-hover rounded-md px-3 py-1.5 transition-colors">
+      <button type="button" onClick={() => setOpen((o) => !o)} className="flex items-center gap-1.5 text-xs font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-md px-3 py-1.5 transition-colors">
         <Settings2 size={13} /> Capitalización: {actual.label} {open ? <ChevronLeft size={13} className="rotate-90" /> : <ChevronRight size={13} className="rotate-90" />}
       </button>
       {open && (
-        <div className="mt-2 flex flex-wrap gap-1.5 cx-bg-surface border cx-border-border rounded-lg p-2.5">
+        <div className="mt-2 flex flex-wrap gap-1.5 bg-white border border-gray-300 rounded-lg p-2.5">
           {lista.map((t) => (
-            <button key={t.key} type="button" onClick={() => { onChange(t.key); setOpen(false); }} className={`px-2.5 py-1 rounded-md text-xs font-medium border transition-colors ${temporalidad === t.key ? 'text-white border-transparent' : 'cx-bg-surface cx-text-text-secondary cx-border-border cx-hover-border-border-hover'}`} style={{ background: temporalidad === t.key ? 'var(--accent-primary)' : undefined }}>
+            <button key={t.key} type="button" onClick={() => { onChange(t.key); setOpen(false); }} className={`px-2.5 py-1 rounded-md text-xs font-medium border transition-colors ${temporalidad === t.key ? 'text-white border-transparent' : 'bg-white text-gray-600 border-gray-300 hover:border-gray-400'}`} style={{ background: temporalidad === t.key ? '#1F4D3A' : undefined }}>
               {t.label}
             </button>
           ))}
@@ -358,89 +357,57 @@ function TemaIntro({ tipo, sistema }) {
   const content = {
     simple: {
       titulo: '¿Qué es el interés simple?',
-      color: 'teal',
-      texto: 'Es la forma más sencilla de interés: cada periodo ganas (o pagas) exactamente lo mismo, calculado siempre sobre el monto inicial. Es como si te dieran una "propina" fija cada periodo sobre lo que pusiste al principio, sin importar cuánto se haya acumulado ya.',
+      texto: 'Cada periodo ganas exactamente lo mismo, calculado sobre el monto inicial.',
       formulas: [
         { nombre: 'Monto final', formula: <MathBlock><Var>F</Var> = <Var>P</Var> · (1 + <Var>r</Var> · <Var>t</Var>)</MathBlock> },
-        { nombre: 'Interés generado', formula: <MathBlock><Var>I</Var> = <Var>P</Var> · <Var>r</Var> · <Var>t</Var></MathBlock> },
       ],
-      variables: [
-        { simbolo: 'P', desc: 'Capital inicial: lo que depositas o pides prestado' },
-        { simbolo: 'r', desc: 'Tasa de interés por periodo, en forma decimal (12% → 0.12)' },
-        { simbolo: 't', desc: 'Número de periodos transcurridos' },
-        { simbolo: 'F', desc: 'Monto final acumulado, capital más interés' },
-        { simbolo: 'I', desc: 'Interés total generado (F − P)' },
-      ],
+      variables: [{ simbolo: 'P', desc: 'Capital inicial' }, { simbolo: 'r', desc: 'Tasa por periodo' }, { simbolo: 't', desc: 'Número de periodos' }],
     },
     compuesto: {
       titulo: '¿Qué es el interés compuesto?',
-      color: 'teal',
-      texto: 'Aquí el interés se calcula sobre el saldo acumulado, no solo sobre el monto inicial. Es "interés sobre interés": cada periodo el saldo crece un poco más, y el siguiente interés se calcula sobre ese saldo ya más grande.',
+      texto: 'El interés se calcula sobre el saldo acumulado. Es "interés sobre interés".',
       formulas: [
         { nombre: 'Monto final', formula: <MathBlock><Var>F</Var> = <Var>P</Var> · <Pow base={<>(1 + <Var>r</Var>)</>} exp={<Var>t</Var>} /></MathBlock> },
-        { nombre: 'Interés generado', formula: <MathBlock><Var>I</Var> = <Var>P</Var> · (<Pow base={<>(1 + <Var>r</Var>)</>} exp={<Var>t</Var>} /> − 1)</MathBlock> },
       ],
-      variables: [
-        { simbolo: 'P', desc: 'Capital inicial: lo que depositas o pides prestado' },
-        { simbolo: 'r', desc: 'Tasa de interés por periodo, en forma decimal' },
-        { simbolo: 't', desc: 'Número de periodos transcurridos' },
-        { simbolo: 'F', desc: 'Monto final acumulado, capital más interés compuesto' },
-      ],
+      variables: [{ simbolo: 'P', desc: 'Capital inicial' }, { simbolo: 'r', desc: 'Tasa por periodo' }, { simbolo: 't', desc: 'Número de periodos' }],
     },
     anualidad: {
       titulo: '¿Qué es una anualidad?',
-      color: 'blue',
-      texto: 'Una anualidad es una serie de pagos a intervalos regulares (por ejemplo, mensuales) que sirven para pagar un préstamo.',
+      texto: 'Serie de pagos a intervalos regulares para pagar un préstamo.',
       formulas: [
-        { nombre: 'Francesa (cuota fija)', activo: sistema === 'francesa', formula: <MathBlock>Pago = <Frac num={<><Var>P</Var> · <Var>r</Var></>} den={<>1 − <Pow base={<>(1+<Var>r</Var>)</>} exp={<>−<Var>n</Var></>} /></>} /></MathBlock> },
-        { nombre: 'Alemana (capital fijo)', activo: sistema === 'alemana', formula: <MathBlock>Capital = <Frac num={<Var>P</Var>} den={<Var>n</Var>} /></MathBlock> },
-        { nombre: 'Americana (bullet)', activo: sistema === 'americana', formula: <MathBlock>Pago = Interés &nbsp;·&nbsp; Capital al final = <Var>P</Var></MathBlock> },
+        { nombre: 'Francesa', activo: sistema === 'francesa', formula: <MathBlock>Pago = <Frac num={<><Var>P</Var> · <Var>r</Var></>} den={<>1 − <Pow base={<>(1+<Var>r</Var>)</>} exp={<>−<Var>n</Var></>} /></>} /></MathBlock> },
+        { nombre: 'Alemana', activo: sistema === 'alemana', formula: <MathBlock>Capital = <Frac num={<Var>P</Var>} den={<Var>n</Var>} /></MathBlock> },
       ],
-      variables: [
-        { simbolo: 'P', desc: 'Monto del préstamo (capital inicial que se debe)' },
-        { simbolo: 'r', desc: 'Tasa de interés por periodo, en forma decimal' },
-        { simbolo: 'n', desc: 'Número total de periodos (cuotas) del préstamo' },
-      ],
+      variables: [{ simbolo: 'P', desc: 'Monto del préstamo' }, { simbolo: 'r', desc: 'Tasa por periodo' }, { simbolo: 'n', desc: 'Número de cuotas' }],
     },
     tasas: {
       titulo: '¿Qué son las tasas equivalentes?',
-      color: 'blue',
-      texto: 'Dos tasas nominales anuales con distinta capitalización pueden producir exactamente el mismo rendimiento real en un año.',
+      texto: 'Dos tasas con distinta capitalización pueden producir el mismo rendimiento.',
       formulas: [
         { nombre: 'Tasa efectiva anual', formula: <MathBlock>TEA = <Pow base={<>(1 + <Frac num={<Var>j</Var>} den={<Var>m</Var>} />)</>} exp={<Var>m</Var>} /> − 1</MathBlock> },
-        { nombre: 'Nominal equivalente', formula: <MathBlock><Var>j</Var><Sub>2</Sub> = (<Pow base="(1+TEA)" exp={<Frac num="1" den={<><Var>m</Var><Sub>2</Sub></>} />} /> − 1) · <Var>m</Var><Sub>2</Sub></MathBlock> },
-        { nombre: 'Capitalización continua', formula: <MathBlock>TEA = <Pow base="e" exp={<Var>j</Var>} /> − 1</MathBlock> },
       ],
-      variables: [
-        { simbolo: 'j', desc: 'Tasa nominal anual, en forma decimal' },
-        { simbolo: 'm', desc: 'Número de capitalizaciones por año (frecuencia)' },
-        { simbolo: 'TEA', desc: 'Tasa efectiva anual: el rendimiento real en un año' },
-        { simbolo: 'j₂ , m₂', desc: 'Tasa nominal y capitalizaciones de la temporalidad destino' },
-      ],
+      variables: [{ simbolo: 'j', desc: 'Tasa nominal anual' }, { simbolo: 'm', desc: 'Capitalizaciones por año' }],
     },
   };
   const c = content[tipo];
   if (!c) return null;
   
-  const ring = c.color === 'teal' ? 'cx-border-20-accent-green cx-bg-accent-green-bg' : 'cx-border-20-accent-primary cx-bg-accent-primary-bg';
-  const dot = c.color === 'teal' ? 'cx-text-accent-green-text' : 'cx-text-accent-primary';
-
   return (
-    <div className={`rounded-lg border ${ring} p-5 mb-5`}>
-      <div className={`flex items-center gap-2 font-semibold text-[15px] mb-2 ${dot}`} style={{ fontFamily: "'Fraunces', sans-serif" }}>
+    <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-5 mb-5">
+      <div className="flex items-center gap-2 font-semibold text-[15px] mb-2 text-emerald-700">
         <Sparkles size={16} /> {c.titulo}
       </div>
-      <p className="text-sm cx-text-text-strong-gray leading-relaxed mb-4">{c.texto}</p>
+      <p className="text-sm text-gray-700 leading-relaxed mb-4">{c.texto}</p>
       <div className="grid sm:grid-cols-2 gap-3">
         {c.formulas.map((f) => (
-          <div key={f.nombre} className={`px-3 py-3 rounded-lg cx-bg-surface border ${f.activo ? 'border-2 cx-border-accent-primary' : 'cx-border-border'}`}>
-            <div className="text-[11px] cx-text-text-muted font-semibold uppercase tracking-wide mb-0.5">{f.nombre}</div>
+          <div key={f.nombre} className={`px-3 py-3 rounded-lg bg-white border ${f.activo ? 'border-2 border-emerald-600' : 'border-gray-200'}`}>
+            <div className="text-[11px] text-gray-500 font-semibold uppercase tracking-wide mb-0.5">{f.nombre}</div>
             {f.formula}
           </div>
         ))}
       </div>
-      <div className="mt-4 pt-3 border-t border-black/5">
-        <div className="text-[11px] cx-text-text-faint font-semibold uppercase tracking-wide mb-1.5">Donde</div>
+      <div className="mt-4 pt-3 border-t border-gray-200">
+        <div className="text-[11px] text-gray-400 font-semibold uppercase tracking-wide mb-1.5">Donde</div>
         <ListaVariables items={c.variables} />
       </div>
     </div>
@@ -448,99 +415,141 @@ function TemaIntro({ tipo, sistema }) {
 }
 
 // ============================================================
-// 4. SECCIONES DE FORMULARIO (UN SOLO LUGAR)
+// 4. FOLDERS (UN SOLO LUGAR)
 // ============================================================
-const SECCIONES_FORMULARIO = [
-  {
-    id: 'discreta',
-    titulo: 'Matemática Discreta (bases)',
-    color: 'teal',
-    items: [
-      {
-        nombre: 'Sumatoria',
-        formula: (
-          <MathBlock><span style={{ fontSize: '1.3em' }}>Σ</span><Sub>i=1</Sub><sup style={{ fontSize: '0.7em' }}>n</sup> a<Sub>i</Sub></MathBlock>
-        ),
-        variables: [
-          { simbolo: 'aᵢ', desc: 'i-ésimo término de la secuencia' },
-          { simbolo: 'n', desc: 'Número de términos a sumar' },
-        ],
-      },
-      {
-        nombre: 'Serie aritmética',
-        formula: (
-          <MathBlock>S<Sub>n</Sub> = <Frac num={<Var>n</Var>} den="2" /> · (2<Var>a</Var><Sub>1</Sub> + (<Var>n</Var>−1)<Var>d</Var>)</MathBlock>
-        ),
-        variables: [
-          { simbolo: 'a₁', desc: 'Primer término de la secuencia' },
-          { simbolo: 'd', desc: 'Diferencia común entre términos' },
-          { simbolo: 'n', desc: 'Número de términos' },
-        ],
-      },
-      {
-        nombre: 'Serie geométrica',
-        formula: (
-          <MathBlock>S<Sub>n</Sub> = <Var>a</Var><Sub>1</Sub> · <Frac num={<>1 − <Pow base={<Var>q</Var>} exp={<Var>n</Var>} /></>} den={<>1 − <Var>q</Var></>} /></MathBlock>
-        ),
-        variables: [
-          { simbolo: 'a₁', desc: 'Primer término de la secuencia' },
-          { simbolo: 'q', desc: 'Razón común entre términos' },
-          { simbolo: 'n', desc: 'Número de términos' },
-        ],
-      },
-      {
-        nombre: 'Relación de recurrencia',
-        formula: (
-          <MathBlock><Var>S</Var><Sub>t</Sub> = <Var>S</Var><Sub>t−1</Sub> · (1 + <Var>r</Var>) − <Var>C</Var></MathBlock>
-        ),
-        variables: [
-          { simbolo: 'Sₜ', desc: 'Saldo de la deuda en el periodo t' },
-          { simbolo: 'r', desc: 'Tasa de interés por periodo' },
-          { simbolo: 'C', desc: 'Cuota o pago periódico' },
-        ],
-      },
-    ],
-  },
-  {
-    id: 'interes',
-    titulo: 'Interés simple y compuesto',
-    color: 'teal',
-    items: [
-      {
-        nombre: 'Monto final — simple',
-        formula: <MathBlock><Var>F</Var> = <Var>P</Var> · (1 + <Var>r</Var> · <Var>t</Var>)</MathBlock>,
-        variables: [
-          { simbolo: 'P', desc: 'Capital inicial' },
-          { simbolo: 'r', desc: 'Tasa de interés por periodo' },
-          { simbolo: 't', desc: 'Número de periodos' },
-        ],
-      },
-      {
-        nombre: 'Monto final — compuesto',
-        formula: <MathBlock><Var>F</Var> = <Var>P</Var> · <Pow base={<>(1 + <Var>r</Var>)</>} exp={<Var>t</Var>} /></MathBlock>,
-        variables: [
-          { simbolo: 'P', desc: 'Capital inicial' },
-          { simbolo: 'r', desc: 'Tasa de interés por periodo' },
-          { simbolo: 't', desc: 'Número de periodos' },
-        ],
-      },
-      {
-        nombre: 'Capitalización continua',
-        formula: <MathBlock><Var>F</Var> = <Var>P</Var> · <Pow base="e" exp={<><Var>r</Var>·<Var>t</Var></>} /></MathBlock>,
-        variables: [
-          { simbolo: 'P', desc: 'Capital inicial' },
-          { simbolo: 'r', desc: 'Tasa nominal anual' },
-          { simbolo: 't', desc: 'Tiempo en años' },
-        ],
-      },
-    ],
-  },
-  {
-    id: 'anualidades',
-    titulo: 'Anualidades (amortización)',
-    color: 'blue',
-    items: [
-      {
-        nombre: 'Francesa (cuota fija)',
-        formula: (
-          <MathBlock><Var>C</Var> = <Frac num={<><Var>P</Var>
+const FOLDERS = [
+  { key: 'interes', label: 'Interés simple y compuesto', desc: 'Cómo crece el dinero.', icon: PiggyBank },
+  { key: 'tasas', label: 'Tasas de interés equivalentes', desc: 'Convierte entre capitalizaciones.', icon: ArrowLeftRight },
+  { key: 'anualidades', label: 'Anualidades y préstamos', desc: 'Sistemas de amortización.', icon: Landmark },
+  { key: 'simulador', label: 'Simulador de destinos', desc: 'Compara caminos de ahorro y deuda.', icon: Target },
+  { key: 'quizzes', label: 'Quizzes y ejercicios', desc: '10 niveles de dificultad.', icon: GraduationCap },
+  { key: 'formulario', label: 'Formulario de fórmulas', desc: 'Todas las fórmulas en un lugar.', icon: Calculator },
+];
+
+// ============================================================
+// 5. COMPONENTES PRINCIPALES
+// ============================================================
+
+function SplashScreen({ fadingOut }) {
+  const [frase] = useState(() => FRASES_CARGA[Math.floor(Math.random() * FRASES_CARGA.length)]);
+  return (
+    <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center transition-all duration-300" style={{ background: '#F1ECDC', opacity: fadingOut ? 0 : 1 }}>
+      <div className="relative flex flex-col items-center px-6 text-center">
+        <img src={ESPOL_LOGO} alt="ESPOL" className="w-24 sm:w-28 mb-5" />
+        <div className="text-2xl sm:text-3xl mb-1" style={{ fontFamily: "'Georgia', serif", fontWeight: 600, color: '#241D12' }}>Proyecto de Matemáticas Discretas</div>
+        <div className="text-xs uppercase tracking-[0.2em] font-semibold mb-8 text-gray-500">Escuela Superior Politécnica del Litoral</div>
+        <div className="w-56 h-1.5 rounded-full overflow-hidden bg-gray-300"><div className="h-full splash-bar" style={{ background: '#1F4D3A', width: '100%', animation: 'fillbar 1.6s ease-out forwards' }} /></div>
+        <div className="text-[12px] mt-4 max-w-xs italic text-gray-500">"{frase}"</div>
+        <style>{`@keyframes fillbar { from { width: 0%; } to { width: 100%; } }`}</style>
+      </div>
+    </div>
+  );
+}
+
+function GameMenu({ onSelect }) {
+  return (
+    <div className="flex flex-col items-center justify-center py-8 sm:py-14 px-2">
+      <div className="text-center mb-8">
+        <div className="inline-flex items-center gap-2 text-[11px] uppercase tracking-[0.25em] font-semibold mb-2 text-emerald-700">
+          <Sparkles size={13} /> Elige tu ruta
+        </div>
+        <h2 className="text-2xl sm:text-[28px]" style={{ fontFamily: "'Georgia', serif", fontWeight: 600, color: '#241D12' }}>
+          ¿Qué quieres explorar hoy?
+        </h2>
+      </div>
+      <div className="flex flex-col items-stretch gap-3 w-full max-w-sm">
+        {FOLDERS.map((f) => {
+          const Icon = f.icon;
+          return (
+            <button key={f.key} onClick={(e) => onSelect(f.key, e.currentTarget)} className="relative w-full flex items-center gap-3 pl-5 pr-4 py-4 rounded-lg text-[17px] text-left transition-all border-2 border-gray-200 bg-white hover:-translate-y-0.5 hover:shadow-lg" style={{ fontFamily: "'Georgia', serif", fontWeight: 600, color: '#241D12' }}>
+              <Icon size={19} style={{ color: '#1F4D3A', flexShrink: 0 }} />
+              <span className="flex-1">{f.label}</span>
+              <ChevronRight size={17} className="opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition-all flex-shrink-0 text-emerald-700" />
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function FolderHeader({ folder, onBack }) {
+  return (
+    <div className="flex items-center justify-between gap-3 mb-5 flex-wrap">
+      <div className="flex items-center gap-2 text-sm text-gray-500">
+        <button onClick={onBack} className="flex items-center gap-1 hover:text-emerald-700"><Home size={14} /> Inicio</button>
+        <ChevronRight size={14} className="text-gray-300" />
+        <span className="text-gray-800 font-semibold" style={{ fontFamily: "'Georgia', serif" }}>{folder.label}</span>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================
+// 6. TABS PRINCIPALES
+// ============================================================
+
+function InteresTab() {
+  const [tipo, setTipo] = useState('compuesto');
+  const [P, setP] = useState(80000);
+  const [tasaNominal, setTasaNominal] = useState(12);
+  const [temporalidad, setTemporalidad] = useState('mensual');
+  const [n, setN] = useState(10);
+  const [anios, setAnios] = useState(3);
+
+  const t = getTemporalidad(temporalidad);
+  const esContinua = tipo === 'compuesto' && temporalidad === 'continua';
+  const r = esContinua ? 0 : tasaPeriodica(tasaNominal, temporalidad);
+  const resultadoContinuo = useMemo(() => calcularContinuo(P, tasaNominal, anios), [P, tasaNominal, anios]);
+  const resultado = useMemo(() => {
+    if (tipo === 'simple') return calcularSimple(P, r, n);
+    return calcularCompuesto(P, r, n);
+  }, [tipo, P, r, n]);
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-wrap gap-2">
+        <PillButton active={tipo === 'simple'} onClick={() => setTipo('simple')}>Interés simple</PillButton>
+        <PillButton active={tipo === 'compuesto'} onClick={() => setTipo('compuesto')}>Interés compuesto</PillButton>
+      </div>
+
+      <TemaIntro tipo={tipo} sistema={null} />
+
+      <div className="bg-white p-4 rounded-lg border border-gray-200 space-y-4">
+        <div className="grid sm:grid-cols-3 gap-4">
+          <Field label="Capital inicial" value={P} onChange={setP} min={0} step={100} />
+          <Field label="Tasa nominal anual" suffix="%" value={tasaNominal} onChange={setTasaNominal} min={0} step={0.1} />
+          {esContinua ? (
+            <Field label="Número de años" value={anios} onChange={(v) => setAnios(Math.max(0.1, v))} min={0.1} step={0.5} />
+          ) : (
+            <Field label={`Número de periodos (${t.periodoPlural})`} value={n} onChange={(v) => setN(Math.max(1, Math.round(v)))} min={1} step={1} />
+          )}
+        </div>
+        <CapitalizacionSolapa temporalidad={temporalidad} onChange={setTemporalidad} />
+      </div>
+
+      {esContinua ? (
+        <div className="grid sm:grid-cols-3 gap-3">
+          <StatCard label="Capital inicial" value={fmt(P)} accent="teal" />
+          <StatCard label="Monto final" value={fmt(resultadoContinuo.F)} accent="blue" />
+          <StatCard label="Interés generado" value={fmt(resultadoContinuo.interes)} accent="coral" />
+        </div>
+      ) : (
+        <div className="grid sm:grid-cols-3 gap-3">
+          <StatCard label="Saldo final" value={fmt(resultado.saldoFinal)} accent="blue" />
+          <StatCard label="Interés total" value={fmt(resultado.totalInteres)} accent="coral" />
+          <StatCard label="Capital inicial" value={fmt(P)} accent="teal" />
+        </div>
+      )}
+    </div>
+  );
+}
+
+function TasasEquivalentesTab() {
+  const [tasaValor, setTasaValor] = useState(18);
+  const [origen, setOrigen] = useState('anual');
+  const [destino, setDestino] = useState('mensual');
+  const [tipoOrigen, setTipoOrigen] = useState('nominal');
+  const [tipoDestino, setTipoDestino] = useState('nominal');
+
+  const tea
