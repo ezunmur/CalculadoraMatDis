@@ -2177,74 +2177,248 @@ function FormularioTab() {
 function PrintableFormulario() {
   return (
     <div 
-      className="hidden print:block w-full bg-white text-black p-4"
+      className="hidden print:block w-full bg-white text-black p-6"
       style={{ 
         fontFamily: "'Inter', sans-serif"
-        // Variables CSS removidas (no se usaban)
       }}
     >
       <style>{`
         @media print {
-          @page { margin: 10mm; size: A4; }
+          @page { margin: 8mm 10mm; size: A4; }
           body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-          .print-cheat-sheet { min-width: 800px; position: relative; }
+          .print-cheat-sheet { max-width: 100%; position: relative; }
           .avoid-page-break { page-break-inside: avoid; }
+          .cheat-header { background: #1F4D3A !important; color: white !important; }
+          .cheat-subheader { background: #E8F0E8 !important; }
+          .formula-box { background: #F8F6F0 !important; border: 1px solid #D9CFAE !important; }
+          .variable-tag { background: #E8F0E8 !important; border: 1px solid #D9CFAE !important; }
+          .tip-box { background: #FFF8E7 !important; border-left: 3px solid #D9A84C !important; }
         }
+        .cheat-header { background: #1F4D3A; color: white; }
+        .cheat-subheader { background: #E8F0E8; }
+        .formula-box { background: #F8F6F0; border: 1px solid #D9CFAE; }
+        .variable-tag { background: #E8F0E8; border: 1px solid #D9CFAE; }
+        .tip-box { background: #FFF8E7; border-left: 3px solid #D9A84C; }
       `}</style>
       
       <div className="print-cheat-sheet">
-        <div className="relative text-center border-b-2 border-black pb-2 mb-4">
-          <h1 className="text-xl font-bold uppercase tracking-widest mb-1" style={{ fontFamily: "'Fraunces', serif" }}>
-            Formulario Finanzas y Discreta
-          </h1>
-          <p className="text-[9px] text-gray-600 font-bold uppercase tracking-widest pr-14">
-            Proyecto Matemáticas Discretas · ESPOL
-          </p>
+        {/* HEADER - Con diseño mejorado */}
+        <div className="cheat-header rounded-t-lg px-6 py-4 mb-5 flex items-center justify-between">
+          <div>
+            <div className="text-[8px] uppercase tracking-[0.2em] opacity-80">Escuela Superior Politécnica del Litoral</div>
+            <h1 className="text-2xl font-bold tracking-wide" style={{ fontFamily: "'Fraunces', serif" }}>
+              📐 Cheatsheet · Finanzas y Discreta
+            </h1>
+            <div className="text-[10px] opacity-80 mt-0.5">Proyecto Matemáticas Discretas · Referencia rápida</div>
+          </div>
           <img 
             src="QR.png" 
             alt="Código QR" 
-            className="absolute right-0 top-0 h-10 w-10 sm:h-12 sm:w-12"
+            className="h-12 w-12"
             style={{ objectFit: 'contain' }}
           />
         </div>
 
-        <div className="grid grid-cols-2 gap-3 items-start">
-          {DATOS_FORMULARIO.map(tema => (
-            <div key={tema.tema} className="avoid-page-break border-2 border-black rounded-sm overflow-hidden">
-              <h2 className="text-xs font-bold bg-gray-100 border-b-2 border-black px-2 py-1 uppercase tracking-wide text-black" style={{ fontFamily: "'Fraunces', serif" }}>
-                {tema.tema}
-              </h2>
-              
-              <div className="p-2 flex flex-col gap-3">
-                {tema.formulas.map(f => (
-                  <div key={f.nombre} className="flex flex-col gap-1">
-                    <div className="font-bold text-[10px] text-gray-800 uppercase">
-                      {f.nombre}
-                    </div>
-                    <div className="text-center px-1 py-1.5 bg-gray-50 border border-gray-300 rounded-sm text-[13px] text-black">
-                      {f.componente}
-                    </div>
-                    {f.variables && (
-                      <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-0.5 text-[9px] leading-tight">
-                        {f.variables.map(v => (
-                          <div key={v.simbolo} className="flex items-baseline gap-1">
-                            <strong className="font-serif italic bg-gray-200 px-1 rounded-sm border border-gray-300 text-black">
-                              {v.simbolo}
-                            </strong>
-                            <span className="text-gray-700">= {v.desc}</span>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                ))}
+        {/* CUERPO - Grid de 2 columnas */}
+        <div className="grid grid-cols-2 gap-4">
+          
+          {/* ===== SECCIÓN 0: MATEMÁTICA DISCRETA ===== */}
+          <div className="avoid-page-break border border-gray-300 rounded-lg overflow-hidden">
+            <div className="cheat-subheader px-3 py-1.5 border-b border-gray-300">
+              <span className="text-[10px] font-bold uppercase tracking-wide text-gray-700">0. Matemática Discreta (bases)</span>
+            </div>
+            <div className="p-3 space-y-2.5">
+              <div>
+                <div className="text-[9px] font-bold text-gray-600 uppercase">Sumatoria</div>
+                <div className="formula-box rounded px-2 py-1.5 text-center text-[14px] font-serif">Σ aᵢ</div>
+                <div className="flex flex-wrap gap-1 mt-0.5">
+                  <span className="variable-tag text-[8px] px-1.5 py-0.5 rounded"><strong>aᵢ</strong> = i-ésimo término</span>
+                  <span className="variable-tag text-[8px] px-1.5 py-0.5 rounded"><strong>n</strong> = número de términos</span>
+                </div>
+              </div>
+              <div>
+                <div className="text-[9px] font-bold text-gray-600 uppercase">Serie Aritmética</div>
+                <div className="formula-box rounded px-2 py-1.5 text-center text-[14px] font-serif">Sₙ = n/2 · (2a₁ + (n−1)d)</div>
+                <div className="flex flex-wrap gap-1 mt-0.5">
+                  <span className="variable-tag text-[8px] px-1.5 py-0.5 rounded"><strong>a₁</strong> = primer término</span>
+                  <span className="variable-tag text-[8px] px-1.5 py-0.5 rounded"><strong>d</strong> = diferencia común</span>
+                  <span className="variable-tag text-[8px] px-1.5 py-0.5 rounded"><strong>n</strong> = número de términos</span>
+                </div>
+              </div>
+              <div>
+                <div className="text-[9px] font-bold text-gray-600 uppercase">Serie Geométrica</div>
+                <div className="formula-box rounded px-2 py-1.5 text-center text-[14px] font-serif">Sₙ = a₁ · (1−qⁿ)/(1−q)</div>
+                <div className="flex flex-wrap gap-1 mt-0.5">
+                  <span className="variable-tag text-[8px] px-1.5 py-0.5 rounded"><strong>a₁</strong> = primer término</span>
+                  <span className="variable-tag text-[8px] px-1.5 py-0.5 rounded"><strong>q</strong> = razón común</span>
+                  <span className="variable-tag text-[8px] px-1.5 py-0.5 rounded"><strong>n</strong> = número de términos</span>
+                </div>
+              </div>
+              <div>
+                <div className="text-[9px] font-bold text-gray-600 uppercase">Relación de Recurrencia</div>
+                <div className="formula-box rounded px-2 py-1.5 text-center text-[14px] font-serif">Sₜ = Sₜ₋₁ · (1+r) − C</div>
+                <div className="flex flex-wrap gap-1 mt-0.5">
+                  <span className="variable-tag text-[8px] px-1.5 py-0.5 rounded"><strong>Sₜ</strong> = saldo en periodo t</span>
+                  <span className="variable-tag text-[8px] px-1.5 py-0.5 rounded"><strong>r</strong> = tasa de interés</span>
+                  <span className="variable-tag text-[8px] px-1.5 py-0.5 rounded"><strong>C</strong> = cuota periódica</span>
+                </div>
+              </div>
+              <div className="tip-box rounded px-2 py-1 text-[8px] text-gray-700">
+                💡 <strong>Consejo:</strong> La recurrencia es el puente entre la matemática discreta y las finanzas — la cuota francesa se deriva de resolver esta ecuación.
               </div>
             </div>
-          ))}
+          </div>
+
+          {/* ===== SECCIÓN 1: INTERÉS SIMPLE ===== */}
+          <div className="avoid-page-break border border-gray-300 rounded-lg overflow-hidden">
+            <div className="cheat-subheader px-3 py-1.5 border-b border-gray-300">
+              <span className="text-[10px] font-bold uppercase tracking-wide text-gray-700">1. Interés Simple</span>
+            </div>
+            <div className="p-3 space-y-2.5">
+              <div>
+                <div className="text-[9px] font-bold text-gray-600 uppercase">Monto Final</div>
+                <div className="formula-box rounded px-2 py-1.5 text-center text-[14px] font-serif">F = P · (1 + r · t)</div>
+                <div className="flex flex-wrap gap-1 mt-0.5">
+                  <span className="variable-tag text-[8px] px-1.5 py-0.5 rounded"><strong>P</strong> = capital inicial</span>
+                  <span className="variable-tag text-[8px] px-1.5 py-0.5 rounded"><strong>r</strong> = tasa periódica</span>
+                  <span className="variable-tag text-[8px] px-1.5 py-0.5 rounded"><strong>t</strong> = número de periodos</span>
+                </div>
+              </div>
+              <div>
+                <div className="text-[9px] font-bold text-gray-600 uppercase">Interés Generado</div>
+                <div className="formula-box rounded px-2 py-1.5 text-center text-[14px] font-serif">I = P · r · t</div>
+                <div className="flex flex-wrap gap-1 mt-0.5">
+                  <span className="variable-tag text-[8px] px-1.5 py-0.5 rounded"><strong>I</strong> = interés total</span>
+                  <span className="variable-tag text-[8px] px-1.5 py-0.5 rounded"><strong>P</strong> = capital inicial</span>
+                  <span className="variable-tag text-[8px] px-1.5 py-0.5 rounded"><strong>r</strong> = tasa periódica</span>
+                </div>
+              </div>
+              <div className="tip-box rounded px-2 py-1 text-[8px] text-gray-700">
+                💡 <strong>Consejo:</strong> El interés simple es lineal — el interés no genera más interés. Útil para plazos cortos o cuando la tasa es baja.
+              </div>
+            </div>
+          </div>
+
+          {/* ===== SECCIÓN 2: INTERÉS COMPUESTO (con Valor Presente) ===== */}
+          <div className="avoid-page-break border border-gray-300 rounded-lg overflow-hidden">
+            <div className="cheat-subheader px-3 py-1.5 border-b border-gray-300">
+              <span className="text-[10px] font-bold uppercase tracking-wide text-gray-700">2. Interés Compuesto</span>
+            </div>
+            <div className="p-3 space-y-2.5">
+              <div>
+                <div className="text-[9px] font-bold text-gray-600 uppercase">Monto Final</div>
+                <div className="formula-box rounded px-2 py-1.5 text-center text-[14px] font-serif">F = P · (1 + r)ᵗ</div>
+                <div className="flex flex-wrap gap-1 mt-0.5">
+                  <span className="variable-tag text-[8px] px-1.5 py-0.5 rounded"><strong>P</strong> = capital inicial</span>
+                  <span className="variable-tag text-[8px] px-1.5 py-0.5 rounded"><strong>r</strong> = tasa periódica</span>
+                  <span className="variable-tag text-[8px] px-1.5 py-0.5 rounded"><strong>t</strong> = número de periodos</span>
+                </div>
+              </div>
+              <div>
+                <div className="text-[9px] font-bold text-gray-600 uppercase">Capitalización Continua</div>
+                <div className="formula-box rounded px-2 py-1.5 text-center text-[14px] font-serif">F = P · e^(r · t)</div>
+                <div className="flex flex-wrap gap-1 mt-0.5">
+                  <span className="variable-tag text-[8px] px-1.5 py-0.5 rounded"><strong>e</strong> ≈ 2.71828</span>
+                  <span className="variable-tag text-[8px] px-1.5 py-0.5 rounded"><strong>r</strong> = tasa nominal anual</span>
+                  <span className="variable-tag text-[8px] px-1.5 py-0.5 rounded"><strong>t</strong> = tiempo en años</span>
+                </div>
+              </div>
+              <div>
+                <div className="text-[9px] font-bold text-gray-600 uppercase">Valor Presente</div>
+                <div className="formula-box rounded px-2 py-1.5 text-center text-[14px] font-serif">P = F / (1 + r)ᵗ</div>
+                <div className="flex flex-wrap gap-1 mt-0.5">
+                  <span className="variable-tag text-[8px] px-1.5 py-0.5 rounded"><strong>F</strong> = monto futuro</span>
+                  <span className="variable-tag text-[8px] px-1.5 py-0.5 rounded"><strong>r</strong> = tasa periódica</span>
+                  <span className="variable-tag text-[8px] px-1.5 py-0.5 rounded"><strong>t</strong> = número de periodos</span>
+                </div>
+              </div>
+              <div className="tip-box rounded px-2 py-1 text-[8px] text-gray-700">
+                💡 <strong>Consejo:</strong> El interés compuesto es exponencial — el interés genera más interés. Úsalo para inversiones a largo plazo. El valor presente responde: "¿cuánto necesito hoy para tener X en el futuro?"
+              </div>
+            </div>
+          </div>
+
+          {/* ===== SECCIÓN 3: TASAS EQUIVALENTES ===== */}
+          <div className="avoid-page-break border border-gray-300 rounded-lg overflow-hidden">
+            <div className="cheat-subheader px-3 py-1.5 border-b border-gray-300">
+              <span className="text-[10px] font-bold uppercase tracking-wide text-gray-700">3. Tasas Equivalentes</span>
+            </div>
+            <div className="p-3 space-y-2.5">
+              <div>
+                <div className="text-[9px] font-bold text-gray-600 uppercase">Tasa Efectiva Anual (TEA)</div>
+                <div className="formula-box rounded px-2 py-1.5 text-center text-[14px] font-serif">TEA = (1 + j/m)ᵐ − 1</div>
+                <div className="flex flex-wrap gap-1 mt-0.5">
+                  <span className="variable-tag text-[8px] px-1.5 py-0.5 rounded"><strong>j</strong> = tasa nominal anual</span>
+                  <span className="variable-tag text-[8px] px-1.5 py-0.5 rounded"><strong>m</strong> = capitalizaciones/año</span>
+                </div>
+              </div>
+              <div>
+                <div className="text-[9px] font-bold text-gray-600 uppercase">Tasa Nominal desde Efectiva</div>
+                <div className="formula-box rounded px-2 py-1.5 text-center text-[14px] font-serif">j₂ = ((1+TEA)^(1/m₂) − 1) · m₂</div>
+                <div className="flex flex-wrap gap-1 mt-0.5">
+                  <span className="variable-tag text-[8px] px-1.5 py-0.5 rounded"><strong>TEA</strong> = tasa efectiva anual</span>
+                  <span className="variable-tag text-[8px] px-1.5 py-0.5 rounded"><strong>m₂</strong> = capitalizaciones destino</span>
+                </div>
+              </div>
+              <div>
+                <div className="text-[9px] font-bold text-gray-600 uppercase">Tasa Continua desde Efectiva</div>
+                <div className="formula-box rounded px-2 py-1.5 text-center text-[14px] font-serif">TEA = e^(j) − 1</div>
+                <div className="flex flex-wrap gap-1 mt-0.5">
+                  <span className="variable-tag text-[8px] px-1.5 py-0.5 rounded"><strong>j</strong> = tasa nominal continua</span>
+                  <span className="variable-tag text-[8px] px-1.5 py-0.5 rounded"><strong>TEA</strong> = tasa efectiva anual</span>
+                </div>
+              </div>
+              <div className="tip-box rounded px-2 py-1 text-[8px] text-gray-700">
+                💡 <strong>Consejo:</strong> La TEA es el "puente" para comparar tasas con distintas capitalizaciones. Dos tasas son equivalentes si producen la misma TEA.
+              </div>
+            </div>
+          </div>
+
+          {/* ===== SECCIÓN 4: ANUALIDADES Y AMORTIZACIÓN ===== */}
+          <div className="avoid-page-break border border-gray-300 rounded-lg overflow-hidden col-span-2">
+            <div className="cheat-subheader px-3 py-1.5 border-b border-gray-300">
+              <span className="text-[10px] font-bold uppercase tracking-wide text-gray-700">4. Anualidades y Amortización</span>
+            </div>
+            <div className="p-3 grid grid-cols-3 gap-3">
+              <div>
+                <div className="text-[9px] font-bold text-gray-600 uppercase">Sistema Francés</div>
+                <div className="formula-box rounded px-2 py-1.5 text-center text-[12px] font-serif">Pago = (P·r) / (1−(1+r)⁻ⁿ)</div>
+                <div className="flex flex-wrap gap-1 mt-0.5">
+                  <span className="variable-tag text-[8px] px-1.5 py-0.5 rounded"><strong>P</strong> = monto préstamo</span>
+                  <span className="variable-tag text-[8px] px-1.5 py-0.5 rounded"><strong>r</strong> = tasa periódica</span>
+                  <span className="variable-tag text-[8px] px-1.5 py-0.5 rounded"><strong>n</strong> = número de cuotas</span>
+                </div>
+              </div>
+              <div>
+                <div className="text-[9px] font-bold text-gray-600 uppercase">Sistema Alemán</div>
+                <div className="formula-box rounded px-2 py-1.5 text-center text-[14px] font-serif">Capital = P/n</div>
+                <div className="flex flex-wrap gap-1 mt-0.5">
+                  <span className="variable-tag text-[8px] px-1.5 py-0.5 rounded"><strong>P</strong> = monto préstamo</span>
+                  <span className="variable-tag text-[8px] px-1.5 py-0.5 rounded"><strong>n</strong> = número de cuotas</span>
+                </div>
+              </div>
+              <div>
+                <div className="text-[9px] font-bold text-gray-600 uppercase">Sistema Americano</div>
+                <div className="formula-box rounded px-2 py-1.5 text-center text-[12px] font-serif">Pago = Interés · Capital al final = P</div>
+                <div className="flex flex-wrap gap-1 mt-0.5">
+                  <span className="variable-tag text-[8px] px-1.5 py-0.5 rounded"><strong>P</strong> = monto préstamo</span>
+                  <span className="variable-tag text-[8px] px-1.5 py-0.5 rounded"><strong>r</strong> = tasa periódica</span>
+                </div>
+              </div>
+            </div>
+            <div className="px-3 pb-2">
+              <div className="tip-box rounded px-2 py-1 text-[8px] text-gray-700">
+                💡 <strong>Consejo:</strong> En el sistema francés pagas siempre lo mismo; en el alemán, el capital es fijo y el pago baja; en el americano, solo pagas interés hasta el final. Elige según tu flujo de caja.
+              </div>
+            </div>
+          </div>
+
         </div>
-        
-        <div className="mt-4 pt-2 border-t border-gray-300 text-center text-[8px] text-gray-500 uppercase tracking-widest">
-          Generado desde el Simulador Financiero ESPOL
+
+        {/* FOOTER */}
+        <div className="mt-4 pt-2 border-t border-gray-300 flex justify-between text-[7px] text-gray-400 uppercase tracking-widest">
+          <span>Generado desde el Simulador Financiero ESPOL</span>
+          <span>v1.0 · {new Date().toLocaleDateString()}</span>
         </div>
       </div>
     </div>
