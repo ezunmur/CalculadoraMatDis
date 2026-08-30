@@ -82,6 +82,7 @@ const TEMPORALIDADES = [
   { key: 'diaria', label: 'Diaria', m: 365, periodo: 'día', periodoPlural: 'días' },
   { key: 'continua', label: 'Continua', m: null, periodo: 'año', periodoPlural: 'años' },
 ];
+
 const getTemporalidad = (key) => TEMPORALIDADES.find((t) => t.key === key) || TEMPORALIDADES[6];
 
 function tasaPeriodica(tasaNominalPct, temporalidadKey) {
@@ -97,6 +98,7 @@ function calcularTEADesdeOrigen(tasaPct, tipoOrigen, temporalidadOrigenKey) {
   const iOrigen = tipoOrigen === 'nominal' ? tasaFrac / t.m : tasaFrac;
   return Math.pow(1 + iOrigen, t.m) - 1;
 }
+
 function calcularTasaDestinoDesdeTEA(tea, tipoDestino, temporalidadDestinoKey) {
   const t = getTemporalidad(temporalidadDestinoKey);
   if (t.key === 'continua') return Math.log(1 + tea) * 100;
@@ -230,6 +232,8 @@ function simularCamino({ tipo, monto, base, tasaAnual = 0, extraMensual = 0, ext
   return { meses: Infinity, totalInteres: interesTotal, serie, nuncaPaga: false };
 }
 
+// ------ Componentes UI Primitivos ------
+
 function Modal({ onClose, children, wide }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(31,41,55,0.55)' }} onClick={onClose}>
@@ -237,6 +241,107 @@ function Modal({ onClose, children, wide }) {
         <button onClick={onClose} className="absolute top-4 right-4 p-2 rounded-full cx-bg-surface-hover-2 cx-hover-bg-surface-hover-3 cx-text-text-secondary z-10" aria-label="Cerrar"><X size={18} /></button>
         <div className="p-6 sm:p-8">{children}</div>
       </div>
+    </div>
+  );
+}
+
+function Var({ children }) { return <i style={{ fontStyle: 'italic' }}>{children}</i>; }
+function Sub({ children }) { return <sub style={{ fontSize: '0.72em' }}>{children}</sub>; }
+function Pow({ base, exp }) { return <span className="whitespace-nowrap">{base}<sup style={{ fontSize: '0.68em', marginLeft: 1 }}>{exp}</sup></span>; }
+function Frac({ num, den }) {
+  return (
+    <span className="inline-flex flex-col items-center align-middle text-center mx-1" style={{ verticalAlign: 'middle', lineHeight: 1.05, fontSize: '0.88em' }}>
+      <span className="px-1.5 pb-0.5" style={{ borderBottom: '1.5px solid currentColor' }}>{num}</span>
+      <span className="px-1.5 pt-0.5">{den}</span>
+    </span>
+  );
+}
+function MathBlock({ children }) { return <div className="text-lg sm:text-xl cx-text-text-primary text-center px-2 py-1.5" style={{ fontFamily: "'STIX Two Text', 'Cambria Math', 'Times New Roman', serif" }}>{children}</div>; }
+function MathInline({ children }) { return <span className="text-[15px]" style={{ fontFamily: "'STIX Two Text', 'Cambria Math', 'Times New Roman', serif" }}>{children}</span>; }
+
+function ListaVariables({ items, compact }) {
+  return (
+    <dl className={`grid ${compact ? 'grid-cols-1' : 'sm:grid-cols-2'} gap-x-4 gap-y-1.5 mt-2`}>
+      {items.map((v) => (
+        <div key={v.simbolo} className="flex items-baseline gap-2">
+          <dt className="text-[15px] cx-text-accent-primary flex-shrink-0" style={{ fontFamily: "'STIX Two Text', 'Cambria Math', 'Times New Roman', serif" }}><Var>{v.simbolo}</Var></dt>
+          <dd className="text-[12.5px] cx-text-text-secondary leading-snug">{v.desc}</dd>
+        </div>
+      ))}
+    </dl>
+  );
+}
+
+function TextoConNegritas({ texto }) {
+  const partes = texto.split('**');
+  return <>{partes.map((p, i) => i % 2 === 1 ? <strong key={i} style={{ color: 'var(--text-primary)' }}>{p}</strong> : <span key={i}>{p}</span>)}</>;
+}
+
+function PillButton({ active, onClick, children }) {
+  return (
+    <button onClick={onClick} className={`px-4 py-2 rounded-md text-sm font-semibold border-2 transition-colors ${active ? 'text-white border-transparent shadow-sm shadow-black/20' : 'cx-bg-surface cx-text-text-secondary cx-border-border cx-hover-border-border-hover'}`} style={{ background: active ? 'var(--accent-primary)' : undefined }}>
+      {children}
+    </button>
+  );
+}
+
+function Field({ label, suffix, value, onChange, min, step }) {
+  const [texto, setTexto] = useState(value === 0 ? '' : String(value));
+  const manejarCambio = (e) => {
+    const t = e.target.value; setTexto(t); const num = parseFloat(t); onChange(isNaN(num) ? 0 : num);
+  };
+  return (
+    <label className="flex flex-wrap items-end gap-x-2 gap-y-0.5 border-b-2 cx-border-border cx-focusw-border-accent-primary min-w-0 pb-1">
+      <span className="text-[11px] cx-text-text-muted font-medium whitespace-nowrap">{label}</span>
+      <input type="number" value={texto} min={min} step={step} onChange={manejarCambio} placeholder="-,--" className="flex-1 min-w-[64px] text-right px-0.5 outline-none bg-transparent cx-text-text-primary" style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '1.1rem', fontWeight: 600, letterSpacing: '-0.01em' }} />
+      {suffix && <span className="text-sm cx-text-text-faint flex-shrink-0">{suffix}</span>}
+    </label>
+  );
+}
+
+function SelectField({ label, value, onChange, options }) {
+  return (
+    <label className="flex flex-col gap-1 min-w-0">
+      <span className="text-xs uppercase tracking-wide cx-text-text-muted font-semibold">{label}</span>
+      <select value={value} onChange={(e) => onChange(e.target.value)} className="border-2 cx-border-border rounded-lg px-3 py-2.5 cx-bg-surface cx-text-text-primary text-sm" style={{ backgroundColor: 'var(--surface)', color: 'var(--text-primary)' }}>
+        {options.map((op) => <option key={op.value} value={op.value}>{op.label}</option>)}
+      </select>
+    </label>
+  );
+}
+
+function StatCard({ label, value, accent }) {
+  const colors = {
+    teal: 'cx-text-accent-green-text cx-bg-accent-green-bg',
+    coral: 'cx-text-accent-coral-text cx-bg-accent-coral-bg',
+    blue: 'cx-text-accent-primary-text cx-bg-accent-primary-bg',
+  };
+  return (
+    <div className={`px-4 py-3 rounded-lg ${colors[accent]}`}>
+      <div className="text-[10.5px] font-medium opacity-70">{label}</div>
+      <div className="text-[26px] leading-tight mt-0.5 truncate" style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, letterSpacing: '-0.02em' }}>{value}</div>
+    </div>
+  );
+}
+
+function CapitalizacionSolapa({ temporalidad, onChange, opciones }) {
+  const [open, setOpen] = useState(false);
+  const lista = opciones || TEMPORALIDADES;
+  const actual = getTemporalidad(temporalidad);
+  return (
+    <div>
+      <button type="button" onClick={() => setOpen((o) => !o)} className="flex items-center gap-1.5 text-xs font-semibold cx-text-accent-primary cx-bg-accent-primary-bg cx-hover-bg-accent-primary-bg-hover rounded-md px-3 py-1.5 transition-colors">
+        <Settings2 size={13} /> Capitalización: {actual.label} {open ? <ChevronLeft size={13} className="rotate-90" /> : <ChevronRight size={13} className="rotate-90" />}
+      </button>
+      {open && (
+        <div className="mt-2 flex flex-wrap gap-1.5 cx-bg-surface border cx-border-border rounded-lg p-2.5">
+          {lista.map((t) => (
+            <button key={t.key} type="button" onClick={() => { onChange(t.key); setOpen(false); }} className={`px-2.5 py-1 rounded-md text-xs font-medium border transition-colors ${temporalidad === t.key ? 'text-white border-transparent' : 'cx-bg-surface cx-text-text-secondary cx-border-border cx-hover-border-border-hover'}`} style={{ background: temporalidad === t.key ? 'var(--accent-primary)' : undefined }}>
+              {t.label}
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -332,113 +437,401 @@ function TemaIntro({ tipo, sistema }) {
   );
 }
 
-function Var({ children }) { return <i style={{ fontStyle: 'italic' }}>{children}</i>; }
-function Sub({ children }) { return <sub style={{ fontSize: '0.72em' }}>{children}</sub>; }
-function Pow({ base, exp }) {
-  return <span className="whitespace-nowrap">{base}<sup style={{ fontSize: '0.68em', marginLeft: 1 }}>{exp}</sup></span>;
-}
-function Frac({ num, den }) {
-  return (
-    <span className="inline-flex flex-col items-center align-middle text-center mx-1" style={{ verticalAlign: 'middle', lineHeight: 1.05, fontSize: '0.88em' }}>
-      <span className="px-1.5 pb-0.5" style={{ borderBottom: '1.5px solid currentColor' }}>{num}</span>
-      <span className="px-1.5 pt-0.5">{den}</span>
-    </span>
-  );
-}
-function MathBlock({ children }) {
-  return <div className="text-lg sm:text-xl cx-text-text-primary text-center px-2 py-1.5" style={{ fontFamily: "'STIX Two Text', 'Cambria Math', 'Times New Roman', serif" }}>{children}</div>;
-}
-function MathInline({ children }) {
-  return <span className="text-[15px]" style={{ fontFamily: "'STIX Two Text', 'Cambria Math', 'Times New Roman', serif" }}>{children}</span>;
-}
-function ListaVariables({ items, compact }) {
-  return (
-    <dl className={`grid ${compact ? 'grid-cols-1' : 'sm:grid-cols-2'} gap-x-4 gap-y-1.5 mt-2`}>
-      {items.map((v) => (
-        <div key={v.simbolo} className="flex items-baseline gap-2">
-          <dt className="text-[15px] cx-text-accent-primary flex-shrink-0" style={{ fontFamily: "'STIX Two Text', 'Cambria Math', 'Times New Roman', serif" }}>
-            <Var>{v.simbolo}</Var>
-          </dt>
-          <dd className="text-[12.5px] cx-text-text-secondary leading-snug">{v.desc}</dd>
-        </div>
-      ))}
-    </dl>
-  );
-}
+// ------ Base de Datos de Fórmulas y Secciones ------
+const SECCIONES_FORMULARIO = [
+  {
+    id: 'discreta',
+    titulo: 'Matemática Discreta (bases)',
+    color: 'teal',
+    items: [
+      {
+        nombre: 'Sumatoria',
+        formula: (
+          <MathBlock><span style={{ fontSize: '1.3em' }}>Σ</span><Sub>i=1</Sub><sup style={{ fontSize: '0.7em' }}>n</sup> a<Sub>i</Sub></MathBlock>
+        ),
+        variables: [
+          { simbolo: 'aᵢ', desc: 'i-ésimo término de la secuencia' },
+          { simbolo: 'n', desc: 'Número de términos a sumar' },
+        ],
+      },
+      {
+        nombre: 'Serie aritmética',
+        formula: (
+          <MathBlock>S<Sub>n</Sub> = <Frac num={<Var>n</Var>} den="2" /> · (2<Var>a</Var><Sub>1</Sub> + (<Var>n</Var>−1)<Var>d</Var>)</MathBlock>
+        ),
+        variables: [
+          { simbolo: 'a₁', desc: 'Primer término de la secuencia' },
+          { simbolo: 'd', desc: 'Diferencia común entre términos' },
+          { simbolo: 'n', desc: 'Número de términos' },
+        ],
+      },
+      {
+        nombre: 'Serie geométrica',
+        formula: (
+          <MathBlock>S<Sub>n</Sub> = <Var>a</Var><Sub>1</Sub> · <Frac num={<>1 − <Pow base={<Var>q</Var>} exp={<Var>n</Var>} /></>} den={<>1 − <Var>q</Var></>} /></MathBlock>
+        ),
+        variables: [
+          { simbolo: 'a₁', desc: 'Primer término de la secuencia' },
+          { simbolo: 'q', desc: 'Razón común entre términos' },
+          { simbolo: 'n', desc: 'Número de términos' },
+        ],
+      },
+      {
+        nombre: 'Relación de recurrencia',
+        formula: (
+          <MathBlock><Var>S</Var><Sub>t</Sub> = <Var>S</Var><Sub>t−1</Sub> · (1 + <Var>r</Var>) − <Var>C</Var></MathBlock>
+        ),
+        variables: [
+          { simbolo: 'Sₜ', desc: 'Saldo de la deuda en el periodo t' },
+          { simbolo: 'r', desc: 'Tasa de interés por periodo' },
+          { simbolo: 'C', desc: 'Cuota o pago periódico' },
+        ],
+      },
+    ],
+  },
+  {
+    id: 'interes',
+    titulo: 'Interés simple y compuesto',
+    color: 'teal',
+    items: [
+      {
+        nombre: 'Monto final — simple',
+        formula: <MathBlock><Var>F</Var> = <Var>P</Var> · (1 + <Var>r</Var> · <Var>t</Var>)</MathBlock>,
+        variables: [
+          { simbolo: 'P', desc: 'Capital inicial' },
+          { simbolo: 'r', desc: 'Tasa de interés por periodo' },
+          { simbolo: 't', desc: 'Número de periodos' },
+        ],
+      },
+      {
+        nombre: 'Monto final — compuesto',
+        formula: <MathBlock><Var>F</Var> = <Var>P</Var> · <Pow base={<>(1 + <Var>r</Var>)</>} exp={<Var>t</Var>} /></MathBlock>,
+        variables: [
+          { simbolo: 'P', desc: 'Capital inicial' },
+          { simbolo: 'r', desc: 'Tasa de interés por periodo' },
+          { simbolo: 't', desc: 'Número de periodos' },
+        ],
+      },
+      {
+        nombre: 'Capitalización continua',
+        formula: <MathBlock><Var>F</Var> = <Var>P</Var> · <Pow base="e" exp={<><Var>r</Var>·<Var>t</Var></>} /></MathBlock>,
+        variables: [
+          { simbolo: 'P', desc: 'Capital inicial' },
+          { simbolo: 'r', desc: 'Tasa nominal anual' },
+          { simbolo: 't', desc: 'Tiempo en años' },
+        ],
+      },
+    ],
+  },
+  {
+    id: 'anualidades',
+    titulo: 'Anualidades (amortización)',
+    color: 'blue',
+    items: [
+      {
+        nombre: 'Francesa (cuota fija)',
+        formula: (
+          <MathBlock><Var>C</Var> = <Frac num={<><Var>P</Var> · <Var>r</Var></>} den={<>1 − <Pow base={<>(1+<Var>r</Var>)</>} exp={<>−<Var>n</Var></>} /></>} /></MathBlock>
+        ),
+        variables: [
+          { simbolo: 'P', desc: 'Monto del préstamo' },
+          { simbolo: 'r', desc: 'Tasa de interés periódica' },
+          { simbolo: 'n', desc: 'Número total de cuotas' },
+        ],
+      },
+      {
+        nombre: 'Alemana (capital fijo)',
+        formula: <MathBlock>Capital<Sub>t</Sub> = <Frac num={<Var>P</Var>} den={<Var>n</Var>} /></MathBlock>,
+        variables: [
+          { simbolo: 'P', desc: 'Monto del préstamo' },
+          { simbolo: 'n', desc: 'Número total de periodos' },
+        ],
+      },
+      {
+        nombre: 'Americana (bullet)',
+        formula: (
+          <MathBlock>Pago<Sub>t&lt;n</Sub> = <Var>P</Var>·<Var>r</Var> &nbsp;&nbsp; Pago<Sub>n</Sub> = <Var>P</Var>·<Var>r</Var> + <Var>P</Var></MathBlock>
+        ),
+        variables: [
+          { simbolo: 'P', desc: 'Monto préstamo (pagado al final)' },
+          { simbolo: 'r', desc: 'Tasa de interés por periodo' },
+        ],
+      },
+    ],
+  },
+  {
+    id: 'tasas',
+    titulo: 'Tasas equivalentes',
+    color: 'blue',
+    items: [
+      {
+        nombre: 'Tasa efectiva anual (TEA)',
+        formula: (
+          <MathBlock>TEA = <Pow base={<>(1 + <Frac num={<Var>j</Var>} den={<Var>m</Var>} />)</>} exp={<Var>m</Var>} /> − 1</MathBlock>
+        ),
+        variables: [
+          { simbolo: 'j', desc: 'Tasa nominal anual' },
+          { simbolo: 'm', desc: 'Capitalizaciones por año' },
+        ],
+      },
+      {
+        nombre: 'Nominal equivalente',
+        formula: (
+          <MathBlock><Var>j</Var><Sub>2</Sub> = (<Pow base="(1+TEA)" exp={<Frac num="1" den={<><Var>m</Var><Sub>2</Sub></>} />} /> − 1) · <Var>m</Var><Sub>2</Sub></MathBlock>
+        ),
+        variables: [
+          { simbolo: 'TEA', desc: 'Tasa efectiva anual' },
+          { simbolo: 'j₂, m₂', desc: 'Nominal y capitalizaciones destino' },
+        ],
+      },
+    ],
+  },
+];
 
-function TextoConNegritas({ texto }) {
-  const partes = texto.split('**');
-  return <>{partes.map((p, i) => i % 2 === 1 ? <strong key={i} style={{ color: 'var(--text-primary)' }}>{p}</strong> : <span key={i}>{p}</span>)}</>;
-}
-
-function PillButton({ active, onClick, children }) {
+function FormulaCard({ item }) {
   return (
-    <button onClick={onClick} className={`px-4 py-2 rounded-md text-sm font-semibold border-2 transition-colors ${active ? 'text-white border-transparent shadow-sm shadow-black/20' : 'cx-bg-surface cx-text-text-secondary cx-border-border cx-hover-border-border-hover'}`} style={{ background: active ? 'var(--accent-primary)' : undefined }}>
-      {children}
-    </button>
-  );
-}
-
-function Field({ label, suffix, value, onChange, min, step }) {
-  const [texto, setTexto] = useState(value === 0 ? '' : String(value));
-  const manejarCambio = (e) => {
-    const t = e.target.value;
-    setTexto(t);
-    const num = parseFloat(t);
-    onChange(isNaN(num) ? 0 : num);
-  };
-  return (
-    <label className="flex flex-wrap items-end gap-x-2 gap-y-0.5 border-b-2 cx-border-border cx-focusw-border-accent-primary min-w-0 pb-1">
-      <span className="text-[11px] cx-text-text-muted font-medium whitespace-nowrap">{label}</span>
-      <input type="number" value={texto} min={min} step={step} onChange={manejarCambio} placeholder="-,--" className="flex-1 min-w-[64px] text-right px-0.5 outline-none bg-transparent cx-text-text-primary" style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '1.1rem', fontWeight: 600, letterSpacing: '-0.01em' }} />
-      {suffix && <span className="text-sm cx-text-text-faint flex-shrink-0">{suffix}</span>}
-    </label>
-  );
-}
-
-function SelectField({ label, value, onChange, options }) {
-  return (
-    <label className="flex flex-col gap-1 min-w-0">
-      <span className="text-xs uppercase tracking-wide cx-text-text-muted font-semibold">{label}</span>
-      <select value={value} onChange={(e) => onChange(e.target.value)} className="border-2 cx-border-border rounded-lg px-3 py-2.5 cx-bg-surface cx-text-text-primary text-sm" style={{ backgroundColor: 'var(--surface)', color: 'var(--text-primary)' }}>
-        {options.map((op) => <option key={op.value} value={op.value}>{op.label}</option>)}
-      </select>
-    </label>
-  );
-}
-
-function StatCard({ label, value, accent }) {
-  const colors = {
-    teal: 'cx-text-accent-green-text cx-bg-accent-green-bg',
-    coral: 'cx-text-accent-coral-text cx-bg-accent-coral-bg',
-    blue: 'cx-text-accent-primary-text cx-bg-accent-primary-bg',
-  };
-  return (
-    <div className={`px-4 py-3 rounded-lg ${colors[accent]}`}>
-      <div className="text-[10.5px] font-medium opacity-70">{label}</div>
-      <div className="text-[26px] leading-tight mt-0.5 truncate" style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, letterSpacing: '-0.02em' }}>{value}</div>
+    <div className="cx-bg-surface border cx-border-border rounded-lg px-3 py-3">
+      <div className="text-[11px] cx-text-text-muted font-semibold uppercase tracking-wide mb-0.5">{item.nombre}</div>
+      {item.formula}
+      <div className="mt-2 pt-2 border-t border-black/5">
+        <ListaVariables items={item.variables} compact />
+      </div>
     </div>
   );
 }
 
-function CapitalizacionSolapa({ temporalidad, onChange, opciones }) {
-  const [open, setOpen] = useState(false);
-  const lista = opciones || TEMPORALIDADES;
-  const actual = getTemporalidad(temporalidad);
+function SeccionFormulario({ seccion, abierta, onToggle }) {
+  const ring = seccion.color === 'teal' ? 'cx-border-20-accent-green cx-bg-accent-green-bg' : 'cx-border-20-accent-primary cx-bg-accent-primary-bg';
+  const dot = seccion.color === 'teal' ? 'cx-text-accent-green-text' : 'cx-text-accent-primary';
   return (
-    <div>
-      <button type="button" onClick={() => setOpen((o) => !o)} className="flex items-center gap-1.5 text-xs font-semibold cx-text-accent-primary cx-bg-accent-primary-bg cx-hover-bg-accent-primary-bg-hover rounded-md px-3 py-1.5 transition-colors">
-        <Settings2 size={13} /> Capitalización: {actual.label} {open ? <ChevronLeft size={13} className="rotate-90" /> : <ChevronRight size={13} className="rotate-90" />}
+    <div className={`rounded-lg border ${ring}`}>
+      <button type="button" onClick={onToggle} className={`w-full flex items-center justify-between gap-2 px-5 py-3 font-semibold text-[15px] ${dot}`} style={{ fontFamily: "'Fraunces', sans-serif" }}>
+        <span>{seccion.titulo}</span>
+        {abierta ? <ChevronLeft size={16} className="rotate-90" /> : <ChevronRight size={16} className="rotate-90" />}
       </button>
-      {open && (
-        <div className="mt-2 flex flex-wrap gap-1.5 cx-bg-surface border cx-border-border rounded-lg p-2.5">
-          {lista.map((t) => (
-            <button key={t.key} type="button" onClick={() => { onChange(t.key); setOpen(false); }} className={`px-2.5 py-1 rounded-md text-xs font-medium border transition-colors ${temporalidad === t.key ? 'text-white border-transparent' : 'cx-bg-surface cx-text-text-secondary cx-border-border cx-hover-border-border-hover'}`} style={{ background: temporalidad === t.key ? 'var(--accent-primary)' : undefined }}>
-              {t.label}
-            </button>
-          ))}
+      {abierta && (
+        <div className="px-5 pb-5 grid sm:grid-cols-2 gap-3">
+          {seccion.items.map((item) => <FormulaCard key={item.nombre} item={item} />)}
         </div>
       )}
+    </div>
+  );
+}
+
+function FormularioTab() {
+  const [abiertas, setAbiertas] = useState(() => Object.fromEntries(SECCIONES_FORMULARIO.map((s) => [s.id, true])));
+  const [busqueda, setBusqueda] = useState('');
+  const toggle = (id) => setAbiertas((a) => ({ ...a, [id]: !a[id] }));
+
+  const secciones = useMemo(() => {
+    if (!busqueda.trim()) return SECCIONES_FORMULARIO;
+    const q = busqueda.trim().toLowerCase();
+    return SECCIONES_FORMULARIO.map((s) => ({
+      ...s,
+      items: s.items.filter((item) => item.nombre.toLowerCase().includes(q)),
+    })).filter((s) => s.items.length > 0);
+  }, [busqueda]);
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 cx-bg-surface border cx-border-border p-4 rounded-lg">
+        <div>
+          <div className="flex items-center gap-2 cx-text-accent-primary-text font-semibold text-sm mb-1" style={{ fontFamily: "'Fraunces', sans-serif" }}><Calculator size={16} /> Formulario de referencia</div>
+          <p className="text-sm cx-text-text-strong-gray leading-relaxed mb-2">Todas las fórmulas de Matemática Discreta y Matemáticas Financieras usadas en la app, en un solo lugar.</p>
+        </div>
+        <button onClick={() => window.print()} className="w-full sm:w-auto px-5 py-3 sm:py-2.5 rounded-lg text-sm font-semibold text-white flex justify-center items-center gap-2 hover:opacity-90 transition-opacity shadow-sm shadow-black/20" style={{ background: 'var(--accent-primary)' }}>
+          <Printer size={16} /> Generar PDF
+        </button>
+      </div>
+
+      <input type="text" value={busqueda} onChange={(e) => setBusqueda(e.target.value)} placeholder="Buscar una fórmula (ej. 'francesa', 'geométrica')..." className="w-full text-sm border-2 cx-border-border rounded-lg px-3 py-2.5 outline-none cx-focus-border-accent-primary cx-bg-surface" />
+      <div className="space-y-3">
+        {secciones.map((seccion) => <SeccionFormulario key={seccion.id} seccion={seccion} abierta={busqueda ? true : abiertas[seccion.id]} onToggle={() => toggle(seccion.id)} />)}
+        {secciones.length === 0 && <p className="text-sm cx-text-text-muted text-center py-6">No se encontró ninguna fórmula con ese término.</p>}
+      </div>
+    </div>
+  );
+}
+
+function PrintableFormulario() {
+  return (
+    <div className="hidden print:block w-full bg-white text-black p-4" style={{ fontFamily: "'Inter', sans-serif", '--text-primary': '#000000', '--text-secondary': '#333333', '--text-muted': '#555555', '--border': '#aaaaaa' }}>
+      <style>{`
+        @media print {
+          @page { margin: 10mm; size: A4; }
+          body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+          .print-cheat-sheet { min-width: 800px; position: relative; }
+          .avoid-page-break { page-break-inside: avoid; }
+        }
+      `}</style>
+      
+      <div className="print-cheat-sheet">
+        <div className="relative text-center border-b-2 border-black pb-2 mb-4">
+          <h1 className="text-xl font-bold uppercase tracking-widest mb-1" style={{ fontFamily: "'Fraunces', serif" }}>Formulario Finanzas y Discreta</h1>
+          <p className="text-[9px] text-gray-600 font-bold uppercase tracking-widest pr-14">Proyecto Matemáticas Discretas · ESPOL</p>
+          <img src="QR.png" alt="Código QR" className="absolute right-0 top-0 h-10 w-10 sm:h-12 sm:w-12" style={{ objectFit: 'contain' }} />
+        </div>
+
+        <div className="grid grid-cols-2 gap-3 items-start">
+          {SECCIONES_FORMULARIO.map(seccion => (
+            <div key={seccion.id} className="avoid-page-break border-2 border-black rounded-sm overflow-hidden">
+              <h2 className="text-xs font-bold bg-gray-100 border-b-2 border-black px-2 py-1 uppercase tracking-wide text-black" style={{ fontFamily: "'Fraunces', serif" }}>{seccion.titulo}</h2>
+              <div className="p-2 flex flex-col gap-3">
+                {seccion.items.map(item => (
+                  <div key={item.nombre} className="flex flex-col gap-1">
+                    <div className="font-bold text-[10px] text-gray-800 uppercase">{item.nombre}</div>
+                    <div className="text-center px-1 py-1.5 bg-gray-50 border border-gray-300 rounded-sm text-[13px] text-black">{item.formula}</div>
+                    {item.variables && (
+                      <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-0.5 text-[9px] leading-tight">
+                        {item.variables.map(v => (
+                          <div key={v.simbolo} className="flex items-baseline gap-1">
+                            <strong className="font-serif italic bg-gray-200 px-1 rounded-sm border border-gray-300 text-black">{v.simbolo}</strong>
+                            <span className="text-gray-700">= {v.desc}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+        <div className="mt-4 pt-2 border-t border-gray-300 text-center text-[8px] text-gray-500 uppercase tracking-widest">Generado desde el Simulador Financiero ESPOL</div>
+      </div>
+    </div>
+  );
+}
+
+const FOLDERS = [
+  { key: 'interes', label: 'Interés simple y compuesto', desc: 'Cómo crece el dinero: interés lineal vs. exponencial, con capitalizaciones.', icon: PiggyBank, accent: '#2F8F5B' },
+  { key: 'tasas', label: 'Tasas de interés equivalentes', desc: 'Convierte una tasa nominal entre distintas capitalizaciones.', icon: ArrowLeftRight, accent: '#2B4570' },
+  { key: 'anualidades', label: 'Anualidades y préstamos', desc: 'Sistemas de amortización: francesa, alemana y americana.', icon: Landmark, accent: '#A3402E' },
+  { key: 'simulador', label: 'Simulador de destinos', desc: 'Compara caminos de ahorro y deuda con tus propios números.', icon: Target, accent: '#8A6D1F' },
+  { key: 'quizzes', label: 'Quizzes y ejercicios', desc: '10 niveles de dificultad: desde interés simple hasta problemas de destino con enunciados largos.', icon: GraduationCap, accent: '#6B4FA0' },
+  { key: 'formulario', label: 'Formulario de fórmulas', desc: 'Todas las fórmulas de Discreta y Financiera, en un solo lugar, con buscador.', icon: Calculator, accent: '#5B6B8C' },
+];
+
+function GameMenu({ onSelect }) {
+  return (
+    <div className="flex flex-col items-center justify-center py-8 sm:py-14 px-2">
+      <div className="text-center mb-8">
+        <div className="inline-flex items-center gap-2 text-[11px] uppercase tracking-[0.25em] font-semibold mb-2" style={{ color: 'var(--accent-primary)' }}><Sparkles size={13} /> Elige tu ruta</div>
+        <h2 className="text-2xl sm:text-[28px]" style={{ fontFamily: "'Fraunces', sans-serif", fontWeight: 600, color: 'var(--text-primary)' }}>¿Qué quieres explorar hoy?</h2>
+      </div>
+      <div className="flex flex-col items-stretch gap-3 w-full max-w-sm">
+        {FOLDERS.map((f) => {
+          const Icon = f.icon;
+          return (
+            <div key={f.key} className="relative group">
+              <button onClick={(e) => onSelect(f.key, e.currentTarget)} className="relative w-full flex items-center gap-3 pl-5 pr-4 py-4 rounded-lg text-[17px] text-left transition-all border-2 cx-border-border cx-bg-surface hover:-translate-y-0.5 hover:shadow-lg shadow-black/[0.05]" style={{ fontFamily: "'Fraunces', sans-serif", fontWeight: 600, color: 'var(--text-primary)', backgroundColor: 'var(--surface)' }}>
+                <span className="absolute left-0 top-2 bottom-2 w-1 rounded-full" style={{ background: f.accent }} />
+                <Icon size={19} style={{ color: f.accent, flexShrink: 0 }} />
+                <span className="flex-1">{f.label}</span>
+                <ChevronRight size={17} className="opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition-all flex-shrink-0" style={{ color: 'var(--accent-primary)' }} />
+              </button>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function SplashScreen({ fadingOut }) {
+  const [frase] = useState(() => FRASES_CARGA[Math.floor(Math.random() * FRASES_CARGA.length)]);
+  return (
+    <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center transition-all duration-300" style={{ background: 'var(--bg)', opacity: fadingOut ? 0 : 1, transform: fadingOut ? 'scale(1.03)' : 'scale(1)' }}>
+      <div className="absolute inset-0 opacity-[0.05] pointer-events-none" style={{ backgroundImage: 'repeating-linear-gradient(to bottom, transparent, transparent 27px, #000 27px, #000 28px)' }} />
+      <div className="relative flex flex-col items-center px-6 text-center">
+        <img src={ESPOL_LOGO} alt="ESPOL" className="espol-logo w-24 sm:w-28 mb-5" />
+        <div className="text-2xl sm:text-3xl mb-1" style={{ fontFamily: "'Fraunces', serif", fontWeight: 600, color: 'var(--text-primary)' }}>Proyecto de Matemáticas Discretas</div>
+        <div className="text-xs uppercase tracking-[0.2em] font-semibold mb-8" style={{ color: 'var(--text-muted)' }}>Escuela Superior Politécnica del Litoral</div>
+        <div className="w-56 h-1.5 rounded-full overflow-hidden" style={{ background: 'var(--border)' }}><div className="h-full splash-bar" style={{ background: 'var(--accent-primary)' }} /></div>
+        <div className="text-[11px] mt-3" style={{ color: 'var(--text-faint)' }}>Cargando datos y archivos contables…</div>
+        <div className="text-[12px] mt-4 max-w-xs italic" style={{ color: 'var(--text-muted)', fontFamily: "'Fraunces', serif" }}>"{frase}"</div>
+      </div>
+    </div>
+  );
+}
+
+function FolderHeader({ folder, tutorialOn, onToggleTutorial, onBack }) {
+  return (
+    <div className="flex items-center justify-between gap-3 mb-5 flex-wrap">
+      <div className="flex items-center gap-2 text-sm cx-text-text-muted">
+        <button onClick={onBack} className="flex items-center gap-1 cx-hover-text-accent-primary font-medium"><Home size={14} /> Inicio</button>
+        <ChevronRight size={14} className="text-gray-300" />
+        <span className="cx-text-text-primary font-semibold" style={{ fontFamily: "'Fraunces', sans-serif" }}>{folder.label}</span>
+      </div>
+      <button onClick={onToggleTutorial} className={`flex items-center gap-1.5 text-xs font-semibold rounded-md px-3.5 py-2 transition-colors ${tutorialOn ? 'text-white' : 'cx-bg-surface cx-text-accent-primary border-2 cx-border-border cx-hover-border-border-hover'}`} style={{ background: tutorialOn ? 'var(--accent-primary)' : undefined }}>
+        <GraduationCap size={14} /> Modo tutorial {tutorialOn ? 'activado' : ''}
+      </button>
+    </div>
+  );
+}
+
+const TUTORIALES = {
+  interes: [
+    { titulo: '¿Dónde estás?', texto: 'Esta carpeta compara dos formas de hacer crecer dinero en el tiempo.', consejo: 'Cambia entre "Interés simple" y "Interés compuesto" y observa la gráfica.' },
+    { titulo: 'La tasa y su capitalización', texto: 'La solapa "Capitalización" define cada cuánto se aplica la tasa.', formula: <MathInline><Var>r</Var> = <Frac num={<Var>j</Var>} den={<Var>m</Var>} /></MathInline>, variables: [{ simbolo: 'j', desc: 'tasa nominal anual' }, { simbolo: 'm', desc: 'capitalizaciones por año' }, { simbolo: 'r', desc: 'tasa periódica resultante' }] },
+    { titulo: 'Interés simple', texto: 'Cada periodo se gana exactamente lo mismo, calculado sobre el capital inicial.', formula: <MathInline><Var>F</Var> = <Var>P</Var> · (1 + <Var>r</Var> · <Var>t</Var>)</MathInline>, variables: [{ simbolo: 'P', desc: 'capital inicial' }, { simbolo: 'r', desc: 'tasa periódica' }, { simbolo: 't', desc: 'número de periodos' }] },
+    { titulo: 'Interés compuesto', texto: 'El interés se calcula sobre el saldo acumulado — interés sobre interés.', formula: <MathInline><Var>F</Var> = <Var>P</Var> · <Pow base={<>(1+<Var>r</Var>)</>} exp={<Var>t</Var>} /></MathInline>, variables: [{ simbolo: 'P', desc: 'capital inicial' }, { simbolo: 'r', desc: 'tasa periódica' }, { simbolo: 't', desc: 'número de periodos' }], consejo: 'Prueba activar "Continua" en la capitalización.' },
+  ],
+  tasas: [
+    { titulo: '¿Para qué sirve esta carpeta?', texto: 'Convierte una tasa de una temporalidad a otra manteniendo el mismo efecto.', consejo: 'Compara una tasa "18% anual capitalizable mensualmente" contra su equivalente trimestral.' },
+    { titulo: 'El puente: la tasa efectiva anual', texto: 'Toda conversión pasa primero por la TEA.', formula: <MathInline>TEA = <Pow base={<>(1 + <Frac num={<Var>j</Var>} den={<Var>m</Var>} />)</>} exp={<Var>m</Var>} /> − 1</MathInline>, variables: [{ simbolo: 'j', desc: 'tasa nominal anual' }, { simbolo: 'm', desc: 'capitalizaciones por año' }] },
+    { titulo: 'De la TEA a la nueva nominal', texto: 'Se despeja la tasa nominal equivalente para la nueva temporalidad.', formula: <MathInline><Var>j</Var><Sub>2</Sub> = (<Pow base="(1+TEA)" exp={<Frac num="1" den={<><Var>m</Var><Sub>2</Sub></>} />} /> − 1) · <Var>m</Var><Sub>2</Sub></MathInline>, consejo: 'Si el destino es "Continua", la fórmula es j = ln(1+TEA).' },
+  ],
+  anualidades: [
+    { titulo: '¿Qué estás calculando?', texto: 'Una anualidad reparte un préstamo en pagos periódicos.', consejo: 'Compara el mismo préstamo en los tres sistemas.' },
+    { titulo: 'Sistema francés (cuota fija)', texto: 'El pago total es siempre el mismo.', formula: <MathInline>Pago = <Frac num={<><Var>P</Var> · <Var>r</Var></>} den={<>1 − <Pow base={<>(1+<Var>r</Var>)</>} exp={<>−<Var>n</Var></>} /></>} /></MathInline>, variables: [{ simbolo: 'P', desc: 'monto del préstamo' }, { simbolo: 'r', desc: 'tasa periódica' }, { simbolo: 'n', desc: 'número de periodos' }] },
+    { titulo: 'Sistema alemán (capital fijo)', texto: 'El capital que abonas es siempre el mismo; el pago total baja con el tiempo.', formula: <MathInline>Capital = <Frac num={<Var>P</Var>} den={<Var>n</Var>} /></MathInline> },
+    { titulo: 'Sistema americano (bullet)', texto: 'Solo pagas interés periodo a periodo, y devuelves todo el capital al final.', formula: <MathInline>Pago = Interés</MathInline> },
+  ],
+  simulador: [
+    { titulo: '¿Qué compara esta carpeta?', texto: 'Compara cinco caminos financieros distintos: desde guardar sin interés hasta pagar una tarjeta de crédito.', consejo: 'Fíjate en cuánto cambia el tiempo y el interés solo por el camino.' },
+    { titulo: 'Ahorro vs. deuda', texto: 'Ambos usan el mismo motor de interés compuesto por dentro.' },
+    { titulo: 'Pagos extraordinarios', texto: 'Toca "Analizar este destino" para simular qué pasa si aportas un poco más.', consejo: 'Compara el escenario base contra uno con un abono extra mensual pequeño.' },
+  ],
+  quizzes: [
+    { titulo: '¿Cómo funciona esta carpeta?', texto: 'Hay 10 niveles de dificultad con números aleatorios.', consejo: 'Empieza en el nivel 1 y sube de a poco.' },
+    { titulo: 'Niveles 1 a 8', texto: 'Cubren interés simple, compuesto, periodos, tasas, valor presente y cuota francesa.' },
+    { titulo: 'Niveles 9 y 10', texto: 'Combinan tasas y periodos. El nivel 10 es un problema de destino con distractores.' },
+  ],
+  formulario: [
+    { titulo: '¿Qué es esto?', texto: 'Aquí tienes todas las fórmulas de la app agrupadas por tema.', consejo: 'Escribe en el buscador el nombre de un sistema para filtrar directamente.' },
+  ],
+};
+
+function TutorialDrawer({ steps, index, setIndex, onClose }) {
+  const step = steps[index];
+  if (!step) return null;
+  return (
+    <div className="fixed bottom-4 right-4 left-4 sm:left-auto sm:w-96 z-40 cx-bg-surface border-2 cx-border-20-accent-primary rounded-lg shadow-2xl shadow-black/15 p-5" style={{ backgroundColor: 'var(--surface)', color: 'var(--text-primary)' }}>
+      <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center gap-1.5 cx-text-accent-primary text-xs font-semibold uppercase tracking-wide"><GraduationCap size={14} /> Paso {index + 1} de {steps.length}</div>
+        <button onClick={onClose} className="p-1 rounded-full cx-text-text-faint cx-hover-bg-surface-hover-2" aria-label="Cerrar tutorial"><X size={14} /></button>
+      </div>
+      <h4 className="text-base font-semibold cx-text-text-primary mb-1.5" style={{ fontFamily: "'Fraunces', sans-serif" }}>{step.titulo}</h4>
+      <p className="text-sm cx-text-text-secondary leading-relaxed mb-3">{step.texto}</p>
+      {step.formula && (
+        <div className="cx-bg-surface-alt rounded-lg px-3 py-2.5 mb-3">
+          <div className="text-[10px] cx-text-text-muted font-semibold uppercase tracking-wide mb-1">Fórmula</div>
+          <div className="cx-text-text-primary">{step.formula}</div>
+          {step.variables && <div className="mt-2 pt-2 border-t border-black/5"><ListaVariables items={step.variables} compact /></div>}
+        </div>
+      )}
+      {step.consejo && (
+        <div className="flex items-start gap-1.5 text-xs cx-text-accent-green-text cx-bg-accent-green-bg rounded-lg px-3 py-2 mb-3"><Lightbulb size={13} className="mt-0.5 flex-shrink-0" /> {step.consejo}</div>
+      )}
+      <div className="flex items-center justify-between gap-2">
+        <button disabled={index === 0} onClick={() => setIndex((i) => Math.max(0, i - 1))} className="flex items-center gap-1 text-xs font-semibold px-3 py-1.5 rounded-md border-2 cx-border-border cx-text-text-muted disabled:opacity-30"><ChevronLeft size={13} /> Antes</button>
+        {index < steps.length - 1 ? (
+          <button onClick={() => setIndex((i) => Math.min(steps.length - 1, i + 1))} className="flex items-center gap-1 text-xs font-semibold px-3.5 py-1.5 rounded-md text-white" style={{ background: 'var(--accent-primary)' }}>Siguiente <ChevronRight size={13} /></button>
+        ) : (
+          <button onClick={onClose} className="flex items-center gap-1 text-xs font-semibold px-3.5 py-1.5 rounded-md text-white" style={{ background: 'var(--accent-green)' }}><Check size={13} /> Listo</button>
+        )}
+      </div>
     </div>
   );
 }
@@ -449,23 +842,14 @@ function getYoutubeId(url) {
   return m ? m[1] : null;
 }
 
-const VIDEOS_POR_CARPETA = {
-  interes: '',
-  tasas: '',
-  anualidades: '',
-  simulador: '',
-  quizzes: '',
-  formulario: '',
-};
+const VIDEOS_POR_CARPETA = { interes: '', tasas: '', anualidades: '', simulador: '', quizzes: '', formulario: '' };
 
 function VideoPlaceholder({ tema, folderKey }) {
   const [url, setUrl] = useState(VIDEOS_POR_CARPETA[folderKey] || '');
   const id = getYoutubeId(url);
   return (
     <div className="rounded-lg border-2 border-dashed cx-border-border-hover cx-bg-surface-alt p-4 mb-5">
-      <div className="flex items-center gap-2 cx-text-accent-primary-text font-semibold text-sm mb-2" style={{ fontFamily: "'Fraunces', sans-serif" }}>
-        <Youtube size={16} /> Clase grabada — {tema}
-      </div>
+      <div className="flex items-center gap-2 cx-text-accent-primary-text font-semibold text-sm mb-2" style={{ fontFamily: "'Fraunces', sans-serif" }}><Youtube size={16} /> Clase grabada — {tema}</div>
       {id ? (
         <div className="rounded-lg overflow-hidden mb-3" style={{ aspectRatio: '16 / 9' }}>
           <iframe width="100%" height="100%" src={`https://www.youtube.com/embed/${id}`} title={`Clase grabada — ${tema}`} style={{ border: 0 }} allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen />
@@ -475,9 +859,7 @@ function VideoPlaceholder({ tema, folderKey }) {
       )}
       <div className="flex gap-2">
         <input type="text" value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://www.youtube.com/watch?v=..." className="flex-1 text-xs border-2 cx-border-border rounded-lg px-3 py-2 outline-none cx-focus-border-accent-primary cx-bg-surface" />
-        {url && (
-          <button onClick={() => setUrl('')} className="text-xs px-3 rounded-lg border-2 cx-border-border cx-text-text-muted cx-hover-bg-surface-hover">Quitar</button>
-        )}
+        {url && <button onClick={() => setUrl('')} className="text-xs px-3 rounded-lg border-2 cx-border-border cx-text-text-muted cx-hover-bg-surface-hover">Quitar</button>}
       </div>
     </div>
   );
@@ -527,22 +909,17 @@ function FilaDetalleModal({ row, rows, tipo, sistema, r, onClose }) {
 
   return (
     <Modal onClose={onClose} wide>
-      <div className="flex items-center gap-2 cx-text-accent-primary-text font-semibold text-sm mb-1" style={{ fontFamily: "'Fraunces', sans-serif" }}>
-        <Eye size={16} /> Periodo {row.t}
-      </div>
+      <div className="flex items-center gap-2 cx-text-accent-primary-text font-semibold text-sm mb-1" style={{ fontFamily: "'Fraunces', sans-serif" }}><Eye size={16} /> Periodo {row.t}</div>
       <h3 className="text-2xl cx-text-text-primary mb-4" style={{ fontFamily: "'Fraunces', sans-serif", fontWeight: 600 }}>Así se calculó este registro</h3>
-
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-5">
         <StatCard label="Saldo inicial" value={fmt(row.saldoInicial)} accent="blue" />
         <StatCard label="Interés" value={fmt(row.interes)} accent="coral" />
         <StatCard label="Capital" value={fmt(row.capital)} accent="teal" />
         <StatCard label="Saldo final" value={fmt(row.saldoFinal)} accent="blue" />
       </div>
-
       <div className="cx-bg-surface-alt rounded-lg p-4 mb-5 space-y-2" style={{ fontFamily: "'JetBrains Mono', monospace" }}>
         {lineas.map((l, i) => <p key={i} className="text-[13px] cx-text-text-strong-gray leading-relaxed">{l}</p>)}
       </div>
-
       <div className="text-xs uppercase tracking-wide cx-text-text-muted font-semibold mb-2">Evolución hasta este periodo</div>
       <div className="cx-bg-surface border cx-border-border rounded-lg p-3" style={{ height: 220 }}>
         <ResponsiveContainer width="100%" height="100%">
@@ -841,6 +1218,7 @@ let extraIdSeq = 1;
 function DestinoDetalleModal({ path, objetivo, capacidad, tasaAnual, onClose }) {
   const [extraMensual, setExtraMensual] = useState(0);
   const [extrasUnicos, setExtrasUnicos] = useState([{ id: extraIdSeq++, mes: 3, monto: 0 }]);
+  const PathIcon = path.icon; // Arreglo para que React reconozca el ícono correctamente
 
   const agregarExtra = () => {
     setExtrasUnicos((arr) => {
@@ -870,7 +1248,7 @@ function DestinoDetalleModal({ path, objetivo, capacidad, tasaAnual, onClose }) 
 
   return (
     <Modal onClose={onClose} wide>
-      <div className="flex items-center gap-2 cx-text-accent-primary-text font-semibold text-sm mb-1" style={{ fontFamily: "'Fraunces', sans-serif" }}><path.icon size={16} /> {path.label}</div>
+      <div className="flex items-center gap-2 cx-text-accent-primary-text font-semibold text-sm mb-1" style={{ fontFamily: "'Fraunces', sans-serif" }}><PathIcon size={16} /> {path.label}</div>
       <h3 className="text-2xl cx-text-text-primary mb-4" style={{ fontFamily: "'Fraunces', sans-serif", fontWeight: 600 }}>Analiza este destino</h3>
       <div className="cx-bg-surface-alt rounded-lg p-4 mb-5 space-y-4" style={{ backgroundColor: 'var(--surface-alt)' }}>
         <div className="sm:max-w-xs"><Field label={esDeuda ? 'Abono extra mensual' : 'Aporte extra mensual'} suffix="$" value={extraMensual} onChange={setExtraMensual} min={0} step={5} /></div>
@@ -1159,7 +1537,6 @@ function QuizTab() {
   );
 }
 
-// ------ Base de Datos de Fórmulas y Secciones ------
 const SECCIONES_FORMULARIO = [
   {
     id: 'discreta',
@@ -1560,234 +1937,6 @@ function GameMenu({ onSelect }) {
             </div>
           );
         })}
-      </div>
-    </div>
-  );
-}
-
-function SplashScreen({ fadingOut }) {
-  const [frase] = useState(() => randChoice(FRASES_CARGA));
-    
-  return (
-    <div
-      className="fixed inset-0 z-[100] flex flex-col items-center justify-center transition-all duration-300"
-      style={{
-        background: 'var(--bg)',
-        opacity: fadingOut ? 0 : 1,
-        transform: fadingOut ? 'scale(1.03)' : 'scale(1)',
-      }}
-    >
-      <div
-        className="absolute inset-0 opacity-[0.05] pointer-events-none"
-        style={{
-          backgroundImage:
-            'repeating-linear-gradient(to bottom, transparent, transparent 27px, #000 27px, #000 28px)',
-        }}
-      />
-      <div className="relative flex flex-col items-center px-6 text-center">
-        <img src={ESPOL_LOGO} alt="ESPOL" className="espol-logo w-24 sm:w-28 mb-5" />
-        <div
-          className="text-2xl sm:text-3xl mb-1"
-          style={{ fontFamily: "'Fraunces', serif", fontWeight: 600, color: 'var(--text-primary)' }}
-        >
-          Proyecto de Matemáticas Discretas
-        </div>
-        <div
-          className="text-xs uppercase tracking-[0.2em] font-semibold mb-8"
-          style={{ color: 'var(--text-muted)' }}
-        >
-          Escuela Superior Politécnica del Litoral
-        </div>
-        <div className="w-56 h-1.5 rounded-full overflow-hidden" style={{ background: 'var(--border)' }}>
-          <div className="h-full splash-bar" style={{ background: 'var(--accent-primary)' }} />
-        </div>
-        <div className="text-[11px] mt-3" style={{ color: 'var(--text-faint)' }}>
-          Cargando datos y archivos contables…
-        </div>
-        <div
-        className="text-[12px] mt-4 max-w-xs italic"
-          style={{ color: 'var(--text-muted)', fontFamily: "'Fraunces', serif" }}
-        >
-            "{frase}"
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function FolderHeader({ folder, tutorialOn, onToggleTutorial, onBack }) {
-  return (
-    <div className="flex items-center justify-between gap-3 mb-5 flex-wrap">
-      <div className="flex items-center gap-2 text-sm cx-text-text-muted">
-        <button onClick={onBack} className="flex items-center gap-1 cx-hover-text-accent-primary font-medium">
-          <Home size={14} /> Inicio
-        </button>
-        <ChevronRight size={14} className="text-gray-300" />
-        <span className="cx-text-text-primary font-semibold" style={{ fontFamily: "'Fraunces', sans-serif" }}>{folder.label}</span>
-      </div>
-      <button
-        onClick={onToggleTutorial}
-        className={`flex items-center gap-1.5 text-xs font-semibold rounded-md px-3.5 py-2 transition-colors ${
-          tutorialOn ? 'text-white' : 'cx-bg-surface cx-text-accent-primary border-2 cx-border-border cx-hover-border-border-hover'
-        }`}
-        style={{ background: tutorialOn ? 'var(--accent-primary)' : undefined }}
-      >
-        <GraduationCap size={14} /> Modo tutorial {tutorialOn ? 'activado' : ''}
-      </button>
-    </div>
-  );
-}
-
-const TUTORIALES = {
-  interes: [
-    { titulo: '¿Dónde estás?', texto: 'Esta carpeta compara dos formas de hacer crecer (o cobrar) dinero en el tiempo: interés simple e interés compuesto. Usa los botones de arriba para alternar entre ambos.', consejo: 'Cambia entre "Interés simple" y "Interés compuesto" y observa cómo cambia la forma de la gráfica: una línea recta vs. una curva.' },
-    {
-      titulo: 'La tasa y su capitalización',
-      texto: 'La tasa que ingresas es nominal anual. La solapa "Capitalización" define cada cuánto se aplica esa tasa (mensual, trimestral, continua, etc.), lo que cambia la tasa periódica real que se usa en los cálculos.',
-      formula: <MathInline><Var>r</Var> = <Frac num={<Var>j</Var>} den={<Var>m</Var>} /></MathInline>,
-      variables: [
-        { simbolo: 'j', desc: 'tasa nominal anual' },
-        { simbolo: 'm', desc: 'capitalizaciones por año' },
-        { simbolo: 'r', desc: 'tasa periódica resultante' },
-      ],
-    },
-    {
-      titulo: 'Interés simple',
-      texto: 'Cada periodo se gana exactamente lo mismo, siempre calculado sobre el capital inicial.',
-      formula: <MathInline><Var>F</Var> = <Var>P</Var> · (1 + <Var>r</Var> · <Var>t</Var>)</MathInline>,
-      variables: [
-        { simbolo: 'P', desc: 'capital inicial' },
-        { simbolo: 'r', desc: 'tasa periódica' },
-        { simbolo: 't', desc: 'número de periodos' },
-      ],
-    },
-    {
-      titulo: 'Interés compuesto',
-      texto: 'El interés se calcula sobre el saldo acumulado — interés sobre interés.',
-      formula: <MathInline><Var>F</Var> = <Var>P</Var> · <Pow base={<>(1+<Var>r</Var>)</>} exp={<Var>t</Var>} /></MathInline>,
-      variables: [
-        { simbolo: 'P', desc: 'capital inicial' },
-        { simbolo: 'r', desc: 'tasa periódica' },
-        { simbolo: 't', desc: 'número de periodos' },
-      ],
-      consejo: 'Prueba activar "Continua" en la capitalización, dentro de interés compuesto, para ver el límite teórico del crecimiento.',
-    },
-  ],
-  tasas: [
-    { titulo: '¿Para qué sirve esta carpeta?', texto: 'Dos tasas nominales con distinta capitalización pueden generar exactamente el mismo rendimiento real. Aquí conviertes una tasa de una temporalidad a otra manteniendo el mismo efecto.', consejo: 'Compara, por ejemplo, una tasa "18% anual capitalizable mensualmente" contra su equivalente trimestral.' },
-    {
-      titulo: 'El puente: la tasa efectiva anual',
-      texto: 'Toda conversión pasa primero por la tasa efectiva anual (TEA), que representa el rendimiento real en un año sin importar cómo se capitalice.',
-      formula: <MathInline>TEA = <Pow base={<>(1 + <Frac num={<Var>j</Var>} den={<Var>m</Var>} />)</>} exp={<Var>m</Var>} /> − 1</MathInline>,
-      variables: [
-        { simbolo: 'j', desc: 'tasa nominal anual' },
-        { simbolo: 'm', desc: 'capitalizaciones por año' },
-      ],
-    },
-    {
-      titulo: 'De la TEA a la nueva nominal',
-      texto: 'Una vez que tienes la TEA, se despeja la tasa nominal equivalente para la nueva temporalidad.',
-      formula: <MathInline><Var>j</Var><Sub>2</Sub> = (<Pow base="(1+TEA)" exp={<Frac num="1" den={<><Var>m</Var><Sub>2</Sub></>} />} /> − 1) · <Var>m</Var><Sub>2</Sub></MathInline>,
-      consejo: 'Si la temporalidad de destino es "Continua", la fórmula cambia a j = ln(1+TEA).',
-    },
-  ],
-  anualidades: [
-    { titulo: '¿Qué estás calculando?', texto: 'Una anualidad reparte un préstamo en pagos periódicos. El sistema que elijas decide cómo se reparte cada pago entre interés y capital.', consejo: 'Compara el mismo préstamo en los tres sistemas y fíjate en cuál paga más interés total.' },
-    {
-      titulo: 'Sistema francés (cuota fija)',
-      texto: 'El pago total es siempre el mismo; lo que cambia es cuánto de ese pago es interés y cuánto es capital.',
-      formula: <MathInline>Pago = <Frac num={<><Var>P</Var> · <Var>r</Var></>} den={<>1 − <Pow base={<>(1+<Var>r</Var>)</>} exp={<>−<Var>n</Var></>} /></>} /></MathInline>,
-      variables: [
-        { simbolo: 'P', desc: 'monto del préstamo' },
-        { simbolo: 'r', desc: 'tasa periódica' },
-        { simbolo: 'n', desc: 'número de periodos' },
-      ],
-    },
-    {
-      titulo: 'Sistema alemán (capital fijo)',
-      texto: 'El capital que abonas es siempre el mismo; el interés y el pago total bajan con el tiempo.',
-      formula: <MathInline>Capital = <Frac num={<Var>P</Var>} den={<Var>n</Var>} /></MathInline>,
-    },
-    {
-      titulo: 'Sistema americano (bullet)',
-      texto: 'Solo pagas interés periodo a periodo, y devuelves todo el capital de una vez al final.',
-      formula: <MathInline>Pago = Interés &nbsp;(excepto el último periodo)</MathInline>,
-    },
-  ],
-  simulador: [
-    { titulo: '¿Qué compara esta carpeta?', texto: 'Con el mismo par de números (una meta y una capacidad mensual), compara cinco caminos financieros distintos: desde guardar sin interés hasta pagar una tarjeta de crédito.', consejo: 'Fíjate en cuánto cambia el tiempo y el interés solo por el tipo de camino que elijas.' },
-    { titulo: 'Ahorro vs. deuda', texto: 'Los caminos verdes te acercan a una meta; los caminos rojos son deudas que debes saldar. Ambos usan el mismo motor de interés compuesto por dentro.' },
-    { titulo: 'Pagos extraordinarios', texto: 'Toca "Analizar este destino" en cualquier camino para simular qué pasa si aportas o abonas un poco más — o si agregas un pago puntual en un mes específico.', consejo: 'Compara el escenario base contra uno con un abono extra mensual pequeño: los meses que te ahorras suelen sorprender.' },
-  ],
-  quizzes: [
-    { titulo: '¿Cómo funciona esta carpeta?', texto: 'Hay 10 niveles de dificultad. Cada nivel genera preguntas nuevas con números aleatorios, así que puedes practicar el mismo nivel tantas veces como quieras.', consejo: 'Empieza en el nivel 1 y sube de a poco — los niveles 9 y 10 combinan varias fórmulas en un mismo problema.' },
-    { titulo: 'Niveles 1 a 8', texto: 'Cubren interés simple, interés compuesto, cálculo de periodos, tasas equivalentes (nominal ↔ efectiva), valor presente y la cuota de una anualidad bajo el sistema francés.' },
-    { titulo: 'Niveles 9 y 10', texto: 'El nivel 9 combina tasas y periodos en un solo problema. El nivel 10 es un problema de destino con un enunciado largo: incluye datos que no se necesitan para el cálculo, así que identifica primero qué información es relevante antes de calcular.' },
-  ],
-  formulario: [
-    { titulo: '¿Qué es esto?', texto: 'Aquí tienes todas las fórmulas de la app agrupadas por tema, con buscador. Útil como referencia rápida antes de un examen.', consejo: 'Escribe en el buscador el nombre de un sistema o concepto (por ejemplo "francesa" o "geométrica") para filtrar directamente esa fórmula.' },
-  ],
-};
-
-function TutorialDrawer({ steps, index, setIndex, onClose }) {
-  const step = steps[index];
-  if (!step) return null;
-  return (
-    <div
-      className="fixed bottom-4 right-4 left-4 sm:left-auto sm:w-96 z-40 cx-bg-surface border-2 cx-border-20-accent-primary rounded-lg shadow-2xl shadow-black/15 p-5"
-      style={{ backgroundColor: 'var(--surface)', color: 'var(--text-primary)' }}
-    >
-      <div className="flex items-center justify-between mb-2">
-        <div className="flex items-center gap-1.5 cx-text-accent-primary text-xs font-semibold uppercase tracking-wide">
-          <GraduationCap size={14} /> Paso {index + 1} de {steps.length}
-        </div>
-        <button onClick={onClose} className="p-1 rounded-full cx-text-text-faint cx-hover-bg-surface-hover-2" aria-label="Cerrar tutorial">
-          <X size={14} />
-        </button>
-      </div>
-      <h4 className="text-base font-semibold cx-text-text-primary mb-1.5" style={{ fontFamily: "'Fraunces', sans-serif" }}>{step.titulo}</h4>
-      <p className="text-sm cx-text-text-secondary leading-relaxed mb-3">{step.texto}</p>
-      {step.formula && (
-        <div className="cx-bg-surface-alt rounded-lg px-3 py-2.5 mb-3">
-          <div className="text-[10px] cx-text-text-muted font-semibold uppercase tracking-wide mb-1">Fórmula</div>
-          <div className="cx-text-text-primary">{step.formula}</div>
-          {step.variables && (
-            <div className="mt-2 pt-2 border-t border-black/5">
-              <ListaVariables items={step.variables} compact />
-            </div>
-          )}
-        </div>
-      )}
-      {step.consejo && (
-        <div className="flex items-start gap-1.5 text-xs cx-text-accent-green-text cx-bg-accent-green-bg rounded-lg px-3 py-2 mb-3">
-          <Lightbulb size={13} className="mt-0.5 flex-shrink-0" /> {step.consejo}
-        </div>
-      )}
-      <div className="flex items-center justify-between gap-2">
-        <button
-          disabled={index === 0}
-          onClick={() => setIndex((i) => Math.max(0, i - 1))}
-          className="flex items-center gap-1 text-xs font-semibold px-3 py-1.5 rounded-md border-2 cx-border-border cx-text-text-muted disabled:opacity-30"
-        >
-          <ChevronLeft size={13} /> Antes
-        </button>
-        {index < steps.length - 1 ? (
-          <button
-            onClick={() => setIndex((i) => Math.min(steps.length - 1, i + 1))}
-            className="flex items-center gap-1 text-xs font-semibold px-3.5 py-1.5 rounded-md text-white"
-            style={{ background: 'var(--accent-primary)' }}
-          >
-            Siguiente <ChevronRight size={13} />
-          </button>
-        ) : (
-          <button
-            onClick={onClose}
-            className="flex items-center gap-1 text-xs font-semibold px-3.5 py-1.5 rounded-md text-white"
-            style={{ background: 'var(--accent-green)' }}
-          >
-            <Check size={13} /> Listo
-          </button>
-        )}
       </div>
     </div>
   );
