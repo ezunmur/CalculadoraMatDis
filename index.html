@@ -23,7 +23,9 @@
     </style>
 </head>
 <body class="m-0 p-0">
+    <!-- Si este div falta, la pantalla se queda blanca -->
     <div id="root"></div>
+    
     <script type="text/babel" data-type="module">
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { createRoot } from 'react-dom/client';
@@ -690,6 +692,7 @@ function FormularioTab() {
           <Printer size={16} /> Generar PDF
         </button>
       </div>
+
       <input
         type="text"
         value={busqueda}
@@ -1512,7 +1515,6 @@ function QuizTab() {
   );
 }
 
-// ------ Base de Datos de Fórmulas y Secciones ------
 const SECCIONES_FORMULARIO = [
   {
     id: 'discreta',
