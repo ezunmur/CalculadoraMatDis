@@ -620,8 +620,6 @@ function getYoutubeId(url) {
   return m ? m[1] : null;
 }
 
-// Pon aquí el link de YouTube de cada clase grabada (déjalo como cadena vacía '' si aún no hay video).
-// Las claves deben coincidir con las de FOLDERS: 'interes', 'tasas', 'anualidades', 'simulador', 'quizzes'.
 const VIDEOS_POR_CARPETA = {
   interes: '',
   tasas: '',
@@ -2101,66 +2099,83 @@ function FormularioTab() {
 function PrintableFormulario() {
   return (
     <div 
-      className="hidden print:block w-full bg-white text-black p-4 sm:p-8"
+      className="hidden print:block w-full bg-white text-black p-4"
       style={{ 
         fontFamily: "'Inter', sans-serif",
         '--text-primary': '#000000',
         '--text-secondary': '#333333',
         '--text-muted': '#555555',
-        '--border': '#cccccc'
+        '--border': '#aaaaaa'
       }}
     >
       <style>{`
         @media print {
-          @page { margin: 15mm; size: A4; }
+          @page { margin: 10mm; size: A4; }
           body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-          .print-container { min-width: 750px; }
+          /* Forzar un ancho tipo escritorio en móviles para que las 2 columnas se mantengan */
+          .print-cheat-sheet { min-width: 800px; position: relative; }
           .avoid-page-break { page-break-inside: avoid; }
         }
       `}</style>
       
-      <div className="print-container">
-        <div className="text-center mb-8 border-b-2 border-black pb-4">
-          <h1 className="text-2xl sm:text-3xl font-bold mb-2" style={{ fontFamily: "'Fraunces', serif" }}>Formulario de Matemáticas Financieras</h1>
-          <p className="text-gray-600 font-semibold uppercase tracking-widest text-xs">Proyecto de Matemáticas Discretas · ESPOL</p>
+      <div className="print-cheat-sheet">
+        {/* Encabezado ultra compacto con código QR en la esquina */}
+        <div className="relative text-center border-b-2 border-black pb-2 mb-4">
+          <h1 className="text-xl font-bold uppercase tracking-widest mb-1" style={{ fontFamily: "'Fraunces', serif" }}>
+            Formulario Finanzas
+          </h1>
+          <p className="text-[9px] text-gray-600 font-bold uppercase tracking-widest pr-14">
+            Proyecto Matemáticas Discretas · ESPOL
+          </p>
+          <img 
+            src="QR.png" 
+            alt="Código QR del Repositorio" 
+            className="absolute right-0 top-0 h-10 w-10 sm:h-12 sm:w-12"
+            style={{ objectFit: 'contain' }}
+          />
         </div>
 
-        {DATOS_FORMULARIO.map(tema => (
-          <div key={tema.tema} className="mb-8 avoid-page-break">
-            <h2 className="text-lg sm:text-xl font-bold mb-3 border-l-4 border-black pl-3" style={{ fontFamily: "'Fraunces', serif" }}>{tema.tema}</h2>
-            
-            <table className="w-full border-collapse border-2 border-black text-sm">
-              <thead>
-                <tr className="bg-gray-100">
-                  <th className="border border-black p-2 sm:p-3 text-left w-2/5 uppercase tracking-wide text-xs">Fórmula</th>
-                  <th className="border border-black p-2 sm:p-3 text-left w-3/5 uppercase tracking-wide text-xs">Descripción de Elementos</th>
-                </tr>
-              </thead>
-              <tbody>
+        {/* Cuadrícula de 2 columnas para comprimir el espacio vertical */}
+        <div className="grid grid-cols-2 gap-3 items-start">
+          {DATOS_FORMULARIO.map(tema => (
+            <div key={tema.tema} className="avoid-page-break border-2 border-black rounded-sm overflow-hidden">
+              {/* Título del tema invertido (fondo oscuro) para separar visualmente */}
+              <h2 className="text-xs font-bold bg-gray-100 border-b-2 border-black px-2 py-1 uppercase tracking-wide" style={{ fontFamily: "'Fraunces', serif" }}>
+                {tema.tema}
+              </h2>
+              
+              <div className="p-2 flex flex-col gap-3">
                 {tema.formulas.map(f => (
-                  <tr key={f.nombre} className="border-b border-gray-400">
-                    <td className="border border-black p-3 sm:p-4 align-top">
-                      <div className="font-bold text-gray-900 mb-3 underline decoration-gray-300 underline-offset-4">{f.nombre}</div>
-                      <div className="text-center px-1 sm:px-2 py-3 sm:py-4 bg-gray-50 rounded border border-gray-200">
-                        <MathInline>{f.componente}</MathInline>
-                      </div>
-                    </td>
-                    <td className="border border-black p-3 sm:p-4 align-top bg-white">
-                      <ul className="space-y-2">
-                        {f.variables.map(v => (
-                          <li key={v.simbolo} className="flex gap-2 text-xs sm:text-sm">
-                            <strong className="min-w-[24px] text-center bg-gray-100 border border-gray-300 rounded px-1 font-serif italic">{v.simbolo}</strong>
-                            <span className="text-gray-700"> = {v.desc}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </td>
-                  </tr>
+                  <div key={f.nombre} className="flex flex-col gap-1">
+                    <div className="font-bold text-[10px] text-gray-800 uppercase">
+                      {f.nombre}
+                    </div>
+                    {/* La fórmula en su propia cajita ajustada */}
+                    <div className="text-center px-1 py-1.5 bg-gray-50 border border-gray-300 rounded-sm text-[13px]">
+                      <MathInline>{f.componente}</MathInline>
+                    </div>
+                    {/* Lista de variables comprimida e inline (horizontal en vez de vertical) */}
+                    <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-0.5 text-[9px] leading-tight">
+                      {f.variables.map(v => (
+                        <div key={v.simbolo} className="flex items-baseline gap-1">
+                          <strong className="font-serif italic bg-gray-200 px-1 rounded-sm border border-gray-300">
+                            {v.simbolo}
+                          </strong>
+                          <span className="text-gray-700">= {v.desc}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
                 ))}
-              </tbody>
-            </table>
-          </div>
-        ))}
+              </div>
+            </div>
+          ))}
+        </div>
+        
+        {/* Pie de página pequeñito */}
+        <div className="mt-4 pt-2 border-t border-gray-300 text-center text-[8px] text-gray-500 uppercase tracking-widest">
+          Generado desde el Simulador Financiero ESPOL
+        </div>
       </div>
     </div>
   );
