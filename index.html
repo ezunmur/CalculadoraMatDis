@@ -1218,4 +1218,1638 @@ function DestinoDetalleModal({ path, objetivo, capacidad, tasaAnual, onClose }) 
   return (
     <Modal onClose={onClose} wide>
       <div className="flex items-center gap-2 cx-text-accent-primary-text font-semibold text-sm mb-1" style={{ fontFamily: "'Fraunces', sans-serif" }}>
-        <path.icon size={16} /> {path
+        <path.icon size={16} /> {path.label}
+      </div>
+      <h3 className="text-2xl cx-text-text-primary mb-4" style={{ fontFamily: "'Fraunces', sans-serif", fontWeight: 600 }}>
+        Analiza este destino
+      </h3>
+
+      <p className="text-sm cx-text-text-secondary mb-4">
+        {esDeuda
+          ? 'Prueba qué pasa si abonas un poco más cada mes, o si agregas uno o varios pagos extraordinarios en meses puntuales (por ejemplo, un bono o un aguinaldo).'
+          : 'Prueba qué pasa si aportas un poco más cada mes, o si agregas uno o varios aportes únicos en meses puntuales.'}
+      </p>
+
+      <div className="cx-bg-surface-alt rounded-lg p-4 mb-5 space-y-4" style={{ backgroundColor: 'var(--surface-alt)' }}>
+        <div className="sm:max-w-xs">
+          <Field label={esDeuda ? 'Abono extra mensual' : 'Aporte extra mensual'} suffix="$" value={extraMensual} onChange={setExtraMensual} min={0} step={5} />
+        </div>
+
+        <div className="border-t cx-border-border pt-4">
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-xs uppercase tracking-wide cx-text-text-muted font-semibold">
+              {esDeuda ? 'Pagos extraordinarios puntuales' : 'Aportes únicos extra'}
+            </span>
+            <button
+              onClick={agregarExtra}
+              className="flex items-center gap-1 text-xs font-semibold text-white pl-2.5 pr-3 py-1.5 rounded-md hover:opacity-90 transition-opacity"
+              style={{ background: 'var(--accent-primary)' }}
+            >
+              <Plus size={14} /> Agregar pago
+            </button>
+          </div>
+
+          {extrasUnicos.length === 0 && (
+            <p className="text-xs cx-text-text-faint italic">Sin pagos puntuales — agrega uno con el botón de arriba.</p>
+          )}
+
+          <div className="grid sm:grid-cols-2 gap-3">
+            {extrasUnicos.map((extra, i) => (
+              <div key={extra.id} className="relative cx-bg-surface border cx-border-border rounded-lg p-3 pt-3.5">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-[11px] uppercase tracking-wide cx-text-accent-primary font-semibold">
+                    Pago extra #{i + 1}
+                  </span>
+                  <button
+                    onClick={() => quitarExtra(extra.id)}
+                    className="p-1 rounded-full cx-text-text-faint cx-hover-bg-accent-coral-bg cx-hover-text-accent-coral-text transition-colors"
+                    aria-label={`Quitar pago extra ${i + 1}`}
+                  >
+                    <X size={13} />
+                  </button>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <Field
+                    label={esDeuda ? 'Pago único' : 'Monto'}
+                    suffix="$"
+                    value={extra.monto}
+                    onChange={actualizarExtra(extra.id, 'monto')}
+                    min={0}
+                    step={50}
+                  />
+                  <Field
+                    label="En el mes"
+                    value={extra.mes}
+                    onChange={(v) => actualizarExtra(extra.id, 'mes')(Math.max(1, Math.round(v)))}
+                    min={1}
+                    step={1}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div className="grid sm:grid-cols-2 gap-3 mb-5">
+        <div className="rounded-lg border cx-border-border p-4">
+          <div className="text-[11px] uppercase tracking-wide cx-text-text-muted font-semibold mb-1">Escenario base</div>
+          <div className="text-lg font-semibold cx-text-text-primary" style={{ fontFamily: "'JetBrains Mono', monospace" }}>{monthsToYears(base.meses)}</div>
+          <div className="text-sm cx-text-text-muted">{esDeuda ? 'interés pagado' : 'interés ganado'}: {fmt(base.totalInteres)}</div>
+        </div>
+        <div className="rounded-lg border-2 cx-border-accent-green p-4 cx-bg-accent-green-bg">
+          <div className="text-[11px] uppercase tracking-wide cx-text-accent-green-text font-semibold mb-1">Con tus abonos extra</div>
+          <div className="text-lg font-semibold cx-text-accent-green-text" style={{ fontFamily: "'JetBrains Mono', monospace" }}>{monthsToYears(ajustado.meses)}</div>
+          <div className="text-sm cx-text-accent-green-text">{esDeuda ? 'interés pagado' : 'interés ganado'}: {fmt(ajustado.totalInteres)}</div>
+        </div>
+      </div>
+
+      {(diffMeses !== 0 || diffInteres !== 0) && isFinite(diffMeses) && (
+        <div className="flex items-center gap-2 text-sm cx-text-accent-green-text cx-bg-accent-green-bg rounded-lg px-4 py-3 mb-5">
+          <ArrowRight size={16} />
+          {esDeuda
+            ? `Sales de la deuda ${monthsToYears(Math.max(0, diffMeses))} antes y te ahorras ${fmt(Math.max(0, diffInteres))} en intereses.`
+            : `Llegas a tu meta ${monthsToYears(Math.max(0, diffMeses))} antes.`}
+        </div>
+      )}
+
+      <div className="text-xs uppercase tracking-wide cx-text-text-muted font-semibold mb-2">Saldo mes a mes</div>
+      <div className="cx-bg-surface border cx-border-border rounded-lg p-3" style={{ height: 220 }}>
+        <ResponsiveContainer width="100%" height="100%">
+          <LineChart data={chartData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid)" vertical={false} />
+            <XAxis dataKey="mes" tick={{ fontSize: 10, fill: 'var(--chart-axis)' }} label={{ value: 'Meses', position: 'insideBottom', offset: -2, fontSize: 11, fill: 'var(--chart-axis)' }} />
+            <YAxis tick={{ fontSize: 10, fill: 'var(--chart-axis)' }} tickFormatter={(v) => '$' + fmtInt(v)} />
+            <Tooltip formatter={(v) => fmt(v)} contentStyle={{ fontSize: 12, borderRadius: 12, background: 'var(--surface)', color: 'var(--text-primary)', border: '1px solid var(--border)' }} />
+            <Legend wrapperStyle={{ fontSize: 11 }} />
+            {!esDeuda && <ReferenceLine y={objetivo} stroke="var(--chart-axis)" strokeDasharray="4 4" label={{ value: 'Meta', fontSize: 10, fill: 'var(--chart-axis)' }} />}
+            <Line type="monotone" dataKey="Base" stroke="var(--chart-axis)" strokeWidth={2} dot={false} />
+            <Line type="monotone" dataKey="Con abonos extra" stroke="var(--accent-green)" strokeWidth={2} dot={false} />
+          </LineChart>
+        </ResponsiveContainer>
+      </div>
+    </Modal>
+  );
+}
+
+function SimuladorTab() {
+  const [objetivo, setObjetivo] = useState(5000);
+  const [capacidad, setCapacidad] = useState(250);
+  const [tasas, setTasas] = useState({ simple: 5, compuesto: 8, prestamo: 16, tarjeta: 42 });
+  const [detalle, setDetalle] = useState(null);
+
+  const resultados = useMemo(() => {
+    const alcancia = simularCamino({ tipo: 'alcancia', monto: objetivo, base: capacidad });
+    const ahorroSimple = simularCamino({ tipo: 'ahorroSimple', monto: objetivo, base: capacidad, tasaAnual: tasas.simple });
+    const ahorroCompuesto = simularCamino({ tipo: 'ahorroCompuesto', monto: objetivo, base: capacidad, tasaAnual: tasas.compuesto });
+    const prestamo = simularCamino({ tipo: 'deuda', monto: objetivo, base: capacidad, tasaAnual: tasas.prestamo });
+    const tarjeta = simularCamino({ tipo: 'deuda', monto: objetivo, base: capacidad, tasaAnual: tasas.tarjeta });
+    return { alcancia, ahorroSimple, ahorroCompuesto, prestamo, tarjeta };
+  }, [objetivo, capacidad, tasas]);
+
+  const setTasa = (key) => (e) => setTasas((t) => ({ ...t, [key]: parseFloat(e.target.value) || 0 }));
+
+  const ahorroChart = useMemo(() => {
+    const maxM = Math.min(240, Math.max(
+      isFinite(resultados.alcancia.meses) ? resultados.alcancia.meses : 0,
+      isFinite(resultados.ahorroSimple.meses) ? resultados.ahorroSimple.meses : 0,
+      isFinite(resultados.ahorroCompuesto.meses) ? resultados.ahorroCompuesto.meses : 0,
+      12
+    ));
+    const data = [];
+    for (let m = 0; m <= maxM; m++) {
+      data.push({
+        mes: m,
+        Alcancía: resultados.alcancia.serie[m]?.saldo ?? resultados.alcancia.serie[resultados.alcancia.serie.length - 1]?.saldo,
+        'Ahorro simple': resultados.ahorroSimple.serie[m]?.saldo,
+        'Ahorro compuesto': resultados.ahorroCompuesto.serie[m]?.saldo,
+      });
+    }
+    return data;
+  }, [resultados]);
+
+  const deudaChart = useMemo(() => {
+    const maxM = Math.min(240, Math.max(
+      isFinite(resultados.prestamo.meses) ? resultados.prestamo.meses : 60,
+      isFinite(resultados.tarjeta.meses) ? resultados.tarjeta.meses : 60,
+      12
+    ));
+    const data = [];
+    for (let m = 0; m <= maxM; m++) {
+      data.push({
+        mes: m,
+        Préstamo: resultados.prestamo.serie[m]?.saldo ?? 0,
+        'Tarjeta de crédito': resultados.tarjeta.serie[m]?.saldo ?? (resultados.tarjeta.nuncaPaga ? objetivo : 0),
+      });
+    }
+    return data;
+  }, [resultados, objetivo]);
+
+  const paths = [
+    {
+      key: 'alcancia', label: 'Alcancía (sin interés)', icon: Wallet, tipo: 'ahorro', tipoSim: 'alcancia',
+      meses: resultados.alcancia.meses, interes: 0, editable: false,
+      nota: 'Guardas el dinero sin que gane nada. Es la referencia base.',
+    },
+    {
+      key: 'simple', label: 'Ahorro a interés simple', icon: PiggyBank, tipo: 'ahorro', tipoSim: 'ahorroSimple',
+      meses: resultados.ahorroSimple.meses, interes: resultados.ahorroSimple.totalInteres, editable: true, tasaKey: 'simple',
+      nota: 'Tu aporte gana interés, pero el interés no genera más interés.',
+    },
+    {
+      key: 'compuesto', label: 'Ahorro a interés compuesto', icon: TrendingUp, tipo: 'ahorro', tipoSim: 'ahorroCompuesto',
+      meses: resultados.ahorroCompuesto.meses, interes: resultados.ahorroCompuesto.totalInteres, editable: true, tasaKey: 'compuesto',
+      nota: 'El interés generado también empieza a generar interés.',
+    },
+    {
+      key: 'prestamo', label: 'Préstamo bancario', icon: Landmark, tipo: 'deuda', tipoSim: 'deuda',
+      meses: resultados.prestamo.meses, interes: resultados.prestamo.totalInteres, editable: true, tasaKey: 'prestamo',
+      nuncaPaga: resultados.prestamo.nuncaPaga,
+      nota: 'Recibes el monto ahora y lo pagas en cuotas con interés.',
+    },
+    {
+      key: 'tarjeta', label: 'Tarjeta de crédito', icon: CreditCard, tipo: 'deuda', tipoSim: 'deuda',
+      meses: resultados.tarjeta.meses, interes: resultados.tarjeta.totalInteres, editable: true, tasaKey: 'tarjeta',
+      nuncaPaga: resultados.tarjeta.nuncaPaga,
+      nota: 'Mismo monto, tasa mucho más alta: el costo real cambia radicalmente.',
+    },
+  ];
+
+  return (
+    <div className="space-y-6">
+      <div className="rounded-lg cx-bg-accent-primary-bg border cx-border-accent-primary/15 p-4 flex items-start gap-2">
+        <Target size={18} className="mt-0.5 flex-shrink-0 cx-text-accent-primary" />
+        <p className="text-sm cx-text-text-strong-gray">Ingresa un monto que quieres conseguir o gastar, y cuánto puedes aportar o pagar cada mes. Verás, con el mismo par de números, cinco caminos financieros distintos y en cuántos meses llegas a la meta — o sales de la deuda. Toca "Analizar" en cualquiera para probar pagos extraordinarios.</p>
+      </div>
+
+      <div className="grid sm:grid-cols-2 gap-4 cx-bg-surface p-4 rounded-lg border cx-border-border">
+        <Field label="Monto objetivo" suffix="$" value={objetivo} onChange={setObjetivo} min={1} step={100} />
+        <Field label="Capacidad mensual (aporte o pago)" suffix="$" value={capacidad} onChange={setCapacidad} min={1} step={10} />
+      </div>
+
+      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        {paths.map((p) => {
+          const Icon = p.icon;
+          const isDeuda = p.tipo === 'deuda';
+          return (
+            <div key={p.key} className={`cx-bg-surface border-2 rounded-lg p-4 flex flex-col gap-3 ${isDeuda ? 'cx-border-accent-coral-border' : 'cx-border-border'}`}>
+              <div className="flex items-center gap-2">
+                <div className={`p-1.5 rounded-full ${isDeuda ? 'cx-bg-accent-coral-bg cx-text-accent-coral-text' : 'cx-bg-accent-green-bg cx-text-accent-green-text'}`}>
+                  <Icon size={16} />
+                </div>
+                <span className="font-semibold cx-text-text-primary text-sm" style={{ fontFamily: "'Fraunces', sans-serif" }}>{p.label}</span>
+              </div>
+              {p.editable && (
+                <label className="flex items-center gap-2 text-xs cx-text-text-muted">
+                  Tasa anual
+                  <input
+                    type="number"
+                    value={tasas[p.tasaKey]}
+                    onChange={setTasa(p.tasaKey)}
+                    className="w-16 border-2 cx-border-border rounded-lg px-1.5 py-0.5 cx-text-text-primary"
+                    style={{ fontFamily: "'JetBrains Mono', monospace" }}
+                  />
+                  %
+                </label>
+              )}
+              {p.nuncaPaga ? (
+                <div className="flex items-start gap-1.5 cx-text-accent-coral-text text-sm cx-bg-accent-coral-bg rounded-lg px-3 py-2">
+                  <AlertTriangle size={14} className="mt-0.5 flex-shrink-0" />
+                  Tu pago mensual no cubre ni el interés: la deuda nunca se termina de pagar.
+                </div>
+              ) : (
+                <>
+                  <div>
+                    <div className="text-[11px] uppercase tracking-wide cx-text-text-muted">{isDeuda ? 'Tiempo para pagarla' : 'Tiempo para lograrlo'}</div>
+                    <div className="text-lg" style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 600 }}>{monthsToYears(p.meses)}</div>
+                  </div>
+                  <div>
+                    <div className="text-[11px] uppercase tracking-wide cx-text-text-muted">{isDeuda ? 'Interés total pagado' : 'Interés total ganado'}</div>
+                    <div className={`text-sm font-semibold ${isDeuda ? 'cx-text-accent-coral-text' : 'cx-text-accent-green-text'}`}>{fmt(p.interes)}</div>
+                  </div>
+                </>
+              )}
+              <p className="text-xs cx-text-text-muted mt-auto pt-2 border-t cx-border-border">{p.nota}</p>
+              <button
+                onClick={() => setDetalle(p)}
+                className="flex items-center justify-center gap-1.5 text-xs font-semibold py-2 rounded-md text-white hover:opacity-90 transition-opacity"
+                style={{ background: 'var(--accent-primary)' }}
+              >
+                Analizar este destino <RotateCcw size={12} />
+              </button>
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="grid sm:grid-cols-2 gap-4">
+        <div>
+          <div className="text-xs uppercase tracking-wide cx-text-text-muted font-semibold mb-2">Caminos de ahorro (llegar al objetivo)</div>
+          <div className="cx-bg-surface border cx-border-border rounded-lg p-3" style={{ height: 240 }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={ahorroChart} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid)" vertical={false} />
+                <XAxis dataKey="mes" tick={{ fontSize: 10, fill: 'var(--chart-axis)' }} label={{ value: 'Meses', position: 'insideBottom', offset: -2, fontSize: 11, fill: 'var(--chart-axis)' }} />
+                <YAxis tick={{ fontSize: 10, fill: 'var(--chart-axis)' }} tickFormatter={(v) => '$' + fmtInt(v)} />
+                <Tooltip formatter={(v) => fmt(v)} contentStyle={{ fontSize: 12, borderRadius: 12, background: 'var(--surface)', color: 'var(--text-primary)', border: '1px solid var(--border)' }} />
+                <Legend wrapperStyle={{ fontSize: 11 }} />
+                <ReferenceLine y={objetivo} stroke="var(--text-strong-gray)" strokeDasharray="4 4" label={{ value: 'Meta', fontSize: 10, fill: 'var(--text-strong-gray)' }} />
+                <Line type="monotone" dataKey="Alcancía" stroke="var(--chart-axis)" strokeWidth={2} dot={false} />
+                <Line type="monotone" dataKey="Ahorro simple" stroke="var(--accent-primary)" strokeWidth={2} dot={false} />
+                <Line type="monotone" dataKey="Ahorro compuesto" stroke="var(--accent-green)" strokeWidth={2} dot={false} />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+        <div>
+          <div className="text-xs uppercase tracking-wide cx-text-text-muted font-semibold mb-2">Caminos de deuda (llegar a saldo cero)</div>
+          <div className="cx-bg-surface border cx-border-border rounded-lg p-3" style={{ height: 240 }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={deudaChart} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid)" vertical={false} />
+                <XAxis dataKey="mes" tick={{ fontSize: 10, fill: 'var(--chart-axis)' }} label={{ value: 'Meses', position: 'insideBottom', offset: -2, fontSize: 11, fill: 'var(--chart-axis)' }} />
+                <YAxis tick={{ fontSize: 10, fill: 'var(--chart-axis)' }} tickFormatter={(v) => '$' + fmtInt(v)} />
+                <Tooltip formatter={(v) => fmt(v)} contentStyle={{ fontSize: 12, borderRadius: 12, background: 'var(--surface)', color: 'var(--text-primary)', border: '1px solid var(--border)' }} />
+                <Legend wrapperStyle={{ fontSize: 11 }} />
+                <Line type="monotone" dataKey="Préstamo" stroke="var(--accent-primary)" strokeWidth={2} dot={false} />
+                <Line type="monotone" dataKey="Tarjeta de crédito" stroke="var(--accent-coral)" strokeWidth={2} dot={false} />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      </div>
+
+      {detalle && (
+        <DestinoDetalleModal
+          path={detalle}
+          objetivo={objetivo}
+          capacidad={capacidad}
+          tasaAnual={detalle.tasaKey ? tasas[detalle.tasaKey] : 0}
+          onClose={() => setDetalle(null)}
+        />
+      )}
+    </div>
+  );
+}
+
+function valorPresente(F, r, n) {
+  return F / Math.pow(1 + r, n);
+}
+function valorFuturoLumpSum(P, r, n) {
+  return P * Math.pow(1 + r, n);
+}
+function periodosNecesarios(P, F, r) {
+  return Math.log(F / P) / Math.log(1 + r);
+}
+function cuotaFrancesa(P, r, n) {
+  return r === 0 ? P / n : (P * r) / (1 - Math.pow(1 + r, -n));
+}
+
+function randInt(min, max) {
+  return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+function randChoice(arr) {
+  return arr[randInt(0, arr.length - 1)];
+}
+function round2(n) {
+  return Math.round(n * 100) / 100;
+}
+const fmtPct = (n) => n.toLocaleString('es-EC', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '%';
+
+function dentroDeTolerancia(valorUsuario, correcto, unidad) {
+  if (!isFinite(valorUsuario)) return false;
+  if (unidad === '$') {
+    const tol = Math.max(1, Math.abs(correcto) * 0.01);
+    return Math.abs(valorUsuario - correcto) <= tol;
+  }
+  if (unidad === '%') {
+    return Math.abs(valorUsuario - correcto) <= 0.15;
+  }
+  if (unidad === 'periodos') {
+    return Math.abs(valorUsuario - correcto) <= 0.3;
+  }
+  if (unidad === 'años') {
+    return Math.abs(valorUsuario - correcto) <= 0.15;
+  }
+  return Math.abs(valorUsuario - correcto) <= Math.abs(correcto) * 0.02;
+}
+
+// ============================================================
+// DATOS_FORMULARIO - Con Matemática Discreta + fórmulas completas
+// ============================================================
+const DATOS_FORMULARIO = [
+  {
+    tema: '0. Matemática Discreta (bases)',
+    formulas: [
+      {
+        nombre: 'Sumatoria',
+        componente: <><span style={{ fontSize: '1.3em' }}>Σ</span><Sub>i=1</Sub><sup style={{ fontSize: '0.7em' }}>n</sup> a<Sub>i</Sub></>,
+        variables: [
+          { simbolo: 'aᵢ', desc: 'i-ésimo término de la secuencia' },
+          { simbolo: 'n', desc: 'Número de términos a sumar' }
+        ]
+      },
+      {
+        nombre: 'Serie Aritmética',
+        componente: <>S<Sub>n</Sub> = <Frac num={<Var>n</Var>} den="2" /> · (2<Var>a</Var><Sub>1</Sub> + (<Var>n</Var>−1)<Var>d</Var>)</>,
+        variables: [
+          { simbolo: 'a₁', desc: 'Primer término' },
+          { simbolo: 'd', desc: 'Diferencia común' },
+          { simbolo: 'n', desc: 'Número de términos' }
+        ]
+      },
+      {
+        nombre: 'Serie Geométrica',
+        componente: <>S<Sub>n</Sub> = <Var>a</Var><Sub>1</Sub> · <Frac num={<>1 − <Pow base={<Var>q</Var>} exp={<Var>n</Var>} /></>} den={<>1 − <Var>q</Var></>} /></>,
+        variables: [
+          { simbolo: 'a₁', desc: 'Primer término' },
+          { simbolo: 'q', desc: 'Razón común' },
+          { simbolo: 'n', desc: 'Número de términos' }
+        ]
+      },
+      {
+        nombre: 'Relación de Recurrencia',
+        componente: <><Var>S</Var><Sub>t</Sub> = <Var>S</Var><Sub>t−1</Sub> · (1 + <Var>r</Var>) − <Var>C</Var></>,
+        variables: [
+          { simbolo: 'Sₜ', desc: 'Saldo de la deuda en el periodo t' },
+          { simbolo: 'r', desc: 'Tasa de interés por periodo' },
+          { simbolo: 'C', desc: 'Cuota o pago periódico' }
+        ]
+      }
+    ]
+  },
+  {
+    tema: '1. Interés Simple',
+    formulas: [
+      {
+        nombre: 'Monto Final',
+        componente: <><Var>F</Var> = <Var>P</Var> · (1 + <Var>r</Var> · <Var>t</Var>)</>,
+        variables: [
+          { simbolo: 'P', desc: 'Capital inicial' },
+          { simbolo: 'r', desc: 'Tasa de interés periódica' },
+          { simbolo: 't', desc: 'Número de periodos' },
+          { simbolo: 'F', desc: 'Monto final acumulado' }
+        ]
+      },
+      {
+        nombre: 'Interés Generado',
+        componente: <><Var>I</Var> = <Var>P</Var> · <Var>r</Var> · <Var>t</Var></>,
+        variables: [
+          { simbolo: 'I', desc: 'Interés total generado' },
+          { simbolo: 'P', desc: 'Capital inicial' },
+          { simbolo: 'r', desc: 'Tasa periódica' },
+          { simbolo: 't', desc: 'Número de periodos' }
+        ]
+      }
+    ]
+  },
+  {
+    tema: '2. Interés Compuesto',
+    formulas: [
+      {
+        nombre: 'Monto Final',
+        componente: <><Var>F</Var> = <Var>P</Var> · <Pow base={<>(1 + <Var>r</Var>)</>} exp={<Var>t</Var>} /></>,
+        variables: [
+          { simbolo: 'P', desc: 'Capital inicial' },
+          { simbolo: 'r', desc: 'Tasa periódica' },
+          { simbolo: 't', desc: 'Número de periodos' },
+          { simbolo: 'F', desc: 'Monto final con interés sobre interés' }
+        ]
+      },
+      {
+        nombre: 'Capitalización Continua',
+        componente: <><Var>F</Var> = <Var>P</Var> · <Pow base="e" exp={<><Var>r</Var> · <Var>t</Var></>} /></>,
+        variables: [
+          { simbolo: 'P', desc: 'Capital inicial' },
+          { simbolo: 'e', desc: 'Constante matemática (aprox. 2.71828)' },
+          { simbolo: 'r', desc: 'Tasa nominal anual' },
+          { simbolo: 't', desc: 'Tiempo en años' }
+        ]
+      }
+    ]
+  },
+  {
+    tema: '3. Tasas Equivalentes',
+    formulas: [
+      {
+        nombre: 'Tasa Efectiva Anual (TEA)',
+        componente: <>TEA = <Pow base={<>(1 + <Frac num={<Var>j</Var>} den={<Var>m</Var>} />)</>} exp={<Var>m</Var>} /> − 1</>,
+        variables: [
+          { simbolo: 'j', desc: 'Tasa nominal anual' },
+          { simbolo: 'm', desc: 'Frecuencia de capitalización al año' }
+        ]
+      },
+      {
+        nombre: 'Tasa Nominal desde Efectiva',
+        componente: <><Var>j</Var><Sub>2</Sub> = (<Pow base="(1+TEA)" exp={<Frac num="1" den={<><Var>m</Var><Sub>2</Sub></>} />} /> − 1) · <Var>m</Var><Sub>2</Sub></>,
+        variables: [
+          { simbolo: 'TEA', desc: 'Tasa Efectiva Anual en decimal' },
+          { simbolo: 'm₂', desc: 'Capitalizaciones del nuevo periodo' }
+        ]
+      },
+      {
+        nombre: 'Tasa Continua desde Efectiva',
+        componente: <>TEA = <Pow base="e" exp={<Var>j</Var>} /> − 1</>,
+        variables: [
+          { simbolo: 'j', desc: 'Tasa nominal anual' },
+          { simbolo: 'TEA', desc: 'Tasa Efectiva Anual' }
+        ]
+      }
+    ]
+  },
+  {
+    tema: '4. Anualidades y Amortización',
+    formulas: [
+      {
+        nombre: 'Cuota Fija (Sistema Francés)',
+        componente: <>Pago = <Frac num={<><Var>P</Var> · <Var>r</Var></>} den={<>1 − <Pow base={<>(1+<Var>r</Var>)</>} exp={<>−<Var>n</Var></>} /></>} /></>,
+        variables: [
+          { simbolo: 'P', desc: 'Monto total del préstamo' },
+          { simbolo: 'r', desc: 'Tasa periódica' },
+          { simbolo: 'n', desc: 'Número total de cuotas' }
+        ]
+      },
+      {
+        nombre: 'Amortización (Sistema Alemán)',
+        componente: <>Capital = <Frac num={<Var>P</Var>} den={<Var>n</Var>} /></>,
+        variables: [
+          { simbolo: 'P', desc: 'Monto total del préstamo' },
+          { simbolo: 'n', desc: 'Número total de cuotas' }
+        ]
+      },
+      {
+        nombre: 'Sistema Americano (bullet)',
+        componente: <>Pago = Interés &nbsp;(excepto el último periodo) · Capital al final = <Var>P</Var></>,
+        variables: [
+          { simbolo: 'P', desc: 'Monto total del préstamo' },
+          { simbolo: 'r', desc: 'Tasa periódica' }
+        ]
+      }
+    ]
+  },
+  {
+    tema: '5. Valor Presente',
+    formulas: [
+      {
+        nombre: 'Valor Presente',
+        componente: <><Var>P</Var> = <Frac num={<Var>F</Var>} den={<Pow base={<>(1 + <Var>r</Var>)</>} exp={<Var>n</Var>} />} /></>,
+        variables: [
+          { simbolo: 'F', desc: 'Monto futuro (objetivo)' },
+          { simbolo: 'r', desc: 'Tasa de interés por periodo' },
+          { simbolo: 'n', desc: 'Número de periodos' }
+        ]
+      }
+    ]
+  }
+];
+
+const NIVELES_META = [
+  { nivel: 1, titulo: 'Interés simple · interés generado', tag: 'Interés simple' },
+  { nivel: 2, titulo: 'Interés simple · monto final', tag: 'Interés simple' },
+  { nivel: 3, titulo: 'Interés compuesto · monto final', tag: 'Interés compuesto' },
+  { nivel: 4, titulo: 'Interés compuesto · número de periodos', tag: 'Cálculo de periodos' },
+  { nivel: 5, titulo: 'Tasa efectiva anual (TEA)', tag: 'Tasas equivalentes' },
+  { nivel: 6, titulo: 'Tasa nominal desde la TEA', tag: 'Tasas equivalentes' },
+  { nivel: 7, titulo: 'Valor presente', tag: 'Valor presente' },
+  { nivel: 8, titulo: 'Anualidades · cuota fija (francés)', tag: 'Anualidades' },
+  { nivel: 9, titulo: 'Mixto · tiempo total en años', tag: 'Tasas + periodos' },
+  { nivel: 10, titulo: 'Problema de destino (verbal)', tag: 'Problema integrador' },
+];
+
+function genInteresSimpleInteres() {
+  const P = randInt(2, 50) * 1000;
+  const tasaAnualPct = randInt(6, 24);
+  const tMeses = randChoice([3, 6, 9, 12, 18, 24]);
+  const r = tasaAnualPct / 100 / 12;
+  const I = P * r * tMeses;
+  return {
+    categoria: 'Interés simple',
+    enunciado: `Un capital de ${fmt(P)} se invierte a una tasa simple del ${tasaAnualPct}% anual durante ${tMeses} meses. **¿Cuál es el interés (I) generado al final del plazo?**`,
+    unidad: '$',
+    respuesta: round2(I),
+    solucion: [
+      `Tasa periódica mensual: r = j / 12 = ${tasaAnualPct}% / 12 = ${(r * 100).toFixed(4)}% mensual.`,
+      `Interés simple: I = P · r · t = ${fmt(P)} · ${(r * 100).toFixed(4)}% · ${tMeses} = ${fmt(I)}.`,
+    ],
+  };
+}
+
+function genInteresSimpleMonto() {
+  const P = randInt(3, 60) * 1000;
+  const tasaAnualPct = randInt(6, 24);
+  const tMeses = randChoice([3, 6, 9, 12, 18, 24]);
+  const r = tasaAnualPct / 100 / 12;
+  const F = P * (1 + r * tMeses);
+  return {
+    categoria: 'Interés simple',
+    enunciado: `Se depositan ${fmt(P)} en una cuenta que paga una tasa simple del ${tasaAnualPct}% anual. **¿Cuál es el monto acumulado (F) después de ${tMeses} meses?**`,
+    unidad: '$',
+    respuesta: round2(F),
+    solucion: [
+      `Tasa periódica mensual: r = ${tasaAnualPct}% / 12 = ${(r * 100).toFixed(4)}% mensual.`,
+      `Monto: F = P · (1 + r · t) = ${fmt(P)} · (1 + ${(r * tMeses).toFixed(4)}) = ${fmt(F)}.`,
+    ],
+  };
+}
+
+function genInteresCompuestoMonto() {
+  const P = randInt(3, 80) * 1000;
+  const tasaNominalPct = randInt(8, 30);
+  const temporalidad = randChoice(['mensual', 'trimestral', 'semestral']);
+  const t = getTemporalidad(temporalidad);
+  const anios = randChoice([1, 2, 3, 4, 5]);
+  const n = anios * t.m;
+  const r = tasaPeriodica(tasaNominalPct, temporalidad);
+  const F = valorFuturoLumpSum(P, r, n);
+  return {
+    categoria: 'Interés compuesto',
+    enunciado: `Un capital de ${fmt(P)} se coloca a una tasa nominal anual del ${tasaNominalPct}%, capitalizable de forma ${temporalidad}, durante ${anios} ${anios === 1 ? 'año' : 'años'}. **¿Cuál es el monto final (F)?**`,
+    unidad: '$',
+    respuesta: round2(F),
+    solucion: [
+      `Tasa periódica: r = j / m = ${tasaNominalPct}% / ${t.m} = ${(r * 100).toFixed(4)}% por ${t.periodo}.`,
+      `Número de periodos: n = ${anios} · ${t.m} = ${n} ${t.periodoPlural}.`,
+      `Monto: F = P · (1 + r)ⁿ = ${fmt(P)} · (1 + ${(r * 100).toFixed(4)}%)^${n} = ${fmt(F)}.`,
+    ],
+  };
+}
+
+function genInteresCompuestoPeriodos() {
+  const P = randInt(4, 60) * 1000;
+  const multiplo = randChoice([1.2, 1.5, 1.8, 2, 2.5, 3]);
+  const F = round2(P * multiplo);
+  const tasaNominalPct = randInt(10, 36);
+  const temporalidad = randChoice(['mensual', 'trimestral']);
+  const t = getTemporalidad(temporalidad);
+  const r = tasaPeriodica(tasaNominalPct, temporalidad);
+  const n = periodosNecesarios(P, F, r);
+  return {
+    categoria: 'Cálculo de periodos',
+    enunciado: `**¿Cuántos periodos (n) de capitalización ${temporalidad} se necesitan para que un capital de ${fmt(P)} crezca hasta ${fmt(F)}, si la tasa nominal anual es del ${tasaNominalPct}%?**`,
+    unidad: 'periodos',
+    respuesta: round2(n),
+    solucion: [
+      `Tasa periódica: r = ${tasaNominalPct}% / ${t.m} = ${(r * 100).toFixed(4)}% por ${t.periodo}.`,
+      `Despejando n de F = P·(1+r)ⁿ: n = ln(F/P) / ln(1+r) = ln(${(F / P).toFixed(4)}) / ln(1 + ${(r * 100).toFixed(4)}%) ≈ ${n.toFixed(2)} ${t.periodoPlural}.`,
+    ],
+  };
+}
+
+function genTasaEfectivaAnual() {
+  const tasaNominalPct = randInt(10, 42);
+  const temporalidad = randChoice(['mensual', 'trimestral', 'semestral', 'bimestral']);
+  const t = getTemporalidad(temporalidad);
+  const tea = calcularTEADesdeOrigen(tasaNominalPct, 'nominal', temporalidad) * 100;
+  return {
+    categoria: 'Tasas equivalentes',
+    enunciado: `Un banco ofrece una tasa nominal anual del ${tasaNominalPct}%, capitalizable de forma ${temporalidad}. **¿Cuál es la tasa efectiva anual (TEA) equivalente?**`,
+    unidad: '%',
+    respuesta: round2(tea),
+    solucion: [
+      `TEA = (1 + j/m)^m − 1 = (1 + ${tasaNominalPct}%/${t.m})^${t.m} − 1.`,
+      `TEA ≈ ${fmtPct(tea)}.`,
+    ],
+  };
+}
+
+function genTasaNominalDesdeEfectiva() {
+  const teaPct = randInt(15, 45);
+  const temporalidad = randChoice(['mensual', 'trimestral', 'semestral']);
+  const t = getTemporalidad(temporalidad);
+  const j = calcularTasaDestinoDesdeTEA(teaPct / 100, 'nominal', temporalidad);
+  return {
+    categoria: 'Tasas equivalentes',
+    enunciado: `Si la tasa efectiva anual (TEA) de una inversión es del ${teaPct}%, **¿cuál es la tasa nominal anual equivalente capitalizable de forma ${temporalidad}?**`,
+    unidad: '%',
+    respuesta: round2(j),
+    solucion: [
+      `j = [(1 + TEA)^(1/m) − 1] · m = [(1 + ${teaPct}%)^(1/${t.m}) − 1] · ${t.m}.`,
+      `j ≈ ${fmtPct(j)} nominal anual, capitalizable ${temporalidad}.`,
+    ],
+  };
+}
+
+function genValorPresente() {
+  const F = randInt(5, 150) * 1000;
+  const tasaNominalPct = randInt(8, 30);
+  const temporalidad = randChoice(['mensual', 'trimestral', 'semestral']);
+  const t = getTemporalidad(temporalidad);
+  const anios = randChoice([1, 2, 3, 4]);
+  const n = anios * t.m;
+  const r = tasaPeriodica(tasaNominalPct, temporalidad);
+  const P = valorPresente(F, r, n);
+  return {
+    categoria: 'Valor presente',
+    enunciado: `**¿Qué capital (P) se debe invertir hoy, a una tasa nominal anual del ${tasaNominalPct}% capitalizable ${temporalidad}, para contar con ${fmt(F)} dentro de ${anios} ${anios === 1 ? 'año' : 'años'}?**`,
+    unidad: '$',
+    respuesta: round2(P),
+    solucion: [
+      `Tasa periódica: r = ${tasaNominalPct}% / ${t.m} = ${(r * 100).toFixed(4)}% por ${t.periodo}; n = ${n} ${t.periodoPlural}.`,
+      `Valor presente: P = F / (1 + r)ⁿ = ${fmt(F)} / (1 + ${(r * 100).toFixed(4)}%)^${n} = ${fmt(P)}.`,
+    ],
+  };
+}
+
+function genCuotaFrancesa() {
+  const P = randInt(5, 60) * 1000;
+  const tasaNominalPct = randInt(12, 36);
+  const n = randChoice([6, 12, 18, 24, 36]);
+  const r = tasaNominalPct / 100 / 12;
+  const cuota = cuotaFrancesa(P, r, n);
+  return {
+    categoria: 'Anualidades',
+    enunciado: `Un préstamo de ${fmt(P)} se paga en ${n} cuotas mensuales iguales bajo el sistema francés, con una tasa nominal anual del ${tasaNominalPct}% capitalizable mensualmente. **¿Cuál es el valor de la cuota fija?**`,
+    unidad: '$',
+    respuesta: round2(cuota),
+    solucion: [
+      `Tasa periódica mensual: r = ${tasaNominalPct}% / 12 = ${(r * 100).toFixed(4)}% mensual.`,
+      `Cuota = P·r / [1 − (1+r)^(−n)] = ${fmt(P)} · ${(r * 100).toFixed(4)}% / [1 − (1+${(r * 100).toFixed(4)}%)^(−${n})] = ${fmt(cuota)}.`,
+    ],
+  };
+}
+
+function genMixtoTiempoAnios() {
+  const P = randInt(3, 50) * 1000;
+  const multiplo = randChoice([1.3, 1.5, 2, 2.5, 3]);
+  const F = round2(P * multiplo);
+  const tasaNominalPct = randInt(12, 40);
+  const temporalidad = randChoice(['mensual', 'trimestral', 'semestral']);
+  const t = getTemporalidad(temporalidad);
+  const r = tasaPeriodica(tasaNominalPct, temporalidad);
+  const n = periodosNecesarios(P, F, r);
+  const anios = n / t.m;
+  return {
+    categoria: 'Tasas + periodos',
+    enunciado: `Con una tasa nominal anual del ${tasaNominalPct}% capitalizable de forma ${temporalidad}, **¿en cuántos años un capital de ${fmt(P)} se convertirá en al menos ${fmt(F)}?**`,
+    unidad: 'años',
+    respuesta: round2(anios),
+    solucion: [
+      `Tasa periódica: r = ${tasaNominalPct}% / ${t.m} = ${(r * 100).toFixed(4)}% por ${t.periodo}.`,
+      `n = ln(F/P) / ln(1+r) = ln(${(F / P).toFixed(4)}) / ln(1 + ${(r * 100).toFixed(4)}%) ≈ ${n.toFixed(2)} ${t.periodoPlural}.`,
+      `En años: t = n / ${t.m} ≈ ${anios.toFixed(2)} años.`,
+    ],
+  };
+}
+
+const NOMBRES_DESTINO = [
+  'Mateo', 'Valentina', 'Camila', 'Joel', 'Doménica', 'Emilio', 'Ariana', 'Josué',
+  'Andrea', 'Carlos', 'Kevin', 'María José', 'Luis', 'Steven', 'Génesis', 'Xavier', 'Fernando',
+];
+const DESTINOS_DESTINO = ['un viaje a Galápagos', 'la entrada de un vehículo', 'el enganche de un departamento', 'una maestría en el extranjero', 'abrir un pequeño emprendimiento de repostería'];
+const RELLENOS_DESTINO = [
+  'que trabaja en una empresa de exportación de camarón',
+  'que acaba de terminar sus prácticas preprofesionales',
+  'que administra una pequeña cevichería en el centro',
+  'que estudia en la ESPOL por las mañanas y trabaja por las tardes',
+  'que acaba de recibir un bono de fin de año',
+  'que colecciona estampillas desde niño/a, aunque eso no viene al caso',
+  'cuyo perro se llama Firulais',
+  'que siempre llega diez minutos tarde a las reuniones familiares',
+];
+
+function genDestinoVerborrea() {
+  const nombre = randChoice(NOMBRES_DESTINO);
+  const relleno = randChoice(RELLENOS_DESTINO);
+  const destino = randChoice(DESTINOS_DESTINO);
+  const P = randInt(3, 25) * 500;
+  const edad = randInt(20, 45);
+  const gastoMensualIrrelevante = randInt(150, 400);
+  const multiplo = randChoice([1.4, 1.6, 1.8, 2, 2.2]);
+  const F = round2(P * multiplo);
+  const tasaNominalPct = randInt(10, 28);
+  const temporalidad = randChoice(['mensual', 'trimestral']);
+  const t = getTemporalidad(temporalidad);
+  const r = tasaPeriodica(tasaNominalPct, temporalidad);
+  const n = periodosNecesarios(P, F, r);
+  const anios = n / t.m;
+  const bancoImaginario = randChoice(['Banco del Litoral', 'Cooperativa Andina', 'Financiera del Pacífico', 'Banco San Rafael']);
+
+  const enunciado =
+    `${nombre} tiene ${edad} años, ${relleno}, y desde hace un tiempo ha estado pensando seriamente en organizar sus finanzas personales para cumplir una meta que le ilusiona: ${destino}. ` +
+    `Actualmente destina alrededor de ${fmt(gastoMensualIrrelevante)} mensuales a gastos varios que no piensa modificar por ahora, así que esa cifra no debería alterar el cálculo que se le pide a continuación. ` +
+    `Después de revisar varias opciones en el mercado financiero, decidió abrir un depósito a plazo en ${bancoImaginario}, colocando de una sola vez ${fmt(P)} de sus ahorros. ` +
+    `Esta entidad le ofreció una tasa nominal anual del ${tasaNominalPct}%, capitalizable de forma ${temporalidad}, y ${nombre} no piensa retirar ni un centavo hasta alcanzar su objetivo. ` +
+    `Se ha propuesto que, cuando el saldo de ese depósito llegue a ${fmt(F)}, retirará el dinero para financiar su meta. ` +
+    `Suponiendo que la tasa se mantiene constante durante todo el plazo y que no realiza depósitos ni retiros adicionales, **¿cuántos años como mínimo deberá esperar ${nombre} para que el depósito alcance ese monto?**`;
+
+  return {
+    categoria: 'Problema de destino',
+    enunciado,
+    unidad: 'años',
+    respuesta: round2(anios),
+    solucion: [
+      `Datos relevantes: P = ${fmt(P)}, F objetivo = ${fmt(F)}, tasa nominal = ${tasaNominalPct}% capitalizable ${temporalidad} (el gasto mensual y la edad de ${nombre} son datos distractores, no se usan).`,
+      `Tasa periódica: r = ${tasaNominalPct}% / ${t.m} = ${(r * 100).toFixed(4)}% por ${t.periodo}.`,
+      `n = ln(F/P) / ln(1+r) = ln(${(F / P).toFixed(4)}) / ln(1 + ${(r * 100).toFixed(4)}%) ≈ ${n.toFixed(2)} ${t.periodoPlural}.`,
+      `En años: t = n / ${t.m} ≈ ${anios.toFixed(2)} años.`,
+    ],
+  };
+}
+
+const GENERADORES_QUIZ = [
+  genInteresSimpleInteres,
+  genInteresSimpleMonto,
+  genInteresCompuestoMonto,
+  genInteresCompuestoPeriodos,
+  genTasaEfectivaAnual,
+  genTasaNominalDesdeEfectiva,
+  genValorPresente,
+  genCuotaFrancesa,
+  genMixtoTiempoAnios,
+  genDestinoVerborrea,
+];
+
+function generarPreguntaNivel(nivel) {
+  const gen = GENERADORES_QUIZ[nivel - 1] || GENERADORES_QUIZ[0];
+  return { ...gen(), nivel };
+}
+
+function QuizTab() {
+  const [nivel, setNivel] = useState(1);
+  const [pregunta, setPregunta] = useState(() => generarPreguntaNivel(1));
+  const [respuestaTexto, setRespuestaTexto] = useState('');
+  const [verificado, setVerificado] = useState(false);
+  const [correcto, setCorrecto] = useState(false);
+  const [puntaje, setPuntaje] = useState({ aciertos: 0, total: 0 });
+
+  const cambiarNivel = (n) => {
+    setNivel(n);
+    setPregunta(generarPreguntaNivel(n));
+    setRespuestaTexto('');
+    setVerificado(false);
+    setCorrecto(false);
+    setPuntaje({ aciertos: 0, total: 0 });
+  };
+
+  const nuevaPregunta = () => {
+    setPregunta(generarPreguntaNivel(nivel));
+    setRespuestaTexto('');
+    setVerificado(false);
+    setCorrecto(false);
+  };
+
+  const verificar = () => {
+    const valor = parseFloat(respuestaTexto.replace(',', '.'));
+    const ok = dentroDeTolerancia(valor, pregunta.respuesta, pregunta.unidad);
+    setCorrecto(ok);
+    setVerificado(true);
+    setPuntaje((p) => ({ aciertos: p.aciertos + (ok ? 1 : 0), total: p.total + 1 }));
+  };
+
+  const meta = NIVELES_META[nivel - 1];
+  const unidadSufijo = pregunta.unidad === '%' ? '%' : pregunta.unidad === '$' ? '$' : pregunta.unidad === 'años' ? 'años' : 'periodos';
+
+  return (
+    <div className="space-y-5">
+      <div>
+        <div className="text-xs uppercase tracking-wide cx-text-text-muted font-semibold mb-2">
+          Nivel de dificultad (1 = más fácil, 10 = más difícil)
+        </div>
+        <div className="flex flex-wrap gap-1.5">
+          {NIVELES_META.map((m) => (
+            <PillButton key={m.nivel} active={nivel === m.nivel} onClick={() => cambiarNivel(m.nivel)}>
+              {m.nivel}
+            </PillButton>
+          ))}
+        </div>
+      </div>
+
+      <div className="grid sm:grid-cols-3 gap-3">
+        <StatCard label="Nivel actual" value={`${nivel} · ${meta.tag}`} accent="blue" />
+        <StatCard label="Aciertos" value={`${puntaje.aciertos} / ${puntaje.total}`} accent="teal" />
+        <StatCard
+          label="Efectividad"
+          value={puntaje.total ? `${Math.round((puntaje.aciertos / puntaje.total) * 100)}%` : '—'}
+          accent="coral"
+        />
+      </div>
+
+      <div className="cx-bg-surface border cx-border-border rounded-lg p-4 sm:p-5 space-y-4">
+        <div className="flex items-center gap-2 cx-text-accent-primary-text font-semibold text-xs uppercase tracking-wide">
+          <Lightbulb size={14} /> {pregunta.categoria} · Nivel {nivel}
+        </div>
+        <p className="text-[15px] cx-text-text-strong-gray leading-relaxed"><TextoConNegritas texto={pregunta.enunciado} /></p>
+
+        <div className="flex flex-col sm:flex-row gap-3 sm:items-end">
+          <label className="flex-1 flex flex-col gap-1">
+            <span className="text-xs uppercase tracking-wide cx-text-text-muted font-semibold">Tu respuesta ({unidadSufijo})</span>
+            <input
+              type="text"
+              inputMode="decimal"
+              value={respuestaTexto}
+              onChange={(e) => setRespuestaTexto(e.target.value)}
+              placeholder={pregunta.unidad === '$' ? 'Ej. 12500.50' : 'Ej. 14.25'}
+              className="w-full px-3 py-2.5 border-2 cx-border-border rounded-lg outline-none cx-focus-border-accent-primary cx-bg-surface cx-text-text-primary"
+              style={{ fontFamily: "'JetBrains Mono', monospace" }}
+            />
+          </label>
+          <div className="flex gap-2">
+            <button
+              onClick={verificar}
+              disabled={respuestaTexto.trim() === ''}
+              className="px-4 py-2.5 rounded-lg text-sm font-semibold text-white disabled:opacity-40"
+              style={{ background: 'var(--accent-primary)' }}
+            >
+              Verificar
+            </button>
+            <button
+              onClick={nuevaPregunta}
+              className="px-4 py-2.5 rounded-lg text-sm font-semibold cx-bg-surface cx-text-text-secondary border-2 cx-border-border cx-hover-border-border-hover flex items-center gap-1.5"
+            >
+              <RotateCcw size={14} /> Nueva
+            </button>
+          </div>
+        </div>
+
+        {verificado && (
+          <div
+            className={`rounded-lg p-4 space-y-2 ${correcto ? 'cx-bg-accent-green-bg' : 'cx-bg-accent-coral-bg'}`}
+          >
+            <div className={`flex items-center gap-2 font-semibold text-sm ${correcto ? 'cx-text-accent-green-text' : 'cx-text-accent-coral-text'}`}>
+              {correcto ? <Check size={16} /> : <X size={16} />}
+              {correcto ? '¡Correcto!' : 'No es correcto todavía.'}
+            </div>
+            <p className="text-sm cx-text-text-strong-gray">
+              Respuesta esperada: <strong>{pregunta.unidad === '%' || pregunta.unidad === 'años' || pregunta.unidad === 'periodos' ? pregunta.respuesta.toLocaleString('es-EC', { maximumFractionDigits: 2 }) + (pregunta.unidad === '%' ? '%' : ' ' + unidadSufijo) : fmt(pregunta.respuesta)}</strong>
+            </p>
+            <div className="space-y-1 pt-1 border-t" style={{ borderColor: 'var(--border)' }}>
+              {pregunta.solucion.map((linea, i) => (
+                <p key={i} className="text-xs cx-text-text-secondary leading-relaxed">{linea}</p>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
+      <p className="text-[11px] cx-text-text-faint">
+        Cada nivel genera preguntas nuevas con números aleatorios cada vez — puedes practicar el mismo nivel las veces que quieras.
+        La tolerancia de la respuesta considera redondeos normales de cálculo.
+      </p>
+    </div>
+  );
+}
+
+function FormularioTab() {
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 cx-bg-surface border cx-border-border p-5 rounded-lg">
+        <div className="w-full sm:w-auto">
+          <h3 className="font-semibold text-lg cx-text-text-primary mb-1" style={{ fontFamily: "'Fraunces', serif" }}>Formulario de Fórmulas</h3>
+          <p className="text-sm cx-text-text-secondary">Todas las fórmulas organizadas por tema. Descárgalas para tus apuntes.</p>
+        </div>
+        <button 
+          onClick={() => window.print()} 
+          className="w-full sm:w-auto px-5 py-3 sm:py-2.5 rounded-lg text-sm font-semibold text-white flex justify-center items-center gap-2 hover:opacity-90 transition-opacity shadow-sm shadow-black/20"
+          style={{ background: 'var(--accent-primary)' }}
+        >
+          <Printer size={16} /> Generar PDF
+        </button>
+      </div>
+
+      <div className="grid gap-5">
+        {DATOS_FORMULARIO.map(tema => (
+          <div key={tema.tema} className="cx-bg-surface border cx-border-border rounded-lg p-4 sm:p-5">
+            <h4 className="text-base sm:text-[17px] font-bold mb-4 cx-text-accent-primary border-b cx-border-border pb-2" style={{ fontFamily: "'Fraunces', serif" }}>{tema.tema}</h4>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {tema.formulas.map(f => (
+                <div key={f.nombre} className="cx-bg-surface-alt rounded-lg p-4 border cx-border-border flex flex-col">
+                  <div className="text-xs font-bold mb-3 cx-text-text-primary uppercase tracking-wide">{f.nombre}</div>
+                  {/* CORREGIDO: Usa cx-bg-surface-alt en vez de dark: */}
+                  <div className="mb-4 cx-bg-surface-alt p-3 rounded-lg border cx-border-border flex justify-center items-center shadow-inner overflow-x-auto">
+                    <MathBlock>{f.componente}</MathBlock>
+                  </div>
+                  <div className="text-[10px] font-semibold uppercase tracking-wide cx-text-text-muted mb-2">Variables:</div>
+                  <ListaVariables items={f.variables} compact={true} />
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+      <p className="text-xs text-center cx-text-text-faint">En móvil, usa la opción "Guardar como PDF" que aparece en el menú de impresión de tu dispositivo.</p>
+    </div>
+  );
+}
+
+// ============================================================
+// PRINTABLE FORMULARIO - Versión para PDF con QR y limpieza de CSS
+// ============================================================
+function PrintableFormulario() {
+  return (
+    <div 
+      className="hidden print:block w-full bg-white text-black p-4"
+      style={{ 
+        fontFamily: "'Inter', sans-serif"
+        // Variables CSS removidas (no se usaban)
+      }}
+    >
+      <style>{`
+        @media print {
+          @page { margin: 10mm; size: A4; }
+          body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+          .print-cheat-sheet { min-width: 800px; position: relative; }
+          .avoid-page-break { page-break-inside: avoid; }
+        }
+      `}</style>
+      
+      <div className="print-cheat-sheet">
+        <div className="relative text-center border-b-2 border-black pb-2 mb-4">
+          <h1 className="text-xl font-bold uppercase tracking-widest mb-1" style={{ fontFamily: "'Fraunces', serif" }}>
+            Formulario Finanzas y Discreta
+          </h1>
+          <p className="text-[9px] text-gray-600 font-bold uppercase tracking-widest pr-14">
+            Proyecto Matemáticas Discretas · ESPOL
+          </p>
+          <img 
+            src="QR.png" 
+            alt="Código QR" 
+            className="absolute right-0 top-0 h-10 w-10 sm:h-12 sm:w-12"
+            style={{ objectFit: 'contain' }}
+          />
+        </div>
+
+        <div className="grid grid-cols-2 gap-3 items-start">
+          {DATOS_FORMULARIO.map(tema => (
+            <div key={tema.tema} className="avoid-page-break border-2 border-black rounded-sm overflow-hidden">
+              <h2 className="text-xs font-bold bg-gray-100 border-b-2 border-black px-2 py-1 uppercase tracking-wide text-black" style={{ fontFamily: "'Fraunces', serif" }}>
+                {tema.tema}
+              </h2>
+              
+              <div className="p-2 flex flex-col gap-3">
+                {tema.formulas.map(f => (
+                  <div key={f.nombre} className="flex flex-col gap-1">
+                    <div className="font-bold text-[10px] text-gray-800 uppercase">
+                      {f.nombre}
+                    </div>
+                    <div className="text-center px-1 py-1.5 bg-gray-50 border border-gray-300 rounded-sm text-[13px] text-black">
+                      {f.componente}
+                    </div>
+                    {f.variables && (
+                      <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-0.5 text-[9px] leading-tight">
+                        {f.variables.map(v => (
+                          <div key={v.simbolo} className="flex items-baseline gap-1">
+                            <strong className="font-serif italic bg-gray-200 px-1 rounded-sm border border-gray-300 text-black">
+                              {v.simbolo}
+                            </strong>
+                            <span className="text-gray-700">= {v.desc}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+        
+        <div className="mt-4 pt-2 border-t border-gray-300 text-center text-[8px] text-gray-500 uppercase tracking-widest">
+          Generado desde el Simulador Financiero ESPOL
+        </div>
+      </div>
+    </div>
+  );
+}
+
+const FOLDERS = [
+  { key: 'interes', label: 'Interés simple y compuesto', desc: 'Cómo crece el dinero: interés lineal vs. exponencial, con capitalizaciones.', icon: PiggyBank, accent: '#2F8F5B' },
+  { key: 'tasas', label: 'Tasas de interés equivalentes', desc: 'Convierte una tasa nominal entre distintas capitalizaciones.', icon: ArrowLeftRight, accent: '#2B4570' },
+  { key: 'anualidades', label: 'Anualidades y préstamos', desc: 'Sistemas de amortización: francesa, alemana y americana.', icon: Landmark, accent: '#A3402E' },
+  { key: 'simulador', label: 'Simulador de destinos', desc: 'Compara caminos de ahorro y deuda con tus propios números.', icon: Target, accent: '#8A6D1F' },
+  { key: 'quizzes', label: 'Quizzes y ejercicios', desc: '10 niveles de dificultad: desde interés simple hasta problemas de destino con enunciados largos.', icon: GraduationCap, accent: '#6B4FA0' },
+  { key: 'formulario', label: 'Formulario y PDF', desc: 'Todas las fórmulas separadas por tema y listas para exportar a PDF.', icon: FileText, accent: '#D97706' },
+];
+
+function GameMenu({ onSelect }) {
+  return (
+    <div className="flex flex-col items-center justify-center py-8 sm:py-14 px-2">
+      <div className="text-center mb-8">
+        <div
+          className="inline-flex items-center gap-2 text-[11px] uppercase tracking-[0.25em] font-semibold mb-2"
+          style={{ color: 'var(--accent-primary)' }}
+        >
+          <Sparkles size={13} /> Elige tu ruta
+        </div>
+        <h2
+          className="text-2xl sm:text-[28px]"
+          style={{ fontFamily: "'Fraunces', sans-serif", fontWeight: 600, color: 'var(--text-primary)' }}
+        >
+          ¿Qué quieres explorar hoy?
+        </h2>
+      </div>
+
+      <div className="flex flex-col items-stretch gap-3 w-full max-w-sm">
+        {FOLDERS.map((f) => {
+          const Icon = f.icon;
+          return (
+            <div key={f.key} className="relative group">
+              <button
+                onClick={(e) => onSelect(f.key, e.currentTarget)}
+                className="relative w-full flex items-center gap-3 pl-5 pr-4 py-4 rounded-lg text-[17px] text-left transition-all border-2 cx-border-border cx-bg-surface hover:-translate-y-0.5 hover:shadow-lg shadow-black/[0.05]"
+                style={{ fontFamily: "'Fraunces', sans-serif", fontWeight: 600, color: 'var(--text-primary)', backgroundColor: 'var(--surface)' }}
+              >
+                <span
+                  className="absolute left-0 top-2 bottom-2 w-1 rounded-full"
+                  style={{ background: f.accent }}
+                />
+                <Icon size={19} style={{ color: f.accent, flexShrink: 0 }} />
+                <span className="flex-1">{f.label}</span>
+                <ChevronRight
+                  size={17}
+                  className="opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition-all flex-shrink-0"
+                  style={{ color: 'var(--accent-primary)' }}
+                />
+              </button>
+              <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 top-full mt-1 w-64 opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-150 z-40">
+                <div
+                  className="text-xs leading-snug rounded-lg px-3 py-2 text-center border"
+                  style={{ background: 'var(--surface-alt)', color: 'var(--text-secondary)', borderColor: 'var(--border)' }}
+                >
+                  {f.desc}
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function SplashScreen({ fadingOut }) {
+  const [frase] = useState(() => randChoice(FRASES_CARGA));
+    
+    return (
+    <div
+      className="fixed inset-0 z-[100] flex flex-col items-center justify-center transition-all duration-300"
+      style={{
+        background: 'var(--bg)',
+        opacity: fadingOut ? 0 : 1,
+        transform: fadingOut ? 'scale(1.03)' : 'scale(1)',
+      }}
+    >
+      <div
+        className="absolute inset-0 opacity-[0.05] pointer-events-none"
+        style={{
+          backgroundImage:
+            'repeating-linear-gradient(to bottom, transparent, transparent 27px, #000 27px, #000 28px)',
+        }}
+      />
+      <div className="relative flex flex-col items-center px-6 text-center">
+        <img src={ESPOL_LOGO} alt="ESPOL" className="espol-logo w-24 sm:w-28 mb-5" />
+        <div
+          className="text-2xl sm:text-3xl mb-1"
+          style={{ fontFamily: "'Fraunces', serif", fontWeight: 600, color: 'var(--text-primary)' }}
+        >
+          Proyecto de Matematicas Discretas
+        </div>
+        <div
+          className="text-xs uppercase tracking-[0.2em] font-semibold mb-8"
+          style={{ color: 'var(--text-muted)' }}
+        >
+          Escuela Superior Politécnica del Litoral
+        </div>
+        <div className="w-56 h-1.5 rounded-full overflow-hidden" style={{ background: 'var(--border)' }}>
+          <div className="h-full splash-bar" style={{ background: 'var(--accent-primary)' }} />
+        </div>
+        <div className="text-[11px] mt-3" style={{ color: 'var(--text-faint)' }}>
+          Cargando datos y archivos contables…
+        </div>
+        <div
+        className="text-[12px] mt-4 max-w-xs italic"
+          style={{ color: 'var(--text-muted)', fontFamily: "'Fraunces', serif" }}
+        >
+            "{frase}"
+            </div>
+      </div>
+    </div>
+  );
+}
+
+function FolderHeader({ folder, tutorialOn, onToggleTutorial, onBack }) {
+  return (
+    <div className="flex items-center justify-between gap-3 mb-5 flex-wrap">
+      <div className="flex items-center gap-2 text-sm cx-text-text-muted">
+        <button onClick={onBack} className="flex items-center gap-1 cx-hover-text-accent-primary font-medium">
+          <Home size={14} /> Inicio
+        </button>
+        <ChevronRight size={14} className="text-gray-300" />
+        <span className="cx-text-text-primary font-semibold" style={{ fontFamily: "'Fraunces', sans-serif" }}>{folder.label}</span>
+      </div>
+      <button
+        onClick={onToggleTutorial}
+        className={`flex items-center gap-1.5 text-xs font-semibold rounded-md px-3.5 py-2 transition-colors ${
+          tutorialOn ? 'text-white' : 'cx-bg-surface cx-text-accent-primary border-2 cx-border-border cx-hover-border-border-hover'
+        }`}
+        style={{ background: tutorialOn ? 'var(--accent-primary)' : undefined }}
+      >
+        <GraduationCap size={14} /> Modo tutorial {tutorialOn ? 'activado' : ''}
+      </button>
+    </div>
+  );
+}
+
+const TUTORIALES = {
+  interes: [
+    { titulo: '¿Dónde estás?', texto: 'Esta carpeta compara dos formas de hacer crecer (o cobrar) dinero en el tiempo: interés simple e interés compuesto. Usa los botones de arriba para alternar entre ambos.', consejo: 'Cambia entre "Interés simple" y "Interés compuesto" y observa cómo cambia la forma de la gráfica: una línea recta vs. una curva.' },
+    {
+      titulo: 'La tasa y su capitalización',
+      texto: 'La tasa que ingresas es nominal anual. La solapa "Capitalización" define cada cuánto se aplica esa tasa (mensual, trimestral, continua, etc.), lo que cambia la tasa periódica real que se usa en calculations.',
+      formula: <MathInline><Var>r</Var> = <Frac num={<Var>j</Var>} den={<Var>m</Var>} /></MathInline>,
+      variables: [
+        { simbolo: 'j', desc: 'tasa nominal anual' },
+        { simbolo: 'm', desc: 'capitalizaciones por año' },
+        { simbolo: 'r', desc: 'tasa periódica resultante' },
+      ],
+    },
+    {
+      titulo: 'Interés simple',
+      texto: 'Cada periodo se gana exactamente lo mismo, siempre calculado sobre el capital inicial.',
+      formula: <MathInline><Var>F</Var> = <Var>P</Var> · (1 + <Var>r</Var> · <Var>t</Var>)</MathInline>,
+      variables: [
+        { simbolo: 'P', desc: 'capital inicial' },
+        { simbolo: 'r', desc: 'tasa periódica' },
+        { simbolo: 't', desc: 'número de periodos' },
+      ],
+    },
+    {
+      titulo: 'Interés compuesto',
+      texto: 'El interés se calcula sobre el saldo acumulado — interés sobre interés.',
+      formula: <MathInline><Var>F</Var> = <Var>P</Var> · <Pow base={<>(1+<Var>r</Var>)</>} exp={<Var>t</Var>} /></MathInline>,
+      variables: [
+        { simbolo: 'P', desc: 'capital inicial' },
+        { simbolo: 'r', desc: 'tasa periódica' },
+        { simbolo: 't', desc: 'número de periodos' },
+      ],
+      consejo: 'Prueba activar "Continua" en la capitalización, dentro de interés compuesto, para ver el límite teórico del crecimiento.',
+    },
+  ],
+  tasas: [
+    { titulo: '¿Para qué sirve esta carpeta?', texto: 'Dos tasas nominales con distinta capitalización pueden generar exactamente el mismo rendimiento real. Aquí conviertes una tasa de una temporalidad a otra manteniendo el mismo efecto.', consejo: 'Compara, por ejemplo, una tasa "18% anual capitalizable mensualmente" contra su equivalente trimestral.' },
+    {
+      titulo: 'El puente: la tasa efectiva anual',
+      texto: 'Toda conversión pasa primero por la tasa efectiva anual (TEA), que representa el rendimiento real en un año sin importar cómo se capitalice.',
+      formula: <MathInline>TEA = <Pow base={<>(1 + <Frac num={<Var>j</Var>} den={<Var>m</Var>} />)</>} exp={<Var>m</Var>} /> − 1</MathInline>,
+      variables: [
+        { simbolo: 'j', desc: 'tasa nominal anual' },
+        { simbolo: 'm', desc: 'capitalizaciones por año' },
+      ],
+    },
+    {
+      titulo: 'De la TEA a la nueva nominal',
+      texto: 'Una vez que tienes la TEA, se despeja la tasa nominal equivalente para la nueva temporalidad.',
+      formula: <MathInline><Var>j</Var><Sub>2</Sub> = (<Pow base="(1+TEA)" exp={<Frac num="1" den={<><Var>m</Var><Sub>2</Sub></>} />} /> − 1) · <Var>m</Var><Sub>2</Sub></MathInline>,
+      consejo: 'Si la temporalidad de destino es "Continua", la fórmula cambia a j = ln(1+TEA).',
+    },
+  ],
+  anualidades: [
+    { titulo: '¿Qué estás calculando?', texto: 'Una anualidad reparte un préstamo en pagos periódicos. El sistema que elijas decide cómo se reparte cada pago entre interés y capital.', consejo: 'Compara el mismo préstamo en los tres sistemas y fíjate en cuál paga más interés total.' },
+    {
+      titulo: 'Sistema francés (cuota fija)',
+      texto: 'El pago total es siempre el mismo; lo que cambia es cuánto de ese pago es interés y cuánto es capital.',
+      formula: <MathInline>Pago = <Frac num={<><Var>P</Var> · <Var>r</Var></>} den={<>1 − <Pow base={<>(1+<Var>r</Var>)</>} exp={<>−<Var>n</Var></>} /></>} /></MathInline>,
+      variables: [
+        { simbolo: 'P', desc: 'monto del préstamo' },
+        { simbolo: 'r', desc: 'tasa periódica' },
+        { simbolo: 'n', desc: 'número de periodos' },
+      ],
+    },
+    {
+      titulo: 'Sistema alemán (capital fijo)',
+      texto: 'El capital que abonas es siempre el mismo; el interés y el pago total bajan con el tiempo.',
+      formula: <MathInline>Capital = <Frac num={<Var>P</Var>} den={<Var>n</Var>} /></MathInline>,
+    },
+    {
+      titulo: 'Sistema americano (bullet)',
+      texto: 'Solo pagas interés periodo a periodo, y devuelves todo el capital de una vez al final.',
+      formula: <MathInline>Pago = Interés &nbsp;(excepto el último periodo)</MathInline>,
+    },
+  ],
+  simulador: [
+    { titulo: '¿Qué compara esta carpeta?', texto: 'Con el mismo par de números (una meta y una capacidad mensual), compara cinco caminos financieros distintos: desde guardar sin interés hasta pagar una tarjeta de crédito.', consejo: 'Fíjate en cuánto cambia el tiempo y el interés solo por el tipo de camino que elijas.' },
+    { titulo: 'Ahorro vs. deuda', texto: 'Los caminos verdes te acercan a una meta; los caminos rojos son deudas que debes saldar. Ambos usan el mismo motor de interés compuesto por dentro.' },
+    { titulo: 'Pagos extraordinarios', texto: 'Toca "Analizar este destino" en cualquier camino para simular qué pasa si aportas o abonas un poco más — o si agregas un pago puntual en un mes específico.', consejo: 'Compara el escenario base contra uno con un abono extra mensual pequeño: los meses que te ahorras suelen sorprender.' },
+  ],
+  quizzes: [
+    { titulo: '¿Cómo funciona esta carpeta?', texto: 'Hay 10 niveles de dificultad. Cada nivel genera preguntas nuevas con números aleatorios, así que puedes practicar el mismo nivel tantas veces como quieras.', consejo: 'Empieza en el nivel 1 y sube de a poco — los niveles 9 y 10 combinan varias fórmulas en un mismo problema.' },
+    { titulo: 'Niveles 1 a 8', texto: 'Cubren interés simple, interés compuesto, cálculo de periodos, tasas equivalentes (nominal ↔ efectiva), valor presente y la cuota de una anualidad bajo el sistema francés.' },
+    { titulo: 'Niveles 9 y 10', texto: 'El nivel 9 combina tasas y periodos en un solo problema. El nivel 10 es un problema de destino con un enunciado largo: incluye datos que no se necesitan para el cálculo, así que identifica primero qué información es relevante antes de calcular.' },
+  ],
+};
+
+function TutorialDrawer({ steps, index, setIndex, onClose }) {
+  const step = steps[index];
+  if (!step) return null;
+  return (
+    <div
+      className="fixed bottom-4 right-4 left-4 sm:left-auto sm:w-96 z-40 cx-bg-surface border-2 cx-border-20-accent-primary rounded-lg shadow-2xl shadow-black/15 p-5"
+      style={{ backgroundColor: 'var(--surface)', color: 'var(--text-primary)' }}
+    >
+      <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center gap-1.5 cx-text-accent-primary text-xs font-semibold uppercase tracking-wide">
+          <GraduationCap size={14} /> Paso {index + 1} de {steps.length}
+        </div>
+        <button onClick={onClose} className="p-1 rounded-full cx-text-text-faint cx-hover-bg-surface-hover-2" aria-label="Cerrar tutorial">
+          <X size={14} />
+        </button>
+      </div>
+      <h4 className="text-base font-semibold cx-text-text-primary mb-1.5" style={{ fontFamily: "'Fraunces', sans-serif" }}>{step.titulo}</h4>
+      <p className="text-sm cx-text-text-secondary leading-relaxed mb-3">{step.texto}</p>
+      {step.formula && (
+        <div className="cx-bg-surface-alt rounded-lg px-3 py-2.5 mb-3">
+          <div className="text-[10px] cx-text-text-muted font-semibold uppercase tracking-wide mb-1">Fórmula</div>
+          <div className="cx-text-text-primary">{step.formula}</div>
+          {step.variables && (
+            <div className="mt-2 pt-2 border-t border-black/5">
+              <ListaVariables items={step.variables} compact />
+            </div>
+          )}
+        </div>
+      )}
+      {step.consejo && (
+        <div className="flex items-start gap-1.5 text-xs cx-text-accent-green-text cx-bg-accent-green-bg rounded-lg px-3 py-2 mb-3">
+          <Lightbulb size={13} className="mt-0.5 flex-shrink-0" /> {step.consejo}
+        </div>
+      )}
+      <div className="flex items-center justify-between gap-2">
+        <button
+          disabled={index === 0}
+          onClick={() => setIndex((i) => Math.max(0, i - 1))}
+          className="flex items-center gap-1 text-xs font-semibold px-3 py-1.5 rounded-md border-2 cx-border-border cx-text-text-muted disabled:opacity-30"
+        >
+          <ChevronLeft size={13} /> Antes
+        </button>
+        {index < steps.length - 1 ? (
+          <button
+            onClick={() => setIndex((i) => Math.min(steps.length - 1, i + 1))}
+            className="flex items-center gap-1 text-xs font-semibold px-3.5 py-1.5 rounded-md text-white"
+            style={{ background: 'var(--accent-primary)' }}
+          >
+            Siguiente <ChevronRight size={13} />
+          </button>
+        ) : (
+          <button
+            onClick={onClose}
+            className="flex items-center gap-1 text-xs font-semibold px-3.5 py-1.5 rounded-md text-white"
+            style={{ background: 'var(--accent-green)' }}
+          >
+            <Check size={13} /> Listo
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function FinanzasApp() {
+  const [folder, setFolder] = useState(null);
+  const [tutorialOn, setTutorialOn] = useState(false);
+  const [tutorialStep, setTutorialStep] = useState(0);
+  const [entering, setEntering] = useState(false);
+  const [leaving, setLeaving] = useState(false);
+  const [origin, setOrigin] = useState({ x: 50, y: 15 });
+  const [theme, setTheme] = useState('light');
+  const [acercaDeOpen, setAcercaDeOpen] = useState(false);
+  const [booting, setBooting] = useState(true);
+  const [splashDone, setSplashDone] = useState(false);
+
+  useEffect(() => {
+    const t1 = setTimeout(() => setBooting(false), 1700);
+    const t2 = setTimeout(() => setSplashDone(true), 2000);
+    return () => { clearTimeout(t1); clearTimeout(t2); };
+  }, []);
+  const shellRef = useRef(null);
+  const TRANSITION_MS = 190;
+
+  const toggleTheme = () => setTheme((t) => (t === 'light' ? 'dark' : 'light'));
+
+  const jugarTransicion = (aplicarCambio) => {
+    setLeaving(true);
+    setTimeout(() => {
+      aplicarCambio();
+      setLeaving(false);
+      setEntering(true);
+      requestAnimationFrame(() => requestAnimationFrame(() => setEntering(false)));
+    }, TRANSITION_MS);
+  };
+
+  const irA = (key, cardEl) => {
+    if (key === folder) return;
+    if (cardEl && shellRef.current) {
+      const c = shellRef.current.getBoundingClientRect();
+      const r = cardEl.getBoundingClientRect();
+      setOrigin({
+        x: ((r.left + r.width / 2 - c.left) / c.width) * 100,
+        y: ((r.top + r.height / 2 - c.top) / c.height) * 100,
+      });
+    } else {
+      setOrigin({ x: 50, y: 15 });
+    }
+    jugarTransicion(() => {
+      setFolder(key);
+      setTutorialOn(false);
+      setTutorialStep(0);
+    });
+  };
+
+  const abrirFolder = (key, cardEl) => irA(key, cardEl);
+  const volver = () => irA(null);
+
+  const toggleTutorial = () => { setTutorialOn((o) => !o); setTutorialStep(0); };
+
+  const folderDef = FOLDERS.find((f) => f.key === folder);
+  const steps = folder ? TUTORIALES[folder] : [];
+
+  const contentStyle = {
+    transformOrigin: `${origin.x}% ${origin.y}%`,
+    opacity: leaving || entering ? 0 : 1,
+    transform: leaving
+      ? 'scale(0.93)'
+      : entering
+      ? (folder ? 'scale(0.8)' : 'scale(0.96)')
+      : undefined,
+    transition: 'opacity 190ms ease-out, transform 190ms ease-out',
+  };
+
+  return (
+    <>
+      <div
+        className="finapp-root min-h-screen w-full print:hidden"
+        data-theme={theme}
+        style={{
+          background:
+            'radial-gradient(1100px 500px at 85% -10%, rgba(31,77,58,0.07), transparent 60%), radial-gradient(900px 500px at -10% 10%, rgba(138,109,31,0.06), transparent 55%), var(--bg)',
+        }}
+      >
+        {!splashDone && <SplashScreen fadingOut={!booting} />}
+        <style>{`
+          @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&family=STIX+Two+Text:ital,wght@0,400;0,500;0,600;1,400;1,500&display=swap');
+          body { font-family: 'Inter', sans-serif; }
+          @keyframes fillbar { from { width: 0%; } to { width: 100%; } }
+          .splash-bar { width: 0%; animation: fillbar 1.6s ease-out forwards; }
+          .espol-logo { transition: filter 200ms ease; }
+          .finapp-root[data-theme='dark'] .espol-logo { filter: invert(1) brightness(1.7); }
+
+          .finapp-root {
+            --bg: #F1ECDC;
+            --surface: #FBF8EF;
+            --surface-alt: #E7EEE4;
+            --surface-hover: #EFE9D6;
+            --surface-hover-2: #E7DFC5;
+            --surface-hover-3: #DCD2AF;
+            --border: #D9CFAE;
+            --border-hover: #B7A876;
+            --text-primary: #241D12;
+            --text-secondary: #5B5138;
+            --text-muted: #85795A;
+            --text-faint: #ACA080;
+            --text-strong-gray: #4A4128;
+            --accent-primary: #1F4D3A;
+            --accent-primary-bg: #E3ECE3;
+            --accent-primary-bg-hover: #D2E1D2;
+            --accent-primary-text: #163A2B;
+            --accent-green: #2F8F5B;
+            --accent-green-bg: #E4F1E7;
+            --accent-green-text: #1D6B44;
+            --accent-coral: #A3402E;
+            --accent-coral-bg: #F3E3DC;
+            --accent-coral-text: #832E20;
+            --accent-coral-border: #DDB9A6;
+            --chart-grid: #E1D8BC;
+            --chart-axis: #9C8F6E;
+          }
+          .finapp-root[data-theme='dark'] {
+            --bg: #17140C;
+            --surface: #201B10;
+            --surface-alt: #202A22;
+            --surface-hover: #262014;
+            --surface-hover-2: #2E2718;
+            --surface-hover-3: #3A311D;
+            --border: #3A3018;
+            --border-hover: #5C4E28;
+            --text-primary: #F1EAD3;
+            --text-secondary: #D0C4A0;
+            --text-muted: #A4977A;
+            --text-faint: #786D53;
+            --text-strong-gray: #C7BB98;
+            --accent-primary: #6FCB9F;
+            --accent-primary-bg: #22362A;
+            --accent-primary-bg-hover: #2C4433;
+            --accent-primary-text: #8FE0B7;
+            --accent-green: #6FCB9F;
+            --accent-green-bg: #1E3327;
+            --accent-green-text: #8FE0B7;
+            --accent-coral: #E0997F;
+            --accent-coral-bg: #392419;
+            --accent-coral-text: #F0B79E;
+            --accent-coral-border: #5A3A27;
+            --chart-grid: #3A3018;
+            --chart-axis: #8C7F5D;
+          }
+          .finapp-root, .finapp-root * {
+            transition: background-color 200ms ease, border-color 200ms ease, color 200ms ease;
+          }
+          .finapp-root input::placeholder {
+            color: var(--text-faint);
+            opacity: 1;
+            font-weight: 500;
+          }
+          .finapp-root {
+            color: var(--text-primary);
+            color-scheme: light;
+            background-image: repeating-linear-gradient(
+              to bottom,
+              rgba(120, 105, 60, 0.05),
+              rgba(120, 105, 60, 0.05) 1px,
+              transparent 1px,
+              transparent 28px
+            );
+          }
+          .finapp-root[data-theme='dark'] {
+            color-scheme: dark;
+          }
+
+          .cx-bg-surface-hover-2 { background-color: var(--surface-hover-2); }
+          .cx-hover-bg-surface-hover-3:hover { background-color: var(--surface-hover-3); }
+          .cx-hover-bg-surface-hover-2:hover { background-color: var(--surface-hover-2); }
+          .cx-bg-surface { background-color: var(--surface); }
+          .cx-text-text-secondary { color: var(--text-secondary); }
+          .cx-border-20-accent-green { border-color: color-mix(in srgb, var(--accent-green) 20%, transparent); }
+          .cx-bg-accent-green-bg { background-color: var(--accent-green-bg); }
+          .cx-border-20-accent-primary { border-color: color-mix(in srgb, var(--accent-primary) 20%, transparent); }
+          .cx-bg-accent-primary-bg { background-color: var(--accent-primary-bg); }
+          .cx-text-accent-green-text { color: var(--accent-green-text); }
+          .cx-text-accent-primary { color: var(--accent-primary); }
+          .cx-text-text-strong-gray { color: var(--text-strong-gray); }
+          .cx-border-accent-primary { border-color: var(--accent-primary); }
+          .cx-border-border { border-color: var(--border); }
+          .cx-text-text-muted { color: var(--text-muted); }
+          .cx-text-text-faint { color: var(--text-faint); }
+          .cx-text-text-primary { color: var(--text-primary); }
+          .cx-hover-border-border-hover:hover { border-color: var(--border-hover); }
+          .cx-focusw-border-accent-primary:focus-within { border-color: var(--accent-primary); }
+          .cx-text-accent-coral-text { color: var(--accent-coral-text); }
+          .cx-bg-accent-coral-bg { background-color: var(--accent-coral-bg); }
+          .cx-text-accent-primary-text { color: var(--accent-primary-text); }
+          .cx-hover-bg-accent-primary-bg-hover:hover { background-color: var(--accent-primary-bg-hover); }
+          .cx-border-border-hover { border-color: var(--border-hover); }
+          .cx-bg-surface-alt { background-color: var(--surface-alt); }
+          .cx-focus-border-accent-primary:focus { border-color: var(--accent-primary); }
+          .cx-hover-bg-surface-hover:hover { background-color: var(--surface-hover); }
+          .cx-hover-bg-surface-alt:hover { background-color: var(--surface-alt); }
+          .cx-hover-bg-accent-coral-bg:hover { background-color: var(--accent-coral-bg); }
+          .cx-hover-text-accent-coral-text:hover { color: var(--accent-coral-text); }
+          .cx-border-accent-green { border-color: var(--accent-green); }
+          .cx-border-15-accent-primary { border-color: color-mix(in srgb, var(--accent-primary) 15%, transparent); }
+          .cx-border-accent-coral-border { border-color: var(--accent-coral-border); }
+          .cx-hover-text-accent-primary:hover { color: var(--accent-primary); }
+        `}</style>
+        <div className="max-w-5xl mx-auto px-4 py-6 sm:py-8" style={{ fontFamily: "'Inter', sans-serif" }}>
+          <header
+            className="relative overflow-hidden rounded-lg mb-5 px-5 py-6 sm:px-8 sm:py-8"
+            style={{ background: 'linear-gradient(135deg, #1F4D3A 0%, #2A6349 55%, #163A2B 100%)' }}
+          >
+            <div
+              className="absolute inset-0 opacity-[0.05] pointer-events-none"
+              style={{
+                backgroundImage:
+                  'repeating-linear-gradient(to bottom, transparent, transparent 27px, #fff 27px, #fff 28px)',
+              }}
+            />
+            <div className="relative flex items-center justify-between gap-3 flex-wrap">
+              <button
+                onClick={volver}
+                className="inline-flex items-center gap-2 text-[#D9C98A] text-xs uppercase tracking-[0.15em] font-semibold bg-white/10 hover:bg-white/20 rounded-md px-3 py-1 transition-colors"
+                aria-label="Volver al menú principal"
+              >
+                <Calculator size={14} /> Proyecto de Matemáticas Discretas · Finanzas para todos
+              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={toggleTheme}
+                  className="inline-flex items-center gap-1.5 text-white text-xs font-semibold bg-white/10 hover:bg-white/20 rounded-md px-3.5 py-1.5 transition-colors"
+                  aria-label="Cambiar entre tema claro y oscuro"
+                >
+                  {theme === 'dark' ? <Sun size={13} /> : <Moon size={13} />}
+                  {theme === 'dark' ? 'Claro' : 'Oscuro'}
+                </button>
+                <button
+                  onClick={() => setAcercaDeOpen(true)}
+                  className="inline-flex items-center gap-1.5 text-white text-xs font-semibold bg-white/10 hover:bg-white/20 rounded-md px-3.5 py-1.5 transition-colors"
+                >
+                  <Info size={13} /> Acerca de
+                </button>
+              </div>
+            </div>
+            <div className="absolute left-0 right-0 bottom-0">
+              <div className="h-[3px]" style={{ background: '#D9C98A', opacity: 0.9 }} />
+              <div className="h-px mt-[3px]" style={{ background: '#D9C98A', opacity: 0.5 }} />
+            </div>
+          </header>
+
+          {acercaDeOpen && (
+            <Modal onClose={() => setAcercaDeOpen(false)}>
+              <div className="flex items-center gap-2 cx-text-accent-primary font-semibold text-sm mb-1" style={{ fontFamily: "'Fraunces', sans-serif" }}>
+                <Calculator size={16} /> Proyecto de Proyecto de Matemáticas Discretas · Finanzas para todos
+              </div>
+              <h3 className="text-2xl mb-3" style={{ fontFamily: "'Fraunces', sans-serif", fontWeight: 600, color: 'var(--text-primary)' }}>
+                PROTOTIPO PARA PROYECTO DE MATEMATICAS DISCRETAS
+              </h3>
+              <p className="text-sm leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
+                Organizado por carpetas, con modo tutorial y espacio para tus clases grabadas. Explora cómo funcionan el interés simple, el interés compuesto, las tasas equivalentes y los préstamos en cuotas — con explicaciones simples y una calculadora que te muestra exactamente cómo se obtuvo cada número.
+              </p>
+              <p className="text-xs mt-4 pt-4 border-t" style={{ color: 'var(--text-faint)', borderColor: 'var(--border)' }}>
+                Prototipo educativo · las cifras son ilustrativas y NO constituyen asesoría financiera.
+              </p>
+            </Modal>
+          )}
+
+          <div ref={shellRef} className="cx-bg-surface rounded-lg border cx-border-border p-4 sm:p-6 shadow-lg shadow-black/[0.08] relative">
+            <div style={contentStyle}>
+              {folder === null ? (
+                <GameMenu onSelect={abrirFolder} />
+              ) : (
+                <div>
+                  <FolderHeader folder={folderDef} tutorialOn={tutorialOn} onToggleTutorial={toggleTutorial} onBack={volver} />
+                  {folder !== 'formulario' && <VideoPlaceholder tema={folderDef.label} folderKey={folder} />}
+                  {folder === 'interes' && <InteresTab />}
+                  {folder === 'tasas' && <TasasEquivalentesTab />}
+                  {folder === 'anualidades' && <AnualidadesTab />}
+                  {folder === 'simulador' && <SimuladorTab />}
+                  {folder === 'quizzes' && <QuizTab />}
+                  {folder === 'formulario' && <FormularioTab />}
+                </div>
+              )}
+            </div>
+            {folder && tutorialOn && folder !== 'formulario' && (
+              <TutorialDrawer steps={steps} index={tutorialStep} setIndex={setTutorialStep} onClose={() => setTutorialOn(false)} />
+            )}
+          </div>
+
+          <footer className="mt-8 pt-6 border-t cx-border-border text-center">
+            <img src={ESPOL_LOGO} alt="ESPOL" className="espol-logo w-9 mx-auto mb-3 opacity-60" />
+            <div
+              className="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide cx-text-text-secondary mb-1.5"
+            >
+              <AlertTriangle size={12} /> Prototipo educativo — Esto NO es NINGUN tipo de asesoría financiera
+            </div>
+            <p className="text-[11px] cx-text-text-faint max-w-xl mx-auto leading-relaxed">
+              Este cuaderno fue desarrollado con fines académicos para Matemáticas Discretas, Escuela Superior Politécnica del Litoral (ESPOL).
+              Las cifras, tasas y resultados son ilustrativos y se calculan con fórmulas simplificadas — no constituyen asesoría financiera,
+              legal ni una oferta de productos financieros reales. Verifica siempre condiciones y tasas con una institución financiera antes
+              de tomar decisiones con dinero real.
+            </p>
+          </footer>
+        </div>
+      </div>
+      <PrintableFormulario />
+    </>
+  );
+}
+
+const root = createRoot(document.getElementById('root'));
+root.render(<FinanzasApp />);
+
+    </script>
+</body>
+</html>
