@@ -2478,9 +2478,10 @@ const APP_STYLES = `
   }
   
   .coin-wrapper {
-    display: inline-block;
-    perspective: 600px;
-    transform-style: preserve-3d;
+      display: inline-block;
+      perspective: 400px; /* Menos perspectiva = más realista */
+      transform-style: preserve-3d;
+      padding: 4px; /* Espacio para el grosor */
   }
   @media (max-width: 640px) {
     .finapp-root .max-w-5xl { padding-left: 0.75rem; padding-right: 0.75rem; }
