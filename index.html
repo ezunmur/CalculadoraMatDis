@@ -24,6 +24,8 @@
         .mode-discrete { border-left: 3px solid #8B5CF6; }
         .mode-tutorial { border-left: 3px solid #3B82F6; }
         .mode-dashboard { border-left: 3px solid #10B981; }
+        @keyframes fillbar { from { width: 0%; } to { width: 100%; } }
+        .splash-bar { width: 0%; animation: fillbar 1.6s ease-out forwards; }
     </style>
 </head>
 <body class="m-0 p-0">
@@ -33,13 +35,14 @@ import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { createRoot } from 'react-dom/client';
 import {
   ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
-  Legend, LineChart, Line, ReferenceLine
+  Legend, LineChart, Line, ReferenceLine, Area, ComposedChart
 } from 'recharts';
 import {
   Eye, X, Calculator, Target, PiggyBank, CreditCard, Landmark, Wallet,
   TrendingUp, AlertTriangle, Sparkles, ArrowRight, RotateCcw, Plus,
   GraduationCap, ChevronLeft, ChevronRight, Youtube, Lightbulb, Home,
-  Settings2, Check, ArrowLeftRight, Sun, Moon, Info, Printer, FileText
+  Settings2, Check, ArrowLeftRight, Sun, Moon, Info, Printer, FileText,
+  BarChart3, LineChart as LineChartIcon, PieChart
 } from 'lucide-react';
 
 const ESPOL_LOGO = 'logo.svg';
@@ -51,13 +54,7 @@ const FRASES_CARGA = [
   'Sin comisiones ocultas, esta vez sí.',
   'Amortizando tus dudas, una cuota a la vez.',
   'El capital inicial también fue joven alguna vez.',
-  'Nadie lee los términos y condiciones, ni este cuaderno.',
-  'Cuadrando la caja antes de que se dé cuenta el profesor.',
-  'La tasa nominal miente; la efectiva, no tanto.',
-  'Un periodo más y esto compone solo.',
-  'Aquí nadie te va a vender un seguro que no pediste.',
-  'Redondeando hacia arriba, como todo banco honesto.',
-]; 
+];
 
 // ---------- Utilidades ----------
 const fmt = (n) => {
@@ -78,16 +75,12 @@ const monthsToYears = (m) => {
 const TEMPORALIDADES = [
   { key: 'anual', label: 'Anual', m: 1, periodo: 'año', periodoPlural: 'años' },
   { key: 'semestral', label: 'Semestral', m: 2, periodo: 'semestre', periodoPlural: 'semestres' },
-  { key: 'cuatrimestral', label: 'Cuatrimestral', m: 3, periodo: 'cuatrimestre', periodoPlural: 'cuatrimestres' },
   { key: 'trimestral', label: 'Trimestral', m: 4, periodo: 'trimestre', periodoPlural: 'trimestres' },
-  { key: 'bimestral', label: 'Bimestral', m: 6, periodo: 'bimestre', periodoPlural: 'bimestres' },
-  { key: 'bimensual', label: 'Bimensual (quincenal)', m: 24, periodo: 'quincena', periodoPlural: 'quincenas' },
   { key: 'mensual', label: 'Mensual', m: 12, periodo: 'mes', periodoPlural: 'meses' },
-  { key: 'semanal', label: 'Semanal', m: 52, periodo: 'semana', periodoPlural: 'semanas' },
   { key: 'diaria', label: 'Diaria', m: 365, periodo: 'día', periodoPlural: 'días' },
   { key: 'continua', label: 'Continua', m: null, periodo: 'año', periodoPlural: 'años' },
 ];
-const getTemporalidad = (key) => TEMPORALIDADES.find((t) => t.key === key) || TEMPORALIDADES[6];
+const getTemporalidad = (key) => TEMPORALIDADES.find((t) => t.key === key) || TEMPORALIDADES[3];
 
 function tasaPeriodica(tasaNominalPct, temporalidadKey) {
   const t = getTemporalidad(temporalidadKey);
@@ -112,7 +105,7 @@ function calcularTasaDestinoDesdeTEA(tea, tipoDestino, temporalidadDestinoKey) {
 function calcularContinuo(P, tasaNominalPct, anios) {
   const r = tasaNominalPct / 100;
   const F = P * Math.exp(r * anios);
-  return { F, interes: F - P, r, anios };
+  return { F, interes: F - P };
 }
 
 function calcularAmortizacion(P, r, n, sistema) {
@@ -138,7 +131,7 @@ function calcularAmortizacion(P, r, n, sistema) {
       rows.push({ t, saldoInicial: saldo, pago, interes, capital: capitalFijo, saldoFinal });
       saldo = saldoFinal;
     }
-  } else { 
+  } else {
     for (let t = 1; t <= n; t++) {
       const interes = saldo * r;
       const capital = t === n ? saldo : 0;
@@ -262,7 +255,6 @@ function Frac({ num, den }) {
   );
 }
 function MathBlock({ children }) { return <div className="text-lg sm:text-xl cx-text-text-primary text-center px-2 py-1.5" style={{ fontFamily: "'STIX Two Text', 'Cambria Math', 'Times New Roman', serif" }}>{children}</div>; }
-function MathInline({ children }) { return <span className="text-[15px]" style={{ fontFamily: "'STIX Two Text', 'Cambria Math', 'Times New Roman', serif" }}>{children}</span>; }
 
 function ListaVariables({ items, compact }) {
   return (
@@ -275,11 +267,6 @@ function ListaVariables({ items, compact }) {
       ))}
     </dl>
   );
-}
-
-function TextoConNegritas({ texto }) {
-  const partes = texto.split('**');
-  return <>{partes.map((p, i) => i % 2 === 1 ? <strong key={i} style={{ color: 'var(--text-primary)' }}>{p}</strong> : <span key={i}>{p}</span>)}</>;
 }
 
 function PillButton({ active, onClick, children }) {
@@ -357,58 +344,33 @@ function TemaIntro({ tipo, sistema }) {
     simple: {
       titulo: '¿Qué es el interés simple?',
       color: 'teal',
-      texto: 'Es la forma más sencilla de interés: cada periodo ganas (o pagas) exactamente lo mismo, calculado siempre sobre el monto inicial.',
-      formulas: [
-        { nombre: 'Monto final', formula: <MathBlock><Var>F</Var> = <Var>P</Var> · (1 + <Var>r</Var> · <Var>t</Var>)</MathBlock> },
-        { nombre: 'Interés generado', formula: <MathBlock><Var>I</Var> = <Var>P</Var> · <Var>r</Var> · <Var>t</Var></MathBlock> },
-      ],
-      variables: [
-        { simbolo: 'P', desc: 'Capital inicial' },
-        { simbolo: 'r', desc: 'Tasa de interés por periodo, en decimal' },
-        { simbolo: 't', desc: 'Número de periodos' },
-        { simbolo: 'F', desc: 'Monto final' },
-      ],
+      texto: 'Cada periodo ganas exactamente lo mismo, calculado sobre el monto inicial.',
+      formulas: [{ nombre: 'Monto final', formula: <MathBlock><Var>F</Var> = <Var>P</Var> · (1 + <Var>r</Var> · <Var>t</Var>)</MathBlock> }],
+      variables: [{ simbolo: 'P', desc: 'Capital inicial' }, { simbolo: 'r', desc: 'Tasa por periodo' }, { simbolo: 't', desc: 'Número de periodos' }],
     },
     compuesto: {
       titulo: '¿Qué es el interés compuesto?',
       color: 'teal',
       texto: 'El interés se calcula sobre el saldo acumulado. Es "interés sobre interés".',
-      formulas: [
-        { nombre: 'Monto final', formula: <MathBlock><Var>F</Var> = <Var>P</Var> · <Pow base={<>(1 + <Var>r</Var>)</>} exp={<Var>t</Var>} /></MathBlock> },
-      ],
-      variables: [
-        { simbolo: 'P', desc: 'Capital inicial' },
-        { simbolo: 'r', desc: 'Tasa de interés por periodo' },
-        { simbolo: 't', desc: 'Número de periodos' },
-        { simbolo: 'F', desc: 'Monto final' },
-      ],
+      formulas: [{ nombre: 'Monto final', formula: <MathBlock><Var>F</Var> = <Var>P</Var> · <Pow base={<>(1 + <Var>r</Var>)</>} exp={<Var>t</Var>} /></MathBlock> }],
+      variables: [{ simbolo: 'P', desc: 'Capital inicial' }, { simbolo: 'r', desc: 'Tasa por periodo' }, { simbolo: 't', desc: 'Número de periodos' }],
     },
     anualidad: {
       titulo: '¿Qué es una anualidad?',
       color: 'blue',
-      texto: 'Una anualidad es una serie de pagos a intervalos regulares para pagar un préstamo.',
+      texto: 'Serie de pagos a intervalos regulares para pagar un préstamo.',
       formulas: [
         { nombre: 'Francesa', activo: sistema === 'francesa', formula: <MathBlock>Pago = <Frac num={<><Var>P</Var> · <Var>r</Var></>} den={<>1 − <Pow base={<>(1+<Var>r</Var>)</>} exp={<>−<Var>n</Var></>} /></>} /></MathBlock> },
         { nombre: 'Alemana', activo: sistema === 'alemana', formula: <MathBlock>Capital = <Frac num={<Var>P</Var>} den={<Var>n</Var>} /></MathBlock> },
-        { nombre: 'Americana', activo: sistema === 'americana', formula: <MathBlock>Pago = Interés · Capital al final = <Var>P</Var></MathBlock> },
       ],
-      variables: [
-        { simbolo: 'P', desc: 'Monto del préstamo' },
-        { simbolo: 'r', desc: 'Tasa de interés por periodo' },
-        { simbolo: 'n', desc: 'Número de cuotas' },
-      ],
+      variables: [{ simbolo: 'P', desc: 'Monto del préstamo' }, { simbolo: 'r', desc: 'Tasa por periodo' }, { simbolo: 'n', desc: 'Número de cuotas' }],
     },
     tasas: {
       titulo: '¿Qué son las tasas equivalentes?',
       color: 'blue',
       texto: 'Dos tasas con distinta capitalización pueden producir el mismo rendimiento.',
-      formulas: [
-        { nombre: 'Tasa efectiva anual', formula: <MathBlock>TEA = <Pow base={<>(1 + <Frac num={<Var>j</Var>} den={<Var>m</Var>} />)</>} exp={<Var>m</Var>} /> − 1</MathBlock> },
-      ],
-      variables: [
-        { simbolo: 'j', desc: 'Tasa nominal anual' },
-        { simbolo: 'm', desc: 'Capitalizaciones por año' },
-      ],
+      formulas: [{ nombre: 'Tasa efectiva anual', formula: <MathBlock>TEA = <Pow base={<>(1 + <Frac num={<Var>j</Var>} den={<Var>m</Var>} />)</>} exp={<Var>m</Var>} /> − 1</MathBlock> }],
+      variables: [{ simbolo: 'j', desc: 'Tasa nominal anual' }, { simbolo: 'm', desc: 'Capitalizaciones por año' }],
     },
   };
   const c = content[tipo];
@@ -439,7 +401,7 @@ function TemaIntro({ tipo, sistema }) {
 }
 
 // ============================================================
-// PANEL DE CONTROL - MODOS DE VISUALIZACIÓN
+// PANEL DE CONTROL
 // ============================================================
 
 function ControlPanel({ 
@@ -510,9 +472,7 @@ function SimuladorDashboard({ paths, objetivo }) {
             <div className={`text-[9px] ${p.nuncaPaga ? 'text-red-600 font-bold' : 'opacity-60'}`}>
               {p.nuncaPaga ? '⚠️ Nunca paga' : fmt(p.interes)}
             </div>
-            {p.nuncaPaga && (
-              <div className="text-[8px] text-red-600 font-bold animate-pulse">¡ALERTA!</div>
-            )}
+            {p.nuncaPaga && <div className="text-[8px] text-red-600 font-bold animate-pulse">¡ALERTA!</div>}
             {!p.nuncaPaga && p.tipo === 'ahorro' && p.meses < 12 && (
               <div className="text-[8px] text-emerald-600 font-bold">🎉 Meta alcanzada!</div>
             )}
@@ -546,13 +506,9 @@ function DiscreteMathDisplay({ formula, variables, recurrence, explanation, tipo
         <span className="text-xs font-bold cx-text-accent-primary uppercase tracking-wide">{info.label}</span>
         <span className="text-[9px] cx-text-text-muted bg-cx-bg-surface px-2 py-0.5 rounded-full">Modo Académico</span>
       </div>
-
       <div className="text-center py-2">
-        <div className="text-lg font-serif" style={{ fontFamily: "'STIX Two Text', 'Cambria Math', serif" }}>
-          {formula}
-        </div>
+        <div className="text-lg font-serif" style={{ fontFamily: "'STIX Two Text', 'Cambria Math', serif" }}>{formula}</div>
       </div>
-
       {variables && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-1 mt-2 text-xs">
           {variables.map((v, i) => (
@@ -563,19 +519,13 @@ function DiscreteMathDisplay({ formula, variables, recurrence, explanation, tipo
           ))}
         </div>
       )}
-
       {recurrence && (
         <div className="mt-2 p-2 cx-bg-surface rounded border cx-border-border">
           <div className="text-[9px] font-semibold cx-text-text-muted uppercase tracking-wide">Relación de Recurrencia</div>
           <div className="text-sm font-serif text-center py-1">{recurrence}</div>
         </div>
       )}
-
-      {explanation && (
-        <div className="mt-2 text-xs cx-text-text-secondary italic">
-          💡 {explanation}
-        </div>
-      )}
+      {explanation && <div className="mt-2 text-xs cx-text-text-secondary italic">💡 {explanation}</div>}
     </div>
   );
 }
@@ -593,29 +543,15 @@ function TutorialStep({ step, total, onNext, onPrev, onClose }) {
         <div className="flex items-center gap-1.5 cx-text-accent-primary text-xs font-semibold uppercase tracking-wide">
           <GraduationCap size={14} /> Paso {step.index + 1} de {total}
         </div>
-        <button onClick={onClose} className="p-1 rounded-full cx-text-text-faint hover:cx-bg-surface-hover-2">
-          <X size={14} />
-        </button>
+        <button onClick={onClose} className="p-1 rounded-full cx-text-text-faint hover:cx-bg-surface-hover-2"><X size={14} /></button>
       </div>
-      
-      <h4 className="text-base font-semibold cx-text-text-primary mb-1.5" style={{ fontFamily: "'Fraunces', sans-serif" }}>
-        {step.titulo}
-      </h4>
-      
+      <h4 className="text-base font-semibold cx-text-text-primary mb-1.5" style={{ fontFamily: "'Fraunces', sans-serif" }}>{step.titulo}</h4>
       <p className="text-sm cx-text-text-secondary leading-relaxed mb-3">{step.texto}</p>
-      
-      {step.formula && (
-        <div className="cx-bg-surface-alt rounded-lg px-3 py-2 mb-3 text-center font-serif text-sm">
-          {step.formula}
-        </div>
-      )}
-      
       {step.consejo && (
         <div className="flex items-start gap-1.5 text-xs cx-text-accent-green-text cx-bg-accent-green-bg rounded-lg px-3 py-2 mb-3">
           <Lightbulb size={13} className="mt-0.5 flex-shrink-0" /> {step.consejo}
         </div>
       )}
-      
       <div className="flex items-center justify-between gap-2">
         <button disabled={step.index === 0} onClick={onPrev} className="flex items-center gap-1 text-xs font-semibold px-3 py-1.5 rounded-md border-2 cx-border-border cx-text-text-muted disabled:opacity-30">
           <ChevronLeft size={13} /> Antes
@@ -635,6 +571,53 @@ function TutorialStep({ step, total, onNext, onPrev, onClose }) {
 }
 
 // ============================================================
+// GRÁFICO DE BARRAS - Capital vs Interés
+// ============================================================
+
+function StackedBarChart({ data, xKey, barKeys, colors, height = 260, label }) {
+  return (
+    <div className="cx-bg-surface border cx-border-border rounded-lg p-3" style={{ height }}>
+      <ResponsiveContainer width="100%" height="100%">
+        <BarChart data={data} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid)" vertical={false} />
+          <XAxis dataKey={xKey} tick={{ fontSize: 11, fill: 'var(--chart-axis)' }} label={{ value: label || 'Periodo', position: 'insideBottom', offset: -2, fontSize: 11, fill: 'var(--chart-axis)' }} />
+          <YAxis tick={{ fontSize: 11, fill: 'var(--chart-axis)' }} tickFormatter={(v) => '$' + fmtInt(v)} />
+          <Tooltip formatter={(v) => fmt(v)} contentStyle={{ fontSize: 12, borderRadius: 12, background: 'var(--surface)', color: 'var(--text-primary)', border: '1px solid var(--border)' }} />
+          <Legend wrapperStyle={{ fontSize: 12 }} />
+          {barKeys.map((key, i) => (
+            <Bar key={key} dataKey={key} stackId="a" fill={colors[i] || 'var(--accent-primary)'} radius={i === barKeys.length - 1 ? [4, 4, 0, 0] : [0, 0, 0, 0]} />
+          ))}
+        </BarChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
+
+// ============================================================
+// GRÁFICO DE LÍNEAS - Evolución de saldos
+// ============================================================
+
+function LineChartComponent({ data, lines, colors, height = 240, label, referenceLine }) {
+  return (
+    <div className="cx-bg-surface border cx-border-border rounded-lg p-3" style={{ height }}>
+      <ResponsiveContainer width="100%" height="100%">
+        <LineChart data={data} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid)" vertical={false} />
+          <XAxis dataKey="mes" tick={{ fontSize: 10, fill: 'var(--chart-axis)' }} label={{ value: label || 'Meses', position: 'insideBottom', offset: -2, fontSize: 11, fill: 'var(--chart-axis)' }} />
+          <YAxis tick={{ fontSize: 10, fill: 'var(--chart-axis)' }} tickFormatter={(v) => '$' + fmtInt(v)} />
+          <Tooltip formatter={(v) => fmt(v)} contentStyle={{ fontSize: 12, borderRadius: 12, background: 'var(--surface)', color: 'var(--text-primary)', border: '1px solid var(--border)' }} />
+          <Legend wrapperStyle={{ fontSize: 11 }} />
+          {referenceLine && <ReferenceLine y={referenceLine} stroke="var(--text-strong-gray)" strokeDasharray="4 4" label={{ value: 'Meta', fontSize: 10, fill: 'var(--text-strong-gray)' }} />}
+          {lines.map((key, i) => (
+            <Line key={key} type="monotone" dataKey={key} stroke={colors[i] || 'var(--accent-primary)'} strokeWidth={2} dot={false} />
+          ))}
+        </LineChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
+
+// ============================================================
 // TABS PRINCIPALES
 // ============================================================
 
@@ -645,7 +628,6 @@ function InteresTab() {
   const [temporalidad, setTemporalidad] = useState('mensual');
   const [n, setN] = useState(10);
   const [anios, setAnios] = useState(3);
-  const [modalRow, setModalRow] = useState(null);
 
   const [dashboardOn, setDashboardOn] = useState(true);
   const [tutorialOn, setTutorialOn] = useState(false);
@@ -669,36 +651,25 @@ function InteresTab() {
   }, [tipo, P, r, n]);
 
   const chartData = resultado.rows?.map((row) => ({ periodo: row.t, Capital: row.capital, Interés: row.interes })) || [];
+  const evolutionData = resultado.rows?.map((row) => ({ periodo: row.t, Saldo: row.saldoFinal })) || [];
 
   const tutorialSteps = [
-    { index: 0, titulo: '📈 Interés Simple vs Compuesto', texto: 'Esta pestaña compara dos formas de hacer crecer tu dinero. El interés simple es lineal; el compuesto es exponencial.', consejo: 'Cambia entre los dos modos y observa la diferencia en el gráfico.' },
-    { index: 1, titulo: '🔢 Configura tus parámetros', texto: 'Ingresa el capital inicial, la tasa nominal anual y el número de periodos. La capitalización define cada cuánto se aplica la tasa.', consejo: 'Prueba con capitalización mensual vs. trimestral.' },
-    { index: 2, titulo: '📊 Interpreta los resultados', texto: 'El saldo final y el interés total te muestran el rendimiento de tu inversión.', consejo: 'En interés compuesto, el interés generado también genera interés.' },
+    { index: 0, titulo: '📈 Interés Simple vs Compuesto', texto: 'Compara dos formas de hacer crecer tu dinero.', consejo: 'Observa la diferencia en el gráfico.' },
+    { index: 1, titulo: '📊 Interpreta el gráfico', texto: 'Las barras apiladas muestran capital (verde) vs interés (rojo) por periodo.', consejo: 'En interés compuesto, el interés crece exponencialmente.' },
   ];
 
   const discreteData = {
     recurrencia: {
       formula: <><Var>S</Var><Sub>t</Sub> = <Var>S</Var><Sub>t−1</Sub> · (1 + <Var>r</Var>)</>,
-      variables: [
-        { simbolo: 'Sₜ', desc: 'Saldo en el periodo t' },
-        { simbolo: 'Sₜ₋₁', desc: 'Saldo en el periodo anterior' },
-        { simbolo: 'r', desc: 'Tasa de interés por periodo' }
-      ],
+      variables: [{ simbolo: 'Sₜ', desc: 'Saldo en periodo t' }, { simbolo: 'Sₜ₋₁', desc: 'Saldo anterior' }, { simbolo: 'r', desc: 'Tasa por periodo' }],
       recurrence: 'Sₜ = Sₜ₋₁ · (1 + r)',
-      explanation: tipo === 'simple' 
-        ? 'En interés simple, el saldo crece linealmente. La diferencia común es P·r, formando una serie aritmética.'
-        : 'En interés compuesto, el saldo crece exponencialmente. Cada periodo se multiplica por (1+r), formando una serie geométrica.'
+      explanation: tipo === 'simple' ? 'Serie aritmética: crece linealmente.' : 'Serie geométrica: crece exponencialmente.'
     },
     serie_geometrica: {
       formula: <><Var>F</Var> = <Var>P</Var> · <Pow base={<>(1 + <Var>r</Var>)</>} exp={<Var>t</Var>} /></>,
-      variables: [
-        { simbolo: 'P', desc: 'Capital inicial' },
-        { simbolo: 'r', desc: 'Tasa de interés por periodo' },
-        { simbolo: 't', desc: 'Número de periodos' },
-        { simbolo: 'F', desc: 'Monto final' }
-      ],
+      variables: [{ simbolo: 'P', desc: 'Capital inicial' }, { simbolo: 'r', desc: 'Tasa por periodo' }, { simbolo: 't', desc: 'Periodos' }],
       recurrence: 'F = P · (1+r)ᵗ',
-      explanation: 'Esta es la fórmula cerrada del interés compuesto. Se deriva de resolver la relación de recurrencia Sₜ = Sₜ₋₁ · (1+r).'
+      explanation: 'Fórmula cerrada del interés compuesto.'
     }
   };
 
@@ -761,6 +732,44 @@ function InteresTab() {
         </div>
       )}
 
+      {/* GRÁFICO DE BARRAS - Capital vs Interés */}
+      {!esContinua && chartData.length > 0 && (
+        <div>
+          <div className="flex items-center gap-2 mb-2">
+            <BarChart3 size={16} className="cx-text-accent-primary" />
+            <span className="text-xs font-semibold cx-text-text-muted uppercase tracking-wide">Composición del saldo por periodo</span>
+          </div>
+          <StackedBarChart 
+            data={chartData} 
+            xKey="periodo" 
+            barKeys={['Capital', 'Interés']} 
+            colors={['var(--accent-green)', 'var(--accent-coral)']}
+            label={`Periodo (${t.periodo})`}
+          />
+          <p className="text-xs cx-text-text-muted mt-2">
+            {tipo === 'simple' 
+              ? 'El interés simple crece de forma lineal: cada periodo suma exactamente lo mismo.' 
+              : 'El interés compuesto crece de forma exponencial: el interés generado también genera interés.'}
+          </p>
+        </div>
+      )}
+
+      {/* GRÁFICO DE LÍNEAS - Evolución del saldo */}
+      {!esContinua && evolutionData.length > 0 && (
+        <div>
+          <div className="flex items-center gap-2 mb-2">
+            <LineChartIcon size={16} className="cx-text-accent-primary" />
+            <span className="text-xs font-semibold cx-text-text-muted uppercase tracking-wide">Evolución del saldo en el tiempo</span>
+          </div>
+          <LineChartComponent 
+            data={evolutionData.map(d => ({ mes: d.periodo, Saldo: d.Saldo }))}
+            lines={['Saldo']}
+            colors={['var(--accent-primary)']}
+            label="Periodo"
+          />
+        </div>
+      )}
+
       {tutorialOn && (
         <TutorialStep step={tutorialSteps[tutorialStep]} total={tutorialSteps.length} 
           onNext={() => setTutorialStep(Math.min(tutorialSteps.length - 1, tutorialStep + 1))}
@@ -798,20 +807,8 @@ function TasasEquivalentesTab() {
   const opcionesTipo = [{ value: 'nominal', label: 'Nominal' }, { value: 'efectiva', label: 'Efectiva' }];
 
   const tutorialSteps = [
-    { index: 0, titulo: '🔄 Tasas Equivalentes', texto: 'Dos tasas con distinta capitalización pueden producir el mismo rendimiento real. Esta herramienta convierte entre ellas.', consejo: 'La TEA es el "puente" para comparar tasas.' },
-    { index: 1, titulo: '📊 Configura la conversión', texto: 'Selecciona la tasa de origen y la de destino. Puedes elegir entre nominal y efectiva.', consejo: 'Prueba convertir una tasa anual a mensual y viceversa.' },
+    { index: 0, titulo: '🔄 Tasas Equivalentes', texto: 'Convierte entre tasas con distintas capitalizaciones.', consejo: 'La TEA es el "puente" para comparar.' },
   ];
-
-  const discreteData = {
-    formula: <>TEA = <Pow base={<>(1 + <Frac num={<Var>j</Var>} den={<Var>m</Var>} />)</>} exp={<Var>m</Var>} /> − 1</>,
-    variables: [
-      { simbolo: 'j', desc: 'Tasa nominal anual' },
-      { simbolo: 'm', desc: 'Capitalizaciones por año' },
-      { simbolo: 'TEA', desc: 'Tasa efectiva anual' }
-    ],
-    recurrence: 'TEA = (1 + j/m)ᵐ − 1',
-    explanation: 'Esta fórmula convierte una tasa nominal en su equivalente efectiva anual. Es la base para comparar tasas con diferentes capitalizaciones.'
-  };
 
   return (
     <div className="space-y-6">
@@ -824,10 +821,10 @@ function TasasEquivalentesTab() {
 
       {discreteOn && (
         <DiscreteMathDisplay 
-          formula={discreteData.formula}
-          variables={discreteData.variables}
-          recurrence={discreteData.recurrence}
-          explanation={discreteData.explanation}
+          formula={<>TEA = <Pow base={<>(1 + <Frac num={<Var>j</Var>} den={<Var>m</Var>} />)</>} exp={<Var>m</Var>} /> − 1</>}
+          variables={[{ simbolo: 'j', desc: 'Tasa nominal anual' }, { simbolo: 'm', desc: 'Capitalizaciones/año' }]}
+          recurrence="TEA = (1 + j/m)ᵐ − 1"
+          explanation="Base para comparar tasas con diferentes capitalizaciones."
           tipo="sumatoria"
         />
       )}
@@ -855,8 +852,12 @@ function TasasEquivalentesTab() {
         </div>
       )}
 
+      {/* GRÁFICO DE BARRAS - Tasas equivalentes */}
       <div>
-        <div className="text-xs uppercase tracking-wide cx-text-text-muted font-semibold mb-2">La misma TEA en cada capitalización</div>
+        <div className="flex items-center gap-2 mb-2">
+          <BarChart3 size={16} className="cx-text-accent-primary" />
+          <span className="text-xs font-semibold cx-text-text-muted uppercase tracking-wide">La misma TEA en cada capitalización</span>
+        </div>
         <div className="cx-bg-surface border cx-border-border rounded-lg p-3" style={{ height: 280 }}>
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={chartData} margin={{ top: 8, right: 8, left: 0, bottom: 48 }}>
@@ -868,6 +869,7 @@ function TasasEquivalentesTab() {
             </BarChart>
           </ResponsiveContainer>
         </div>
+        <p className="text-xs cx-text-text-muted mt-2">Todas estas tasas generan la misma tasa efectiva anual.</p>
       </div>
 
       {tutorialOn && (
@@ -886,7 +888,6 @@ function AnualidadesTab() {
   const [tasaNominal, setTasaNominal] = useState(24);
   const [temporalidad, setTemporalidad] = useState('mensual');
   const [n, setN] = useState(10);
-  const [modalRow, setModalRow] = useState(null);
 
   const [dashboardOn, setDashboardOn] = useState(true);
   const [tutorialOn, setTutorialOn] = useState(false);
@@ -899,40 +900,30 @@ function AnualidadesTab() {
 
   const resultado = useMemo(() => calcularAmortizacion(P, r, n, sistema), [P, r, n, sistema]);
   const chartData = resultado.rows.map((row) => ({ periodo: row.t, Capital: row.capital, Interés: row.interes }));
+  const saldoData = resultado.rows.map((row) => ({ periodo: row.t, Saldo: row.saldoFinal }));
 
   const tutorialSteps = [
-    { index: 0, titulo: '🏦 Sistemas de Amortización', texto: 'Compara tres sistemas para pagar un préstamo: Francés (cuota fija), Alemán (capital fijo) y Americano (interés + capital al final).', consejo: 'Cambia entre sistemas y observa cómo cambia la distribución del pago.' },
-    { index: 1, titulo: '📊 Entiende la tabla', texto: 'Cada fila muestra cómo se distribuye tu pago entre interés y capital. Toca el ojito para ver el cálculo detallado.', consejo: 'En el sistema francés, al inicio pagas más interés que capital.' },
+    { index: 0, titulo: '🏦 Sistemas de Amortización', texto: 'Compara tres sistemas para pagar un préstamo.', consejo: 'Observa cómo cambia la distribución del pago.' },
   ];
 
   const discreteData = {
     francesa: {
       formula: <>Pago = <Frac num={<><Var>P</Var> · <Var>r</Var></>} den={<>1 − <Pow base={<>(1+<Var>r</Var>)</>} exp={<>−<Var>n</Var></>} /></>} /></>,
-      variables: [
-        { simbolo: 'P', desc: 'Monto del préstamo' },
-        { simbolo: 'r', desc: 'Tasa de interés por periodo' },
-        { simbolo: 'n', desc: 'Número de cuotas' }
-      ],
+      variables: [{ simbolo: 'P', desc: 'Monto del préstamo' }, { simbolo: 'r', desc: 'Tasa por periodo' }, { simbolo: 'n', desc: 'Número de cuotas' }],
       recurrence: 'Sₜ = Sₜ₋₁ · (1+r) − C',
-      explanation: 'El sistema francés se deriva de resolver la recurrencia con C constante. La fórmula de la cuota proviene de una serie geométrica.'
+      explanation: 'Sistema francés: cuota constante, derivado de serie geométrica.'
     },
     alemana: {
       formula: <>Capital = <Frac num={<Var>P</Var>} den={<Var>n</Var>} /></>,
-      variables: [
-        { simbolo: 'P', desc: 'Monto del préstamo' },
-        { simbolo: 'n', desc: 'Número de cuotas' }
-      ],
+      variables: [{ simbolo: 'P', desc: 'Monto del préstamo' }, { simbolo: 'n', desc: 'Número de cuotas' }],
       recurrence: 'Sₜ = Sₜ₋₁ · (1+r) − (P/n)',
-      explanation: 'El sistema alemán tiene capital fijo. El interés decrece aritméticamente, formando una progresión aritmética.'
+      explanation: 'Sistema alemán: capital fijo, interés decrece aritméticamente.'
     },
     americana: {
       formula: <>Pago = Interés · Capital al final = <Var>P</Var></>,
-      variables: [
-        { simbolo: 'P', desc: 'Monto del préstamo' },
-        { simbolo: 'r', desc: 'Tasa de interés por periodo' }
-      ],
+      variables: [{ simbolo: 'P', desc: 'Monto del préstamo' }, { simbolo: 'r', desc: 'Tasa por periodo' }],
       recurrence: 'Sₜ = Sₜ₋₁ (el saldo no cambia)',
-      explanation: 'El sistema americano solo paga interés hasta el final. Es el más simple pero el más costoso en intereses.'
+      explanation: 'Sistema americano: solo paga interés hasta el final.'
     }
   };
 
@@ -986,80 +977,43 @@ function AnualidadesTab() {
         </div>
       )}
 
-      <div>
-        <div className="text-xs uppercase tracking-wide cx-text-text-muted font-semibold mb-2">Composición del pago por periodo</div>
-        <div className="cx-bg-surface border cx-border-border rounded-lg p-3" style={{ height: 260 }}>
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={chartData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid)" vertical={false} />
-              <XAxis dataKey="periodo" tick={{ fontSize: 11, fill: 'var(--chart-axis)' }} label={{ value: `Periodo (${t.periodo})`, position: 'insideBottom', offset: -2, fontSize: 11, fill: 'var(--chart-axis)' }} />
-              <YAxis tick={{ fontSize: 11, fill: 'var(--chart-axis)' }} tickFormatter={(v) => '$' + fmtInt(v)} />
-              <Tooltip formatter={(v) => fmt(v)} contentStyle={{ fontSize: 12, borderRadius: 12, background: 'var(--surface)', color: 'var(--text-primary)', border: '1px solid var(--border)' }} />
-              <Legend wrapperStyle={{ fontSize: 12 }} />
-              <Bar dataKey="Capital" stackId="a" fill="var(--accent-green)" radius={[0, 0, 0, 0]} />
-              <Bar dataKey="Interés" stackId="a" fill="var(--accent-coral)" radius={[4, 4, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
+      {/* GRÁFICO DE BARRAS - Capital vs Interés */}
+      {chartData.length > 0 && (
+        <div>
+          <div className="flex items-center gap-2 mb-2">
+            <BarChart3 size={16} className="cx-text-accent-primary" />
+            <span className="text-xs font-semibold cx-text-text-muted uppercase tracking-wide">Composición del pago por periodo</span>
+          </div>
+          <StackedBarChart 
+            data={chartData} 
+            xKey="periodo" 
+            barKeys={['Capital', 'Interés']} 
+            colors={['var(--accent-green)', 'var(--accent-coral)']}
+            label={`Periodo (${t.periodo})`}
+          />
+          <p className="text-xs cx-text-text-muted mt-2">
+            {sistema === 'francesa' && 'El pago total es siempre el mismo, pero su composición cambia.'}
+            {sistema === 'alemana' && 'El capital que pagas es siempre el mismo; el interés baja con el tiempo.'}
+            {sistema === 'americana' && 'Solo pagas interés hasta el último periodo, cuando devuelves todo el capital.'}
+          </p>
         </div>
-      </div>
+      )}
 
-      <div>
-        <div className="text-xs uppercase tracking-wide cx-text-text-muted font-semibold mb-2">Tabla — toca el ojito para ver cómo se calculó cada fila</div>
-        <div className="cx-bg-surface border cx-border-border rounded-lg overflow-hidden overflow-x-auto">
-          <table className="w-full text-sm" style={{ fontFamily: "'JetBrains Mono', monospace" }}>
-            <thead>
-              <tr className="cx-bg-surface-alt cx-text-text-muted text-xs uppercase tracking-wide">
-                <th className="px-3 py-2.5 text-left font-semibold">Periodo</th>
-                <th className="px-3 py-2.5 text-right font-semibold">Saldo inicial</th>
-                <th className="px-3 py-2.5 text-right font-semibold">Pago</th>
-                <th className="px-3 py-2.5 text-right font-semibold">Interés</th>
-                <th className="px-3 py-2.5 text-right font-semibold">Capital</th>
-                <th className="px-3 py-2.5 text-right font-semibold">Saldo final</th>
-                <th className="px-2 py-2.5 font-semibold">Ver</th>
-              </tr>
-            </thead>
-            <tbody>
-              {resultado.rows.map((row) => (
-                <tr key={row.t} className="border-b cx-border-border cx-hover-bg-surface-alt">
-                  <td className="px-3 py-2.5 cx-text-text-muted">{row.t}</td>
-                  <td className="px-3 py-2.5 text-right tabular-nums">{fmt(row.saldoInicial)}</td>
-                  <td className="px-3 py-2.5 text-right tabular-nums">{fmt(row.pago)}</td>
-                  <td className="px-3 py-2.5 text-right tabular-nums cx-text-accent-coral-text">{fmt(row.interes)}</td>
-                  <td className="px-3 py-2.5 text-right tabular-nums cx-text-accent-green-text">{fmt(row.capital)}</td>
-                  <td className="px-3 py-2.5 text-right tabular-nums font-semibold">{fmt(row.saldoFinal)}</td>
-                  <td className="px-2 py-2.5 text-center">
-                    <button onClick={() => setModalRow(row)} className="p-1.5 rounded-full cx-bg-accent-primary-bg cx-text-accent-primary cx-hover-bg-accent-primary-bg-hover">
-                      <Eye size={15} />
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+      {/* GRÁFICO DE LÍNEAS - Evolución del saldo */}
+      {saldoData.length > 0 && (
+        <div>
+          <div className="flex items-center gap-2 mb-2">
+            <LineChartIcon size={16} className="cx-text-accent-primary" />
+            <span className="text-xs font-semibold cx-text-text-muted uppercase tracking-wide">Evolución del saldo pendiente</span>
+          </div>
+          <LineChartComponent 
+            data={saldoData.map(d => ({ mes: d.periodo, Saldo: d.Saldo }))}
+            lines={['Saldo']}
+            colors={['var(--accent-primary)']}
+            label="Periodo"
+          />
+          <p className="text-xs cx-text-text-muted mt-2">El saldo disminuye hasta llegar a cero al final del préstamo.</p>
         </div>
-      </div>
-
-      {modalRow && (
-        <Modal onClose={() => setModalRow(null)} wide>
-          <div className="flex items-center gap-2 cx-text-accent-primary-text font-semibold text-sm mb-1">
-            <Eye size={16} /> Periodo {modalRow.t}
-          </div>
-          <h3 className="text-2xl cx-text-text-primary mb-4" style={{ fontFamily: "'Fraunces', sans-serif", fontWeight: 600 }}>
-            Así se calculó este registro
-          </h3>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-5">
-            <StatCard label="Saldo inicial" value={fmt(modalRow.saldoInicial)} accent="blue" />
-            <StatCard label="Interés" value={fmt(modalRow.interes)} accent="coral" />
-            <StatCard label="Capital" value={fmt(modalRow.capital)} accent="teal" />
-            <StatCard label="Saldo final" value={fmt(modalRow.saldoFinal)} accent="blue" />
-          </div>
-          <div className="cx-bg-surface-alt rounded-lg p-4 mb-5 space-y-2" style={{ fontFamily: "'JetBrains Mono', monospace" }}>
-            <p className="text-[13px] cx-text-text-strong-gray leading-relaxed">Interés = Saldo anterior × r = {fmt(modalRow.saldoInicial)} × {r.toFixed(5)} = {fmt(modalRow.interes)}</p>
-            <p className="text-[13px] cx-text-text-strong-gray leading-relaxed">Capital = Pago − Interés = {fmt(modalRow.pago)} − {fmt(modalRow.interes)} = {fmt(modalRow.capital)}</p>
-            <p className="text-[13px] cx-text-text-strong-gray leading-relaxed">Saldo nuevo = Saldo anterior − Capital = {fmt(modalRow.saldoInicial)} − {fmt(modalRow.capital)} = {fmt(modalRow.saldoFinal)}</p>
-          </div>
-          <button onClick={() => setModalRow(null)} className="w-full py-2 rounded-lg text-sm font-semibold text-white" style={{ background: 'var(--accent-primary)' }}>Cerrar</button>
-        </Modal>
       )}
 
       {tutorialOn && (
@@ -1094,6 +1048,44 @@ function SimuladorTab() {
 
   const setTasa = (key) => (e) => setTasas((t) => ({ ...t, [key]: parseFloat(e.target.value) || 0 }));
 
+  // Datos para gráficos de ahorro
+  const ahorroChart = useMemo(() => {
+    const maxM = Math.min(240, Math.max(
+      isFinite(resultados.alcancia.meses) ? resultados.alcancia.meses : 0,
+      isFinite(resultados.ahorroSimple.meses) ? resultados.ahorroSimple.meses : 0,
+      isFinite(resultados.ahorroCompuesto.meses) ? resultados.ahorroCompuesto.meses : 0,
+      12
+    ));
+    const data = [];
+    for (let m = 0; m <= maxM; m++) {
+      data.push({
+        mes: m,
+        Alcancía: resultados.alcancia.serie[m]?.saldo ?? resultados.alcancia.serie[resultados.alcancia.serie.length - 1]?.saldo,
+        'Ahorro Simple': resultados.ahorroSimple.serie[m]?.saldo,
+        'Ahorro Compuesto': resultados.ahorroCompuesto.serie[m]?.saldo,
+      });
+    }
+    return data;
+  }, [resultados]);
+
+  // Datos para gráficos de deuda
+  const deudaChart = useMemo(() => {
+    const maxM = Math.min(240, Math.max(
+      isFinite(resultados.prestamo.meses) ? resultados.prestamo.meses : 60,
+      isFinite(resultados.tarjeta.meses) ? resultados.tarjeta.meses : 60,
+      12
+    ));
+    const data = [];
+    for (let m = 0; m <= maxM; m++) {
+      data.push({
+        mes: m,
+        Préstamo: resultados.prestamo.serie[m]?.saldo ?? 0,
+        'Tarjeta Crédito': resultados.tarjeta.serie[m]?.saldo ?? (resultados.tarjeta.nuncaPaga ? objetivo : 0),
+      });
+    }
+    return data;
+  }, [resultados, objetivo]);
+
   const paths = [
     { key: 'alcancia', label: 'Alcancía', icon: Wallet, tipo: 'ahorro', tipoSim: 'alcancia', meses: resultados.alcancia.meses, interes: 0, editable: false, nuncaPaga: false },
     { key: 'simple', label: 'Ahorro Simple', icon: PiggyBank, tipo: 'ahorro', tipoSim: 'ahorroSimple', meses: resultados.ahorroSimple.meses, interes: resultados.ahorroSimple.totalInteres, editable: true, tasaKey: 'simple', nuncaPaga: false },
@@ -1103,22 +1095,9 @@ function SimuladorTab() {
   ];
 
   const tutorialSteps = [
-    { index: 0, titulo: '🎯 Simulador de Destinos', texto: 'Con el mismo par de números, compara 5 caminos financieros: alcancía, ahorro simple, ahorro compuesto, préstamo y tarjeta de crédito.', consejo: 'Los caminos verdes son de ahorro; los rojos son deudas.' },
-    { index: 1, titulo: '📊 Interpreta los resultados', texto: 'Cada tarjeta muestra el tiempo para alcanzar la meta o pagar la deuda. El interés total te muestra el costo o beneficio.', consejo: 'Fíjate en cómo cambia el tiempo solo por el tipo de camino.' },
-    { index: 2, titulo: '🔍 Analiza cada destino', texto: 'Toca "Analizar este destino" para simular pagos extraordinarios o aportes extra mensuales.', consejo: 'Un pequeño abono extra puede ahorrarte muchos meses de intereses.' },
+    { index: 0, titulo: '🎯 Simulador de Destinos', texto: 'Compara 5 caminos financieros con los mismos números.', consejo: 'Los caminos verdes son ahorro; los rojos son deudas.' },
+    { index: 1, titulo: '📊 Interpreta los gráficos', texto: 'Los gráficos de líneas muestran la evolución de cada camino.', consejo: 'Compara visualmente cuál llega más rápido a la meta.' },
   ];
-
-  const discreteData = {
-    formula: <><Var>S</Var><Sub>t</Sub> = <Var>S</Var><Sub>t−1</Sub> · (1 + <Var>r</Var>) − <Var>C</Var></>,
-    variables: [
-      { simbolo: 'Sₜ', desc: 'Saldo en el periodo t' },
-      { simbolo: 'Sₜ₋₁', desc: 'Saldo en el periodo anterior' },
-      { simbolo: 'r', desc: 'Tasa de interés por periodo' },
-      { simbolo: 'C', desc: 'Cuota o pago periódico' }
-    ],
-    recurrence: 'Sₜ = Sₜ₋₁ · (1 + r) − C',
-    explanation: 'Esta relación de recurrencia es el motor de todos los cálculos. Modela cómo evoluciona el saldo de una deuda o ahorro en el tiempo.'
-  };
 
   return (
     <div className="space-y-6">
@@ -1131,10 +1110,10 @@ function SimuladorTab() {
 
       {discreteOn && (
         <DiscreteMathDisplay 
-          formula={discreteData.formula}
-          variables={discreteData.variables}
-          recurrence={discreteData.recurrence}
-          explanation={discreteData.explanation}
+          formula={<><Var>S</Var><Sub>t</Sub> = <Var>S</Var><Sub>t−1</Sub> · (1 + <Var>r</Var>) − <Var>C</Var></>}
+          variables={[{ simbolo: 'Sₜ', desc: 'Saldo en periodo t' }, { simbolo: 'r', desc: 'Tasa por periodo' }, { simbolo: 'C', desc: 'Cuota o pago' }]}
+          recurrence="Sₜ = Sₜ₋₁ · (1 + r) − C"
+          explanation="Motor de todos los cálculos. Modela evolución de deuda o ahorro."
           tipo="recurrencia"
         />
       )}
@@ -1144,9 +1123,7 @@ function SimuladorTab() {
       <div className="rounded-lg cx-bg-accent-primary-bg border cx-border-accent-primary/15 p-4 flex items-start gap-2">
         <Target size={18} className="mt-0.5 flex-shrink-0 cx-text-accent-primary" />
         <p className="text-sm cx-text-text-strong-gray">
-          {tutorialOn 
-            ? '💡 Tutorial activado: Sigue los pasos para entender cómo funciona el simulador.' 
-            : 'Ingresa un monto que quieres conseguir o gastar, y cuánto puedes aportar o pagar cada mes.'}
+          {tutorialOn ? '💡 Tutorial activado.' : 'Ingresa un monto y cuánto puedes aportar o pagar cada mes.'}
         </p>
       </div>
 
@@ -1198,6 +1175,35 @@ function SimuladorTab() {
         })}
       </div>
 
+      {/* GRÁFICOS DE LÍNEAS - Comparativa de caminos */}
+      <div className="grid sm:grid-cols-2 gap-4">
+        <div>
+          <div className="flex items-center gap-2 mb-2">
+            <LineChartIcon size={16} className="cx-text-accent-green-text" />
+            <span className="text-xs font-semibold cx-text-text-muted uppercase tracking-wide">Caminos de ahorro (llegar al objetivo)</span>
+          </div>
+          <LineChartComponent 
+            data={ahorroChart}
+            lines={['Alcancía', 'Ahorro Simple', 'Ahorro Compuesto']}
+            colors={['var(--chart-axis)', 'var(--accent-primary)', 'var(--accent-green)']}
+            label="Meses"
+            referenceLine={objetivo}
+          />
+        </div>
+        <div>
+          <div className="flex items-center gap-2 mb-2">
+            <LineChartIcon size={16} className="cx-text-accent-coral-text" />
+            <span className="text-xs font-semibold cx-text-text-muted uppercase tracking-wide">Caminos de deuda (llegar a saldo cero)</span>
+          </div>
+          <LineChartComponent 
+            data={deudaChart}
+            lines={['Préstamo', 'Tarjeta Crédito']}
+            colors={['var(--accent-primary)', 'var(--accent-coral)']}
+            label="Meses"
+          />
+        </div>
+      </div>
+
       {detalle && (
         <Modal onClose={() => setDetalle(null)} wide>
           <div className="flex items-center gap-2 cx-text-accent-primary-text font-semibold text-sm mb-1">
@@ -1235,9 +1241,7 @@ function QuizTab() {
   const niveles = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
 
   const tutorialSteps = [
-    { index: 0, titulo: '📝 Quizzes Interactivos', texto: '10 niveles de dificultad. Cada nivel genera preguntas nuevas con números aleatorios.', consejo: 'Empieza en el nivel 1 y sube progresivamente.' },
-    { index: 1, titulo: '🎯 Niveles 1-8', texto: 'Cubren interés simple, compuesto, tasas equivalentes, valor presente y anualidades.', consejo: 'Practica cada nivel hasta sentirte cómodo.' },
-    { index: 2, titulo: '🏆 Niveles 9-10', texto: 'El nivel 9 combina tasas y periodos. El nivel 10 es un problema verbal con datos distractores.', consejo: 'Identifica qué datos son relevantes antes de calcular.' },
+    { index: 0, titulo: '📝 Quizzes Interactivos', texto: '10 niveles de dificultad con preguntas aleatorias.', consejo: 'Empieza en el nivel 1.' },
   ];
 
   return (
@@ -1252,12 +1256,9 @@ function QuizTab() {
       {discreteOn && (
         <DiscreteMathDisplay 
           formula={<>Σ a<Sub>i</Sub> · Serie Geométrica</>}
-          variables={[
-            { simbolo: 'Σ', desc: 'Sumatoria de términos' },
-            { simbolo: 'aᵢ', desc: 'Término i-ésimo' }
-          ]}
+          variables={[{ simbolo: 'Σ', desc: 'Sumatoria' }, { simbolo: 'aᵢ', desc: 'Término i-ésimo' }]}
           recurrence="Sₙ = a₁ · (1−qⁿ)/(1−q)"
-          explanation="Los quizzes aplican conceptos de series y sumatorias para resolver problemas financieros. Cada nivel combina diferentes conceptos discretos."
+          explanation="Los quizzes aplican conceptos de series y sumatorias."
           tipo="sumatoria"
         />
       )}
@@ -1304,10 +1305,6 @@ function FormularioTab() {
   const [discreteOn, setDiscreteOn] = useState(false);
   const [tutorialStep, setTutorialStep] = useState(0);
 
-  const tutorialSteps = [
-    { index: 0, titulo: '📚 Formulario de Fórmulas', texto: 'Todas las fórmulas organizadas por tema. Úsalo como referencia rápida durante los quizzes.', consejo: 'Puedes imprimir esta sección con el botón "Generar PDF".' },
-  ];
-
   return (
     <div className="space-y-6">
       <ControlPanel 
@@ -1317,22 +1314,9 @@ function FormularioTab() {
         onReset={() => {}} 
       />
 
-      {discreteOn && (
-        <DiscreteMathDisplay 
-          formula={<>Σ · Serie · Recurrencia</>}
-          variables={[
-            { simbolo: 'Σ', desc: 'Sumatoria de términos' },
-            { simbolo: 'Sₙ', desc: 'Suma de la serie' }
-          ]}
-          recurrence="Sₜ = Sₜ₋₁ · (1+r) − C"
-          explanation="Todas las fórmulas financieras se derivan de estos conceptos discretos: sumatorias, series y relaciones de recurrencia."
-          tipo="sumatoria"
-        />
-      )}
-
       <div className="cx-bg-surface border cx-border-border p-5 rounded-lg">
         <h3 className="font-semibold text-lg cx-text-text-primary mb-1" style={{ fontFamily: "'Fraunces', serif" }}>📐 Formulario de Fórmulas</h3>
-        <p className="text-sm cx-text-text-secondary">Todas las fórmulas organizadas por tema. Úsalas como referencia.</p>
+        <p className="text-sm cx-text-text-secondary">Todas las fórmulas organizadas por tema.</p>
       </div>
 
       {dashboardOn && (
@@ -1340,12 +1324,10 @@ function FormularioTab() {
           <div className="cx-bg-surface border cx-border-border rounded-lg p-4">
             <h4 className="font-bold text-sm cx-text-accent-primary">Interés Simple</h4>
             <div className="font-serif text-center py-2 text-sm">F = P · (1 + r · t)</div>
-            <div className="text-xs cx-text-text-muted text-center">I = P · r · t</div>
           </div>
           <div className="cx-bg-surface border cx-border-border rounded-lg p-4">
             <h4 className="font-bold text-sm cx-text-accent-primary">Interés Compuesto</h4>
             <div className="font-serif text-center py-2 text-sm">F = P · (1 + r)ᵗ</div>
-            <div className="text-xs cx-text-text-muted text-center">F = P · e^(r·t) (Continua)</div>
           </div>
           <div className="cx-bg-surface border cx-border-border rounded-lg p-4">
             <h4 className="font-bold text-sm cx-text-accent-primary">Cuota Francesa</h4>
@@ -1358,16 +1340,8 @@ function FormularioTab() {
           <div className="cx-bg-surface border cx-border-border rounded-lg p-4 sm:col-span-2">
             <h4 className="font-bold text-sm cx-text-accent-primary">Relación de Recurrencia</h4>
             <div className="font-serif text-center py-2 text-sm">Sₜ = Sₜ₋₁ · (1 + r) − C</div>
-            <div className="text-xs cx-text-text-muted text-center">Motor de todos los cálculos de saldo</div>
           </div>
         </div>
-      )}
-
-      {tutorialOn && (
-        <TutorialStep step={tutorialSteps[tutorialStep]} total={tutorialSteps.length} 
-          onNext={() => setTutorialStep(Math.min(tutorialSteps.length - 1, tutorialStep + 1))}
-          onPrev={() => setTutorialStep(Math.max(0, tutorialStep - 1))}
-          onClose={() => setTutorialOn(false)} />
       )}
     </div>
   );
@@ -1426,7 +1400,6 @@ function SplashScreen({ fadingOut }) {
         <div className="w-56 h-1.5 rounded-full overflow-hidden" style={{ background: 'var(--border)' }}><div className="h-full splash-bar" style={{ background: 'var(--accent-primary)' }} /></div>
         <div className="text-[11px] mt-3" style={{ color: 'var(--text-faint)' }}>Cargando datos y archivos contables…</div>
         <div className="text-[12px] mt-4 max-w-xs italic" style={{ color: 'var(--text-muted)', fontFamily: "'Fraunces', serif" }}>"{frase}"</div>
-        <style>{`@keyframes fillbar { from { width: 0%; } to { width: 100%; } } .splash-bar { width: 0%; animation: fillbar 1.6s ease-out forwards; }`}</style>
       </div>
     </div>
   );
