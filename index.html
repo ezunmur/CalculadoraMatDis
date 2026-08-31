@@ -50,7 +50,13 @@ import {
   BarChart3, LineChart as LineChartIcon
 } from 'lucide-react';
 
-const ESPOL_LOGO = 'logo.svg';
+// Logo simple en SVG inline: evita depender de un archivo externo que no existe en este entorno.
+const ESPOL_LOGO = 'data:image/svg+xml;utf8,' + encodeURIComponent(`
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120">
+  <circle cx="60" cy="60" r="56" fill="none" stroke="#1F4D3A" stroke-width="6"/>
+  <text x="60" y="72" font-family="Georgia, serif" font-size="44" font-weight="700" text-anchor="middle" fill="#1F4D3A">E</text>
+</svg>
+`);
 
 const FRASES_CARGA = [
   'El interés compuesto no descansa, ni siquiera los domingos.',
@@ -241,7 +247,7 @@ function Modal({ onClose, children, wide }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(31,41,55,0.55)' }} onClick={onClose}>
       <div className={`cx-bg-surface rounded-lg shadow-xl w-full ${wide ? 'max-w-2xl' : 'max-w-lg'} max-h-[88vh] overflow-y-auto relative`} style={{ backgroundColor: 'var(--surface)', color: 'var(--text-primary)' }} onClick={(e) => e.stopPropagation()}>
-        <button onClick={onClose} className="absolute top-4 right-4 p-2 rounded-full cx-bg-surface-hover-2 cx-hover-bg-surface-hover-3 cx-text-text-secondary z-10"><X size={18} /></button>
+        <button onClick={onClose} aria-label="Cerrar" className="absolute top-4 right-4 p-2 rounded-full cx-bg-surface-hover-2 cx-hover-bg-surface-hover-3 cx-text-text-secondary z-10"><X size={18} /></button>
         <div className="p-6 sm:p-8">{children}</div>
       </div>
     </div>
@@ -289,13 +295,19 @@ function PillButton({ active, onClick, children }) {
 
 function Field({ label, suffix, value, onChange, min, step }) {
   const [texto, setTexto] = useState(value === 0 ? '' : String(value));
+  const [enfocado, setEnfocado] = useState(false);
+  // Sincroniza el texto visible con el valor externo (ej. al presionar "Reset"),
+  // pero no mientras el usuario está escribiendo (evita "pelear" con el cursor).
+  useEffect(() => {
+    if (!enfocado) setTexto(value === 0 ? '' : String(value));
+  }, [value, enfocado]);
   const manejarCambio = (e) => {
     const t = e.target.value; setTexto(t); const num = parseFloat(t); onChange(isNaN(num) ? 0 : num);
   };
   return (
     <label className="flex flex-wrap items-end gap-x-2 gap-y-0.5 border-b-2 cx-border-border cx-focusw-border-accent-primary min-w-0 pb-1">
       <span className="text-[11px] cx-text-text-muted font-medium whitespace-nowrap">{label}</span>
-      <input type="number" value={texto} min={min} step={step} onChange={manejarCambio} placeholder="-,--" className="flex-1 min-w-[64px] text-right px-0.5 outline-none bg-transparent cx-text-text-primary" style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '1.1rem', fontWeight: 600, letterSpacing: '-0.01em' }} />
+      <input type="number" value={texto} min={min} step={step} onChange={manejarCambio} onFocus={() => setEnfocado(true)} onBlur={() => setEnfocado(false)} placeholder="-,--" className="flex-1 min-w-[64px] text-right px-0.5 outline-none bg-transparent cx-text-text-primary" style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '1.1rem', fontWeight: 600, letterSpacing: '-0.01em' }} />
       {suffix && <span className="text-sm cx-text-text-faint flex-shrink-0">{suffix}</span>}
     </label>
   );
@@ -408,6 +420,19 @@ function TemaIntro({ tipo, sistema }) {
       </div>
     </div>
   );
+}
+
+// ============================================================
+// HOOK COMPARTIDO: dashboard / tutorial / matemáticas discretas
+// Evita repetir los mismos 4 useState en cada uno de los tabs.
+// ============================================================
+
+function useModes() {
+  const [dashboardOn, setDashboardOn] = useState(true);
+  const [tutorialOn, setTutorialOn] = useState(false);
+  const [discreteOn, setDiscreteOn] = useState(false);
+  const [tutorialStep, setTutorialStep] = useState(0);
+  return { dashboardOn, setDashboardOn, tutorialOn, setTutorialOn, discreteOn, setDiscreteOn, tutorialStep, setTutorialStep };
 }
 
 // ============================================================
@@ -613,7 +638,7 @@ function TutorialStep({ step, total, onNext, onPrev, onClose }) {
         <div className="flex items-center gap-1.5 cx-text-accent-primary text-xs font-semibold uppercase tracking-wide">
           <GraduationCap size={14} /> Paso {step.index + 1} de {total}
         </div>
-        <button onClick={onClose} className="p-1 rounded-full cx-text-text-faint hover:cx-bg-surface-hover-2"><X size={14} /></button>
+        <button onClick={onClose} aria-label="Cerrar tutorial" className="p-1 rounded-full cx-text-text-faint hover:cx-bg-surface-hover-2"><X size={14} /></button>
       </div>
       <h4 className="text-base font-semibold cx-text-text-primary mb-1.5" style={{ fontFamily: "'Fraunces', sans-serif" }}>{step.titulo}</h4>
       <p className="text-sm cx-text-text-secondary leading-relaxed mb-3">{step.texto}</p>
@@ -698,10 +723,7 @@ function TasasEquivalentesTab() {
   const [tipoOrigen, setTipoOrigen] = useState('nominal');
   const [tipoDestino, setTipoDestino] = useState('efectiva');
 
-  const [dashboardOn, setDashboardOn] = useState(true);
-  const [tutorialOn, setTutorialOn] = useState(false);
-  const [discreteOn, setDiscreteOn] = useState(false);
-  const [tutorialStep, setTutorialStep] = useState(0);
+  const { dashboardOn, setDashboardOn, tutorialOn, setTutorialOn, discreteOn, setDiscreteOn, tutorialStep, setTutorialStep } = useModes();
 
   const tOrigen = getTemporalidad(origen);
   const tDestino = getTemporalidad(destino);
@@ -881,7 +903,9 @@ function TasasEquivalentesTab() {
   const formulaData = getFormulaDisplay();
 
   const tutorialSteps = [
-    { index: 0, titulo: '🔄 Tasas Equivalentes', texto: 'Convierte entre tasas con distintas capitalizaciones.', consejo: 'La TEA es el "puente" para comparar tasas.' },
+    { index: 0, titulo: '🔄 Tasas Equivalentes', texto: 'Elige la tasa de origen (nominal o efectiva) y la temporalidad hacia la que quieres convertirla.', consejo: 'La TEA es el "puente" para comparar tasas con distinta capitalización.' },
+    { index: 1, titulo: '📐 Lee el desarrollo del cálculo', texto: 'La sección "Desarrollo del cálculo" muestra la fórmula general y luego la misma fórmula con tus valores reemplazados.', consejo: 'Compara la fórmula general con la fórmula con valores para entender cada paso.' },
+    { index: 2, titulo: '📊 El gráfico de equivalencias', texto: 'La barra final muestra la misma TEA expresada en cada capitalización posible: todas representan el mismo rendimiento.', consejo: 'Por eso se llaman tasas "equivalentes": distinto número, mismo resultado real.' },
   ];
 
   // ============================================================
@@ -1116,10 +1140,7 @@ function InteresTab() {
   const [n, setN] = useState(10);
   const [anios, setAnios] = useState(3);
 
-  const [dashboardOn, setDashboardOn] = useState(true);
-  const [tutorialOn, setTutorialOn] = useState(false);
-  const [discreteOn, setDiscreteOn] = useState(false);
-  const [tutorialStep, setTutorialStep] = useState(0);
+  const { dashboardOn, setDashboardOn, tutorialOn, setTutorialOn, discreteOn, setDiscreteOn, tutorialStep, setTutorialStep } = useModes();
 
   const opcionesTemporalidad = tipo === 'simple' ? TEMPORALIDADES.filter((x) => x.key !== 'continua') : TEMPORALIDADES;
   const esContinua = tipo === 'compuesto' && temporalidad === 'continua';
@@ -1141,7 +1162,9 @@ function InteresTab() {
   const evolutionData = resultado.rows?.map((row) => ({ mes: row.t, Saldo: row.saldoFinal })) || [];
 
   const tutorialSteps = [
-    { index: 0, titulo: '📈 Interés Simple vs Compuesto', texto: 'Compara dos formas de hacer crecer tu dinero.', consejo: 'Observa la diferencia en el gráfico.' },
+    { index: 0, titulo: '📈 Interés Simple vs Compuesto', texto: 'Elige el tipo de interés arriba y ajusta el capital, la tasa y el número de periodos.', consejo: 'Con interés simple, la ganancia por periodo siempre es la misma.' },
+    { index: 1, titulo: '🧮 Lee el gráfico de barras', texto: 'La barra apilada muestra cuánto del saldo es capital original y cuánto es interés acumulado en cada periodo.', consejo: 'Con interés compuesto, la porción de "interés" crece cada vez más rápido.' },
+    { index: 2, titulo: '📊 Activa el Dashboard', texto: 'El panel de control (arriba) te permite mostrar/ocultar el resumen numérico y la vista de matemáticas discretas.', consejo: 'Prueba activar "Matemáticas Discretas" para ver la relación de recurrencia.' },
   ];
 
   return (
@@ -1154,13 +1177,23 @@ function InteresTab() {
       />
 
       {discreteOn && (
-        <DiscreteMathDisplay 
-          formula={<><Var>S</Var><Sub>t</Sub> = <Var>S</Var><Sub>t−1</Sub> · (1 + <Var>r</Var>)</>}
-          variables={[{ simbolo: 'Sₜ', desc: 'Saldo en periodo t' }, { simbolo: 'Sₜ₋₁', desc: 'Saldo anterior' }, { simbolo: 'r', desc: 'Tasa por periodo' }]}
-          recurrence="Sₜ = Sₜ₋₁ · (1 + r)"
-          explanation={tipo === 'simple' ? 'Serie aritmética: crece linealmente.' : 'Serie geométrica: crece exponencialmente.'}
-          tipo={tipo === 'simple' ? 'serie_aritmetica' : 'serie_geometrica'}
-        />
+        tipo === 'simple' ? (
+          <DiscreteMathDisplay
+            formula={<><Var>S</Var><Sub>t</Sub> = <Var>S</Var><Sub>t−1</Sub> + <Var>P</Var> · <Var>r</Var></>}
+            variables={[{ simbolo: 'Sₜ', desc: 'Saldo en periodo t' }, { simbolo: 'Sₜ₋₁', desc: 'Saldo anterior' }, { simbolo: 'P', desc: 'Capital inicial (constante)' }, { simbolo: 'r', desc: 'Tasa por periodo' }]}
+            recurrence="Sₜ = Sₜ₋₁ + P · r"
+            explanation="Serie aritmética: el saldo crece sumando la misma cantidad fija cada periodo (interés siempre sobre P, no sobre el saldo)."
+            tipo="serie_aritmetica"
+          />
+        ) : (
+          <DiscreteMathDisplay
+            formula={<><Var>S</Var><Sub>t</Sub> = <Var>S</Var><Sub>t−1</Sub> · (1 + <Var>r</Var>)</>}
+            variables={[{ simbolo: 'Sₜ', desc: 'Saldo en periodo t' }, { simbolo: 'Sₜ₋₁', desc: 'Saldo anterior' }, { simbolo: 'r', desc: 'Tasa por periodo' }]}
+            recurrence="Sₜ = Sₜ₋₁ · (1 + r)"
+            explanation="Serie geométrica: el interés se calcula sobre el saldo acumulado, así que crece exponencialmente."
+            tipo="serie_geometrica"
+          />
+        )
       )}
 
       <div className="flex flex-wrap gap-2">
@@ -1256,10 +1289,7 @@ function AnualidadesTab() {
   const [temporalidad, setTemporalidad] = useState('mensual');
   const [n, setN] = useState(10);
 
-  const [dashboardOn, setDashboardOn] = useState(true);
-  const [tutorialOn, setTutorialOn] = useState(false);
-  const [discreteOn, setDiscreteOn] = useState(false);
-  const [tutorialStep, setTutorialStep] = useState(0);
+  const { dashboardOn, setDashboardOn, tutorialOn, setTutorialOn, discreteOn, setDiscreteOn, tutorialStep, setTutorialStep } = useModes();
 
   const t = getTemporalidad(temporalidad);
   const r = tasaPeriodica(tasaNominal, temporalidad);
@@ -1270,7 +1300,9 @@ function AnualidadesTab() {
   const saldoData = resultado.rows.map((row) => ({ mes: row.t, Saldo: row.saldoFinal }));
 
   const tutorialSteps = [
-    { index: 0, titulo: '🏦 Sistemas de Amortización', texto: 'Compara tres sistemas para pagar un préstamo.', consejo: 'Observa cómo cambia la distribución del pago.' },
+    { index: 0, titulo: '🏦 Sistemas de Amortización', texto: 'Elige entre Francesa (cuota fija), Alemana (capital fijo) o Americana (bullet) y ajusta el préstamo.', consejo: 'La Francesa es la más común en créditos de consumo.' },
+    { index: 1, titulo: '💵 Composición del pago', texto: 'El gráfico apilado muestra cuánto de cada cuota es capital y cuánto es interés.', consejo: 'En la Francesa, al inicio pagas mayormente interés; al final, mayormente capital.' },
+    { index: 2, titulo: '📉 Saldo pendiente', texto: 'El gráfico de línea muestra cómo baja la deuda pendiente periodo a periodo.', consejo: 'Compara los tres sistemas con el mismo préstamo para ver cuál te conviene.' },
   ];
 
   return (
@@ -1377,10 +1409,7 @@ function SimuladorTab() {
   const [tasas, setTasas] = useState({ simple: 5, compuesto: 8, prestamo: 16, tarjeta: 42 });
   const [detalle, setDetalle] = useState(null);
 
-  const [dashboardOn, setDashboardOn] = useState(true);
-  const [tutorialOn, setTutorialOn] = useState(false);
-  const [discreteOn, setDiscreteOn] = useState(false);
-  const [tutorialStep, setTutorialStep] = useState(0);
+  const { dashboardOn, setDashboardOn, tutorialOn, setTutorialOn, discreteOn, setDiscreteOn, tutorialStep, setTutorialStep } = useModes();
 
   const resultados = useMemo(() => {
     const alcancia = simularCamino({ tipo: 'alcancia', monto: objetivo, base: capacidad });
@@ -1438,7 +1467,9 @@ function SimuladorTab() {
   ];
 
   const tutorialSteps = [
-    { index: 0, titulo: '🎯 Simulador de Destinos', texto: 'Compara 5 caminos financieros.', consejo: 'Los caminos verdes son ahorro; los rojos son deudas.' },
+    { index: 0, titulo: '🎯 Simulador de Destinos', texto: 'Ingresa un monto objetivo y cuánto puedes aportar o pagar cada mes; el simulador compara 5 caminos financieros.', consejo: 'Los caminos verdes son ahorro; los rojos son deudas.' },
+    { index: 1, titulo: '⚠️ Cuidado con la tarjeta de crédito', texto: 'Si la tasa es muy alta y tu pago mensual es bajo, la tarjeta puede marcar "nunca paga".', consejo: 'Eso significa que el pago no alcanza ni para cubrir el interés generado.' },
+    { index: 2, titulo: '📈 Compara los caminos', texto: 'Los gráficos de línea muestran cómo evoluciona cada camino mes a mes hacia tu meta (o hacia cero deuda).', consejo: 'Ajusta la tasa de cada camino para ver el impacto en el tiempo total.' },
   ];
 
   return (
@@ -1590,10 +1621,7 @@ function QuizTab() {
   const [respuestasEval, setRespuestasEval] = useState([]);
   const [evaluacionCompletada, setEvaluacionCompletada] = useState(false);
 
-  const [dashboardOn, setDashboardOn] = useState(true);
-  const [tutorialOn, setTutorialOn] = useState(false);
-  const [discreteOn, setDiscreteOn] = useState(false);
-  const [tutorialStep, setTutorialStep] = useState(0);
+  const { dashboardOn, setDashboardOn, tutorialOn, setTutorialOn, discreteOn, setDiscreteOn, tutorialStep, setTutorialStep } = useModes();
 
   const TEMAS = [
     { id: 'interes_simple', label: 'Interés Simple', icon: '📊' },
@@ -1638,22 +1666,235 @@ function QuizTab() {
     return Math.abs(valorUsuario - correcto) <= Math.abs(correcto) * 0.02;
   }
 
-  function genPreguntaGenerica(nivel) {
-    const temas = ['Interés simple', 'Interés compuesto', 'Tasas equivalentes', 'Valor presente', 'Anualidades', 'Problemas integradores'];
-    const tema = temas[nivel % temas.length];
+  // ============================================================
+  // GENERADORES DE PREGUNTAS REALES POR NIVEL
+  // Cada función arma un problema con números aleatorios "redondos"
+  // y calcula la respuesta con las mismas fórmulas del resto de la app.
+  // ============================================================
+
+  function nivel1_interesSimpleGanado() {
+    const P = randInt(5, 50) * 1000;
+    const r = randInt(4, 24);
+    const t = randInt(2, 12);
+    const interes = P * (r / 100) * t;
     return {
-      tema: 'general',
-      categoria: tema,
-      enunciado: `Pregunta de nivel ${nivel} sobre ${tema}. **¿Cuál es el resultado?**`,
+      categoria: 'Interés Simple',
+      enunciado: `Depositas **${fmt(P)}** en una cuenta que paga una tasa de interés simple del **${r}% anual**. ¿Cuánto interés habrás ganado después de **${t} años**?`,
       unidad: '$',
-      respuesta: 1000 + nivel * 100,
-      solucion: [`Solución del nivel ${nivel}: el resultado es ${fmt(1000 + nivel * 100)}`],
-      dificultad: nivel <= 3 ? 'facil' : nivel <= 6 ? 'medio' : nivel <= 8 ? 'dificil' : nivel <= 9 ? 'experto' : 'master'
+      respuesta: round2(interes),
+      solucion: [
+        `Fórmula: I = P · r · t`,
+        `I = ${fmt(P)} · ${(r / 100).toFixed(2)} · ${t}`,
+        `I = ${fmt(interes)}`
+      ],
     };
   }
 
+  function nivel2_interesSimpleMontoFinal() {
+    const P = randInt(5, 60) * 1000;
+    const r = randInt(3, 20);
+    const t = randInt(1, 10);
+    const F = P * (1 + (r / 100) * t);
+    return {
+      categoria: 'Interés Simple',
+      enunciado: `Un capital de **${fmt(P)}** se invierte a interés simple con una tasa del **${r}% anual** durante **${t} años**. ¿Cuál es el monto final?`,
+      unidad: '$',
+      respuesta: round2(F),
+      solucion: [
+        `Fórmula: F = P · (1 + r · t)`,
+        `F = ${fmt(P)} · (1 + ${(r / 100).toFixed(2)} · ${t})`,
+        `F = ${fmt(F)}`
+      ],
+    };
+  }
+
+  function nivel3_interesCompuestoMontoFinal() {
+    const P = randInt(5, 60) * 1000;
+    const r = randInt(3, 20);
+    const t = randInt(2, 10);
+    const F = P * Math.pow(1 + r / 100, t);
+    return {
+      categoria: 'Interés Compuesto',
+      enunciado: `Un capital de **${fmt(P)}** se invierte a interés compuesto con una tasa del **${r}% anual** durante **${t} años**. ¿Cuál es el monto final?`,
+      unidad: '$',
+      respuesta: round2(F),
+      solucion: [
+        `Fórmula: F = P · (1 + r)ᵗ`,
+        `F = ${fmt(P)} · (1 + ${(r / 100).toFixed(2)})^${t}`,
+        `F = ${fmt(F)}`
+      ],
+    };
+  }
+
+  function nivel4_interesCompuestoPeriodos() {
+    const P = randInt(5, 40) * 1000;
+    const r = randInt(4, 18);
+    const t = randInt(3, 12);
+    const F = round2(P * Math.pow(1 + r / 100, t));
+    const nExacto = Math.log(F / P) / Math.log(1 + r / 100);
+    return {
+      categoria: 'Interés Compuesto',
+      enunciado: `Un capital de **${fmt(P)}** crece a interés compuesto con una tasa del **${r}% anual** hasta llegar a **${fmt(F)}**. ¿Cuántos años tomó ese crecimiento?`,
+      unidad: 'periodos',
+      respuesta: round2(nExacto),
+      solucion: [
+        `Fórmula: n = ln(F/P) / ln(1 + r)`,
+        `n = ln(${fmt(F)}/${fmt(P)}) / ln(1 + ${(r / 100).toFixed(2)})`,
+        `n ≈ ${nExacto.toFixed(2)} años`
+      ],
+    };
+  }
+
+  function nivel5_teaDesdeNominal() {
+    const j = randInt(8, 36);
+    const mOpciones = [2, 4, 12];
+    const m = randChoice(mOpciones);
+    const mLabel = m === 2 ? 'semestral' : m === 4 ? 'trimestral' : 'mensual';
+    const tea = (Math.pow(1 + (j / 100) / m, m) - 1) * 100;
+    return {
+      categoria: 'Tasas Equivalentes',
+      enunciado: `Un banco ofrece una tasa nominal del **${j}% anual con capitalización ${mLabel}**. ¿Cuál es la tasa efectiva anual (TEA)?`,
+      unidad: '%',
+      respuesta: round2(tea),
+      solucion: [
+        `Fórmula: TEA = (1 + j/m)ᵐ − 1`,
+        `TEA = (1 + ${(j / 100).toFixed(4)}/${m})^${m} − 1`,
+        `TEA ≈ ${tea.toFixed(2)}%`
+      ],
+    };
+  }
+
+  function nivel6_nominalDesdeTEA() {
+    const tea = randInt(10, 40);
+    const mOpciones = [2, 4, 12];
+    const m = randChoice(mOpciones);
+    const mLabel = m === 2 ? 'semestral' : m === 4 ? 'trimestral' : 'mensual';
+    const j = (Math.pow(1 + tea / 100, 1 / m) - 1) * m * 100;
+    return {
+      categoria: 'Tasas Equivalentes',
+      enunciado: `Sabiendo que la tasa efectiva anual (TEA) es del **${tea}%**, ¿cuál es la tasa nominal anual con capitalización ${mLabel} equivalente?`,
+      unidad: '%',
+      respuesta: round2(j),
+      solucion: [
+        `Fórmula: j = m · [(1 + TEA)^(1/m) − 1]`,
+        `j = ${m} · [(1 + ${(tea / 100).toFixed(2)})^(1/${m}) − 1]`,
+        `j ≈ ${j.toFixed(2)}%`
+      ],
+    };
+  }
+
+  function nivel7_valorPresente() {
+    const F = randInt(10, 80) * 1000;
+    const r = randInt(4, 20);
+    const n = randInt(2, 10);
+    const VP = F / Math.pow(1 + r / 100, n);
+    return {
+      categoria: 'Valor Presente',
+      enunciado: `Quieres recibir **${fmt(F)}** dentro de **${n} años**. Si la tasa de descuento anual es del **${r}%**, ¿cuánto debes invertir hoy (valor presente)?`,
+      unidad: '$',
+      respuesta: round2(VP),
+      solucion: [
+        `Fórmula: VP = F / (1 + r)ⁿ`,
+        `VP = ${fmt(F)} / (1 + ${(r / 100).toFixed(2)})^${n}`,
+        `VP = ${fmt(VP)}`
+      ],
+    };
+  }
+
+  function nivel8_anualidadCuotaFija() {
+    const P = randInt(5, 30) * 1000;
+    const rAnual = randInt(12, 30);
+    const n = randInt(6, 24);
+    const r = rAnual / 100 / 12;
+    const C = (P * r) / (1 - Math.pow(1 + r, -n));
+    return {
+      categoria: 'Anualidades',
+      enunciado: `Un préstamo de **${fmt(P)}** se paga en **${n} cuotas mensuales iguales** (sistema francés), con una tasa nominal del **${rAnual}% anual** capitalizada mensualmente. ¿Cuál es el valor de cada cuota?`,
+      unidad: '$',
+      respuesta: round2(C),
+      solucion: [
+        `Fórmula: C = (P · r) / (1 − (1+r)⁻ⁿ), con r = tasa mensual`,
+        `r = ${rAnual}% / 12 = ${(r * 100).toFixed(4)}% mensual`,
+        `C = (${fmt(P)} · ${r.toFixed(6)}) / (1 − (1+${r.toFixed(6)})⁻${n})`,
+        `C ≈ ${fmt(C)} por mes`
+      ],
+    };
+  }
+
+  function nivel9_mixtoTiempoEnAnios() {
+    const P = randInt(5, 30) * 1000;
+    const F = P * randChoice([2, 3, 4]);
+    const r = randInt(6, 24);
+    const nMeses = Math.log(F / P) / Math.log(1 + r / 100 / 12) ;
+    const anios = nMeses / 12;
+    return {
+      categoria: 'Problemas Integradores',
+      enunciado: `Un capital de **${fmt(P)}** se invierte a interés compuesto con una tasa nominal del **${r}% anual capitalizada mensualmente**. ¿Cuántos **años** (aproximados) tarda en convertirse en **${fmt(F)}**?`,
+      unidad: 'años',
+      respuesta: round2(anios),
+      solucion: [
+        `Tasa mensual: r = ${r}% / 12 = ${(r / 12).toFixed(4)}%`,
+        `n (meses) = ln(F/P) / ln(1 + r) = ln(${F}/${P}) / ln(1 + ${(r / 100 / 12).toFixed(6)})`,
+        `n ≈ ${nMeses.toFixed(1)} meses ≈ ${anios.toFixed(2)} años`
+      ],
+    };
+  }
+
+  function nivel10_problemaDeDestino() {
+    const aporte = randInt(50, 400);
+    const rAnual = randInt(4, 12);
+    const n = randInt(12, 48);
+    const r = rAnual / 100 / 12;
+    const FV = aporte * ((Math.pow(1 + r, n) - 1) / r);
+    return {
+      categoria: 'Problemas Integradores',
+      enunciado: `Ahorras **${fmt(aporte)} cada mes** en una cuenta que paga **${rAnual}% anual** (capitalización mensual), depositando al final de cada mes. ¿Cuánto tendrás acumulado después de **${n} meses**?`,
+      unidad: '$',
+      respuesta: round2(FV),
+      solucion: [
+        `Fórmula (valor futuro de una anualidad): FV = A · [(1+r)ⁿ − 1] / r`,
+        `r = ${rAnual}% / 12 = ${(r * 100).toFixed(4)}% mensual`,
+        `FV = ${fmt(aporte)} · [(1+${r.toFixed(6)})^${n} − 1] / ${r.toFixed(6)}`,
+        `FV ≈ ${fmt(FV)}`
+      ],
+    };
+  }
+
+  const GENERADORES_POR_NIVEL = {
+    1: nivel1_interesSimpleGanado,
+    2: nivel2_interesSimpleMontoFinal,
+    3: nivel3_interesCompuestoMontoFinal,
+    4: nivel4_interesCompuestoPeriodos,
+    5: nivel5_teaDesdeNominal,
+    6: nivel6_nominalDesdeTEA,
+    7: nivel7_valorPresente,
+    8: nivel8_anualidadCuotaFija,
+    9: nivel9_mixtoTiempoEnAnios,
+    10: nivel10_problemaDeDestino,
+  };
+
+  const NIVELES_POR_TEMA = {
+    interes_simple: [1, 2],
+    interes_compuesto: [3, 4],
+    tasas_equivalentes: [5, 6],
+    valor_presente: [7],
+    anualidades: [8],
+    problemas_integradores: [9, 10],
+  };
+
   function generarPreguntaNivel(nivel) {
-    return genPreguntaGenerica(nivel);
+    const gen = GENERADORES_POR_NIVEL[nivel] || nivel1_interesSimpleGanado;
+    const base = gen();
+    const dificultad = nivel <= 3 ? 'facil' : nivel <= 6 ? 'medio' : nivel <= 8 ? 'dificil' : nivel <= 9 ? 'experto' : 'master';
+    return { tema: 'nivel', ...base, dificultad };
+  }
+
+  function nivelesParaDificultad(niveles, dificultad) {
+    if (niveles.length === 1) return [niveles[0], niveles[0]];
+    const facil = niveles[0], dificilN = niveles[niveles.length - 1];
+    if (dificultad === 'facil') return [facil, facil];
+    if (dificultad === 'master' || dificultad === 'experto') return [dificilN, dificilN];
+    return [facil, dificilN];
   }
 
   const cambiarNivel = (n) => {
@@ -1684,8 +1925,59 @@ function QuizTab() {
 
   const meta = NIVELES_META[nivel - 1] || NIVELES_META[0];
 
+  // ---------- Evaluación personalizada ----------
+  const [respuestaEvalTexto, setRespuestaEvalTexto] = useState('');
+  const [evalVerificado, setEvalVerificado] = useState(false);
+  const [evalCorrecto, setEvalCorrecto] = useState(false);
+
+  const iniciarEvaluacion = () => {
+    const preguntas = [];
+    temasSeleccionados.forEach((temaId) => {
+      const niveles = NIVELES_POR_TEMA[temaId] || [1];
+      const [n1, n2] = nivelesParaDificultad(niveles, dificultadEval);
+      preguntas.push(generarPreguntaNivel(n1));
+      preguntas.push(generarPreguntaNivel(n2));
+    });
+    setPreguntasEval(preguntas);
+    setPreguntaEvalIndex(0);
+    setRespuestasEval([]);
+    setEvaluacionCompletada(false);
+    setRespuestaEvalTexto('');
+    setEvalVerificado(false);
+    setEvaluacionActiva(true);
+  };
+
+  const verificarEval = () => {
+    const preguntaActual = preguntasEval[preguntaEvalIndex];
+    const valor = parseFloat(respuestaEvalTexto.replace(',', '.'));
+    const ok = dentroDeToleranciaQ(valor, preguntaActual.respuesta, preguntaActual.unidad);
+    setEvalCorrecto(ok);
+    setEvalVerificado(true);
+  };
+
+  const siguienteEval = () => {
+    setRespuestasEval((prev) => [...prev, { pregunta: preguntasEval[preguntaEvalIndex], correcto: evalCorrecto }]);
+    setRespuestaEvalTexto('');
+    setEvalVerificado(false);
+    if (preguntaEvalIndex + 1 >= preguntasEval.length) {
+      setEvaluacionCompletada(true);
+    } else {
+      setPreguntaEvalIndex((i) => i + 1);
+    }
+  };
+
+  const reiniciarEvaluacion = () => {
+    setEvaluacionActiva(false);
+    setEvaluacionCompletada(false);
+    setPreguntasEval([]);
+    setPreguntaEvalIndex(0);
+    setRespuestasEval([]);
+  };
+
   const tutorialSteps = [
-    { index: 0, titulo: '📝 Quizzes y Evaluaciones', texto: 'Practica por niveles o haz una evaluación personalizada.', consejo: 'Los niveles van de 1 (fácil) a 10 (master).' },
+    { index: 0, titulo: '📝 Quizzes y Evaluaciones', texto: 'Practica por niveles (1 a 10, con dificultad creciente) o arma una evaluación personalizada por tema.', consejo: 'Cada nivel genera preguntas nuevas con números aleatorios cada vez.' },
+    { index: 1, titulo: '✅ Verifica tu respuesta', texto: 'Escribe tu respuesta y presiona "Verificar". Se acepta un pequeño margen de error por redondeo.', consejo: 'Si fallas, la solución paso a paso te muestra exactamente dónde revisar.' },
+    { index: 2, titulo: '📊 Evaluación personalizada', texto: 'Selecciona los temas que quieres evaluar y la dificultad; se generan 2 preguntas por tema.', consejo: 'Al terminar verás un informe con tu efectividad por pregunta.' },
   ];
 
   return (
@@ -1780,7 +2072,64 @@ function QuizTab() {
               ))}
             </div>
           </div>
-          <button onClick={() => { if (temasSeleccionados.length === 0) { alert('Selecciona al menos un tema.'); return; } setEvaluacionActiva(true); }} disabled={temasSeleccionados.length === 0} className="w-full py-3 rounded-lg text-sm font-semibold text-white disabled:opacity-40 transition-opacity" style={{ background: 'var(--accent-primary)' }}>{temasSeleccionados.length === 0 ? 'Selecciona al menos un tema' : `Iniciar evaluación (${temasSeleccionados.length * 2} preguntas)`}</button>
+          <button onClick={() => { if (temasSeleccionados.length === 0) { return; } iniciarEvaluacion(); }} disabled={temasSeleccionados.length === 0} className="w-full py-3 rounded-lg text-sm font-semibold text-white disabled:opacity-40 transition-opacity" style={{ background: 'var(--accent-primary)' }}>{temasSeleccionados.length === 0 ? 'Selecciona al menos un tema' : `Iniciar evaluación (${temasSeleccionados.length * 2} preguntas)`}</button>
+
+          {evaluacionActiva && !evaluacionCompletada && preguntasEval[preguntaEvalIndex] && (
+            <div className="cx-bg-surface-alt border cx-border-border rounded-lg p-4 sm:p-5 space-y-4 mt-2">
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <div className="flex items-center gap-2 cx-text-accent-primary-text font-semibold text-xs uppercase tracking-wide">
+                  <Lightbulb size={14} /> {preguntasEval[preguntaEvalIndex].categoria} · Pregunta {preguntaEvalIndex + 1} de {preguntasEval.length}
+                </div>
+                <button onClick={reiniciarEvaluacion} className="text-xs cx-text-text-muted font-semibold hover:cx-text-accent-coral-text">Cancelar</button>
+              </div>
+              <div className="w-full h-1.5 rounded-full cx-bg-surface overflow-hidden">
+                <div className="h-full" style={{ width: `${((preguntaEvalIndex) / preguntasEval.length) * 100}%`, background: 'var(--accent-primary)' }} />
+              </div>
+              <p className="text-[15px] cx-text-text-strong-gray leading-relaxed"><TextoConNegritas texto={preguntasEval[preguntaEvalIndex].enunciado} /></p>
+              <div className="flex flex-col sm:flex-row gap-3 sm:items-end">
+                <label className="flex-1 flex flex-col gap-1">
+                  <span className="text-xs uppercase tracking-wide cx-text-text-muted font-semibold">Tu respuesta ({preguntasEval[preguntaEvalIndex].unidad})</span>
+                  <input type="text" inputMode="decimal" value={respuestaEvalTexto} onChange={(e) => setRespuestaEvalTexto(e.target.value)} placeholder="Ej. 12500.50" className="w-full px-3 py-2.5 border-2 cx-border-border rounded-lg outline-none cx-focus-border-accent-primary cx-bg-surface cx-text-text-primary" style={{ fontFamily: "'JetBrains Mono', monospace" }} onKeyDown={(e) => e.key === 'Enter' && (evalVerificado ? siguienteEval() : verificarEval())} />
+                </label>
+                {!evalVerificado ? (
+                  <button onClick={verificarEval} disabled={respuestaEvalTexto.trim() === ''} className="px-4 py-2.5 rounded-lg text-sm font-semibold text-white disabled:opacity-40" style={{ background: 'var(--accent-primary)' }}>Verificar</button>
+                ) : (
+                  <button onClick={siguienteEval} className="px-4 py-2.5 rounded-lg text-sm font-semibold text-white flex items-center gap-1.5" style={{ background: 'var(--accent-green)' }}>
+                    {preguntaEvalIndex + 1 >= preguntasEval.length ? 'Ver resultado' : 'Siguiente'} <ArrowRight size={14} />
+                  </button>
+                )}
+              </div>
+              {evalVerificado && (
+                <div className={`rounded-lg p-4 space-y-2 ${evalCorrecto ? 'cx-bg-accent-green-bg' : 'cx-bg-accent-coral-bg'}`}>
+                  <div className={`flex items-center gap-2 font-semibold text-sm ${evalCorrecto ? 'cx-text-accent-green-text' : 'cx-text-accent-coral-text'}`}>{evalCorrecto ? <Check size={16} /> : <X size={16} />}{evalCorrecto ? '¡Correcto!' : 'No es correcto.'}</div>
+                  <p className="text-sm cx-text-text-strong-gray">Respuesta esperada: <strong>{preguntasEval[preguntaEvalIndex].unidad === '%' || preguntasEval[preguntaEvalIndex].unidad === 'años' || preguntasEval[preguntaEvalIndex].unidad === 'periodos' ? preguntasEval[preguntaEvalIndex].respuesta : fmt(preguntasEval[preguntaEvalIndex].respuesta)}{preguntasEval[preguntaEvalIndex].unidad === '%' ? '%' : ''}</strong></p>
+                  <div className="space-y-1 pt-1 border-t" style={{ borderColor: 'var(--border)' }}>{preguntasEval[preguntaEvalIndex].solucion.map((linea, i) => (<p key={i} className="text-xs cx-text-text-secondary leading-relaxed">{linea}</p>))}</div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {evaluacionCompletada && (
+            <div className="cx-bg-accent-primary-bg border cx-border-accent-primary/30 rounded-lg p-5 space-y-3 mt-2">
+              <div className="flex items-center gap-2"><GraduationCap size={18} className="cx-text-accent-primary" /><span className="font-semibold text-[15px] cx-text-text-primary" style={{ fontFamily: "'Fraunces', sans-serif" }}>Resultado de tu evaluación</span></div>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                <StatCard label="Aciertos" value={`${respuestasEval.filter((r) => r.correcto).length} / ${respuestasEval.length}`} accent="teal" />
+                <StatCard label="Efectividad" value={`${Math.round((respuestasEval.filter((r) => r.correcto).length / respuestasEval.length) * 100)}%`} accent="coral" />
+                <StatCard label="Temas evaluados" value={String(temasSeleccionados.length)} accent="blue" />
+              </div>
+              <div className="space-y-1.5 pt-2 border-t cx-border-border">
+                {respuestasEval.map((r, i) => (
+                  <div key={i} className="flex items-center gap-2 text-xs cx-text-text-secondary">
+                    {r.correcto ? <Check size={13} className="cx-text-accent-green-text flex-shrink-0" /> : <X size={13} className="cx-text-accent-coral-text flex-shrink-0" />}
+                    <span>{r.pregunta.categoria}</span>
+                  </div>
+                ))}
+              </div>
+              <button onClick={reiniciarEvaluacion} className="w-full py-2.5 rounded-lg text-sm font-semibold text-white flex items-center justify-center gap-1.5" style={{ background: 'var(--accent-primary)' }}>
+                <RotateCcw size={14} /> Nueva evaluación
+              </button>
+            </div>
+          )}
         </div>
       )}
 
@@ -1799,10 +2148,7 @@ function QuizTab() {
 // ============================================================
 
 function FormularioTab() {
-  const [dashboardOn, setDashboardOn] = useState(true);
-  const [tutorialOn, setTutorialOn] = useState(false);
-  const [discreteOn, setDiscreteOn] = useState(false);
-  const [tutorialStep, setTutorialStep] = useState(0);
+  const { dashboardOn, setDashboardOn, tutorialOn, setTutorialOn, discreteOn, setDiscreteOn, tutorialStep, setTutorialStep } = useModes();
 
   return (
     <div className="space-y-6">
@@ -1883,6 +2229,58 @@ function SplashScreen({ fadingOut }) {
   );
 }
 
+// Estilos de la app: definidos una sola vez fuera del componente para no recrear
+// este string gigante en cada render (por ejemplo, cada vez que se escribe en un Field).
+const APP_STYLES = `
+  @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&family=STIX+Two+Text:ital,wght@0,400;0,500;0,600;1,400;1,500&display=swap');
+  body { font-family: 'Inter', sans-serif; }
+  .finapp-root { --bg: #F1ECDC; --surface: #FBF8EF; --surface-alt: #E7EEE4; --surface-hover: #EFE9D6; --surface-hover-2: #E7DFC5; --surface-hover-3: #DCD2AF; --border: #D9CFAE; --border-hover: #B7A876; --text-primary: #241D12; --text-secondary: #5B5138; --text-muted: #85795A; --text-faint: #ACA080; --text-strong-gray: #4A4128; --accent-primary: #1F4D3A; --accent-primary-bg: #E3ECE3; --accent-primary-bg-hover: #D2E1D2; --accent-primary-text: #163A2B; --accent-green: #2F8F5B; --accent-green-bg: #E4F1E7; --accent-green-text: #1D6B44; --accent-coral: #A3402E; --accent-coral-bg: #F3E3DC; --accent-coral-text: #832E20; --accent-coral-border: #DDB9A6; --chart-grid: #E1D8BC; --chart-axis: #9C8F6E; }
+  .finapp-root[data-theme='dark'] { --bg: #17140C; --surface: #201B10; --surface-alt: #202A22; --surface-hover: #262014; --surface-hover-2: #2E2718; --surface-hover-3: #3A311D; --border: #3A3018; --border-hover: #5C4E28; --text-primary: #F1EAD3; --text-secondary: #D0C4A0; --text-muted: #A4977A; --text-faint: #786D53; --text-strong-gray: #C7BB98; --accent-primary: #6FCB9F; --accent-primary-bg: #22362A; --accent-primary-bg-hover: #2C4433; --accent-primary-text: #8FE0B7; --accent-green: #6FCB9F; --accent-green-bg: #1E3327; --accent-green-text: #8FE0B7; --accent-coral: #E0997F; --accent-coral-bg: #392419; --accent-coral-text: #F0B79E; --accent-coral-border: #5A3A27; --chart-grid: #3A3018; --chart-axis: #8C7F5D; }
+  .finapp-root, .finapp-root * { transition: background-color 200ms ease, border-color 200ms ease, color 200ms ease; }
+  .finapp-root input::placeholder { color: var(--text-faint); opacity: 1; font-weight: 500; }
+  .finapp-root { color: var(--text-primary); color-scheme: light; background-image: repeating-linear-gradient(to bottom, rgba(120, 105, 60, 0.05), rgba(120, 105, 60, 0.05) 1px, transparent 1px, transparent 28px); }
+  .finapp-root[data-theme='dark'] { color-scheme: dark; }
+  .finapp-root[data-theme='dark'] .espol-logo { filter: invert(1) brightness(1.7); }
+  .cx-bg-surface-hover-2 { background-color: var(--surface-hover-2); }
+  .cx-hover-bg-surface-hover-3:hover { background-color: var(--surface-hover-3); }
+  .cx-hover-bg-surface-hover-2:hover { background-color: var(--surface-hover-2); }
+  .cx-bg-surface { background-color: var(--surface); }
+  .cx-text-text-secondary { color: var(--text-secondary); }
+  .cx-border-20-accent-green { border-color: color-mix(in srgb, var(--accent-green) 20%, transparent); }
+  .cx-bg-accent-green-bg { background-color: var(--accent-green-bg); }
+  .cx-border-20-accent-primary { border-color: color-mix(in srgb, var(--accent-primary) 20%, transparent); }
+  .cx-bg-accent-primary-bg { background-color: var(--accent-primary-bg); }
+  .cx-text-accent-green-text { color: var(--accent-green-text); }
+  .cx-text-accent-primary { color: var(--accent-primary); }
+  .cx-text-text-strong-gray { color: var(--text-strong-gray); }
+  .cx-border-accent-primary { border-color: var(--accent-primary); }
+  .cx-border-border { border-color: var(--border); }
+  .cx-text-text-muted { color: var(--text-muted); }
+  .cx-text-text-faint { color: var(--text-faint); }
+  .cx-text-text-primary { color: var(--text-primary); }
+  .cx-hover-border-border-hover:hover { border-color: var(--border-hover); }
+  .cx-focusw-border-accent-primary:focus-within { border-color: var(--accent-primary); }
+  .cx-text-accent-coral-text { color: var(--accent-coral-text); }
+  .cx-bg-accent-coral-bg { background-color: var(--accent-coral-bg); }
+  .cx-text-accent-primary-text { color: var(--accent-primary-text); }
+  .cx-hover-bg-accent-primary-bg-hover:hover { background-color: var(--accent-primary-bg-hover); }
+  .cx-border-border-hover { border-color: var(--border-hover); }
+  .cx-bg-surface-alt { background-color: var(--surface-alt); }
+  .cx-focus-border-accent-primary:focus { border-color: var(--accent-primary); }
+  .cx-hover-bg-surface-hover:hover { background-color: var(--surface-hover); }
+  .cx-hover-bg-surface-alt:hover { background-color: var(--surface-alt); }
+  .cx-hover-bg-accent-coral-bg:hover { background-color: var(--accent-coral-bg); }
+  .cx-hover-text-accent-coral-text:hover { color: var(--accent-coral-text); }
+  .cx-border-accent-green { border-color: var(--accent-green); }
+  .cx-border-accent-coral-border { border-color: var(--accent-coral-border); }
+  .cx-hover-text-accent-primary:hover { color: var(--accent-primary); }
+  .formula-centered { text-align: center; display: flex; justify-content: center; align-items: center; flex-wrap: wrap; gap: 0.25rem; }
+  @media (max-width: 640px) {
+    .finapp-root .max-w-5xl { padding-left: 0.75rem; padding-right: 0.75rem; }
+    .finapp-root .cx-bg-surface { padding: 0.75rem; }
+  }
+`;
+
 function FolderHeader({ folder, onBack }) {
   return (
     <div className="flex items-center justify-between gap-3 mb-5 flex-wrap">
@@ -1946,55 +2344,7 @@ function FinanzasApp() {
   return (
     <div className="finapp-root min-h-screen w-full print:hidden" data-theme={theme} style={{ background: 'radial-gradient(1100px 500px at 85% -10%, rgba(31,77,58,0.07), transparent 60%), radial-gradient(900px 500px at -10% 10%, rgba(138,109,31,0.06), transparent 55%), var(--bg)' }}>
       {!splashDone && <SplashScreen fadingOut={!booting} />}
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&family=STIX+Two+Text:ital,wght@0,400;0,500;0,600;1,400;1,500&display=swap');
-        body { font-family: 'Inter', sans-serif; }
-        .finapp-root { --bg: #F1ECDC; --surface: #FBF8EF; --surface-alt: #E7EEE4; --surface-hover: #EFE9D6; --surface-hover-2: #E7DFC5; --surface-hover-3: #DCD2AF; --border: #D9CFAE; --border-hover: #B7A876; --text-primary: #241D12; --text-secondary: #5B5138; --text-muted: #85795A; --text-faint: #ACA080; --text-strong-gray: #4A4128; --accent-primary: #1F4D3A; --accent-primary-bg: #E3ECE3; --accent-primary-bg-hover: #D2E1D2; --accent-primary-text: #163A2B; --accent-green: #2F8F5B; --accent-green-bg: #E4F1E7; --accent-green-text: #1D6B44; --accent-coral: #A3402E; --accent-coral-bg: #F3E3DC; --accent-coral-text: #832E20; --accent-coral-border: #DDB9A6; --chart-grid: #E1D8BC; --chart-axis: #9C8F6E; }
-        .finapp-root[data-theme='dark'] { --bg: #17140C; --surface: #201B10; --surface-alt: #202A22; --surface-hover: #262014; --surface-hover-2: #2E2718; --surface-hover-3: #3A311D; --border: #3A3018; --border-hover: #5C4E28; --text-primary: #F1EAD3; --text-secondary: #D0C4A0; --text-muted: #A4977A; --text-faint: #786D53; --text-strong-gray: #C7BB98; --accent-primary: #6FCB9F; --accent-primary-bg: #22362A; --accent-primary-bg-hover: #2C4433; --accent-primary-text: #8FE0B7; --accent-green: #6FCB9F; --accent-green-bg: #1E3327; --accent-green-text: #8FE0B7; --accent-coral: #E0997F; --accent-coral-bg: #392419; --accent-coral-text: #F0B79E; --accent-coral-border: #5A3A27; --chart-grid: #3A3018; --chart-axis: #8C7F5D; }
-        .finapp-root, .finapp-root * { transition: background-color 200ms ease, border-color 200ms ease, color 200ms ease; }
-        .finapp-root input::placeholder { color: var(--text-faint); opacity: 1; font-weight: 500; }
-        .finapp-root { color: var(--text-primary); color-scheme: light; background-image: repeating-linear-gradient(to bottom, rgba(120, 105, 60, 0.05), rgba(120, 105, 60, 0.05) 1px, transparent 1px, transparent 28px); }
-        .finapp-root[data-theme='dark'] { color-scheme: dark; }
-        .finapp-root[data-theme='dark'] .espol-logo { filter: invert(1) brightness(1.7); }
-        .cx-bg-surface-hover-2 { background-color: var(--surface-hover-2); }
-        .cx-hover-bg-surface-hover-3:hover { background-color: var(--surface-hover-3); }
-        .cx-hover-bg-surface-hover-2:hover { background-color: var(--surface-hover-2); }
-        .cx-bg-surface { background-color: var(--surface); }
-        .cx-text-text-secondary { color: var(--text-secondary); }
-        .cx-border-20-accent-green { border-color: color-mix(in srgb, var(--accent-green) 20%, transparent); }
-        .cx-bg-accent-green-bg { background-color: var(--accent-green-bg); }
-        .cx-border-20-accent-primary { border-color: color-mix(in srgb, var(--accent-primary) 20%, transparent); }
-        .cx-bg-accent-primary-bg { background-color: var(--accent-primary-bg); }
-        .cx-text-accent-green-text { color: var(--accent-green-text); }
-        .cx-text-accent-primary { color: var(--accent-primary); }
-        .cx-text-text-strong-gray { color: var(--text-strong-gray); }
-        .cx-border-accent-primary { border-color: var(--accent-primary); }
-        .cx-border-border { border-color: var(--border); }
-        .cx-text-text-muted { color: var(--text-muted); }
-        .cx-text-text-faint { color: var(--text-faint); }
-        .cx-text-text-primary { color: var(--text-primary); }
-        .cx-hover-border-border-hover:hover { border-color: var(--border-hover); }
-        .cx-focusw-border-accent-primary:focus-within { border-color: var(--accent-primary); }
-        .cx-text-accent-coral-text { color: var(--accent-coral-text); }
-        .cx-bg-accent-coral-bg { background-color: var(--accent-coral-bg); }
-        .cx-text-accent-primary-text { color: var(--accent-primary-text); }
-        .cx-hover-bg-accent-primary-bg-hover:hover { background-color: var(--accent-primary-bg-hover); }
-        .cx-border-border-hover { border-color: var(--border-hover); }
-        .cx-bg-surface-alt { background-color: var(--surface-alt); }
-        .cx-focus-border-accent-primary:focus { border-color: var(--accent-primary); }
-        .cx-hover-bg-surface-hover:hover { background-color: var(--surface-hover); }
-        .cx-hover-bg-surface-alt:hover { background-color: var(--surface-alt); }
-        .cx-hover-bg-accent-coral-bg:hover { background-color: var(--accent-coral-bg); }
-        .cx-hover-text-accent-coral-text:hover { color: var(--accent-coral-text); }
-        .cx-border-accent-green { border-color: var(--accent-green); }
-        .cx-border-accent-coral-border { border-color: var(--accent-coral-border); }
-        .cx-hover-text-accent-primary:hover { color: var(--accent-primary); }
-        .formula-centered { text-align: center; display: flex; justify-content: center; align-items: center; flex-wrap: wrap; gap: 0.25rem; }
-        @media (max-width: 640px) {
-          .finapp-root .max-w-5xl { padding-left: 0.75rem; padding-right: 0.75rem; }
-          .finapp-root .cx-bg-surface { padding: 0.75rem; }
-        }
-      `}</style>
+      <style>{APP_STYLES}</style>
       <div className="max-w-5xl mx-auto px-4 py-6 sm:py-8">
         <header className="relative overflow-hidden rounded-lg mb-5 px-5 py-6 sm:px-8 sm:py-8" style={{ background: 'linear-gradient(135deg, #1F4D3A 0%, #2A6349 55%, #163A2B 100%)' }}>
           <div className="absolute inset-0 opacity-[0.05] pointer-events-none" style={{ backgroundImage: 'repeating-linear-gradient(to bottom, transparent, transparent 27px, #fff 27px, #fff 28px)' }} />
