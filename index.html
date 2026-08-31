@@ -20,7 +20,6 @@
     </script>
     <style>
         body { margin: 0; padding: 0; min-height: 100vh; }
-        /* Estilos para modos de visualización */
         .mode-active { box-shadow: 0 0 0 2px var(--accent-primary), 0 0 0 4px color-mix(in srgb, var(--accent-primary) 20%, transparent); }
         .mode-discrete { border-left: 3px solid #8B5CF6; }
         .mode-tutorial { border-left: 3px solid #3B82F6; }
@@ -43,7 +42,6 @@ import {
   Settings2, Check, ArrowLeftRight, Sun, Moon, Info, Printer, FileText
 } from 'lucide-react';
 
-// Logo de la universidad (ESPOL)
 const ESPOL_LOGO = 'logo.svg';
 
 const FRASES_CARGA = [
@@ -450,6 +448,13 @@ function ControlPanel({
   discreteOn, setDiscreteOn,
   onReset 
 }) {
+  const handleReset = () => {
+    if (typeof onReset === 'function') onReset();
+    setDashboardOn(true);
+    setTutorialOn(false);
+    setDiscreteOn(false);
+  };
+
   return (
     <div className="cx-bg-surface border cx-border-border rounded-lg p-3 mb-4 flex flex-wrap items-center justify-between gap-3">
       <div className="flex items-center gap-2">
@@ -470,7 +475,7 @@ function ControlPanel({
           <input type="checkbox" checked={discreteOn} onChange={() => setDiscreteOn(!discreteOn)} className="w-3.5 h-3.5 accent-purple-600" />
           <span className="cx-text-text-secondary">🧮 Matemáticas Discretas</span>
         </label>
-        <button onClick={onReset} className="text-xs px-2.5 py-1 rounded-md cx-bg-surface cx-text-text-muted border cx-border-border hover:cx-border-border-hover transition-colors">
+        <button onClick={handleReset} className="text-xs px-2.5 py-1 rounded-md cx-bg-surface cx-text-text-muted border cx-border-border hover:cx-border-border-hover transition-colors">
           <RotateCcw size={12} className="inline mr-1" /> Reset
         </button>
       </div>
@@ -526,26 +531,10 @@ function DiscreteMathDisplay({ formula, variables, recurrence, explanation, tipo
   if (!formula) return null;
 
   const tipoInfo = {
-    recurrencia: {
-      icon: '🔁',
-      label: 'Relación de Recurrencia',
-      color: 'border-purple-400'
-    },
-    serie_geometrica: {
-      icon: '📈',
-      label: 'Serie Geométrica',
-      color: 'border-blue-400'
-    },
-    serie_aritmetica: {
-      icon: '📊',
-      label: 'Serie Aritmética',
-      color: 'border-teal-400'
-    },
-    sumatoria: {
-      icon: 'Σ',
-      label: 'Sumatoria',
-      color: 'border-amber-400'
-    }
+    recurrencia: { icon: '🔁', label: 'Relación de Recurrencia', color: 'border-purple-400' },
+    serie_geometrica: { icon: '📈', label: 'Serie Geométrica', color: 'border-blue-400' },
+    serie_aritmetica: { icon: '📊', label: 'Serie Aritmética', color: 'border-teal-400' },
+    sumatoria: { icon: 'Σ', label: 'Sumatoria', color: 'border-amber-400' }
   };
 
   const info = tipoInfo[tipo] || tipoInfo.recurrencia;
@@ -558,14 +547,12 @@ function DiscreteMathDisplay({ formula, variables, recurrence, explanation, tipo
         <span className="text-[9px] cx-text-text-muted bg-cx-bg-surface px-2 py-0.5 rounded-full">Modo Académico</span>
       </div>
 
-      {/* Fórmula */}
       <div className="text-center py-2">
         <div className="text-lg font-serif" style={{ fontFamily: "'STIX Two Text', 'Cambria Math', serif" }}>
           {formula}
         </div>
       </div>
 
-      {/* Variables */}
       {variables && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-1 mt-2 text-xs">
           {variables.map((v, i) => (
@@ -577,7 +564,6 @@ function DiscreteMathDisplay({ formula, variables, recurrence, explanation, tipo
         </div>
       )}
 
-      {/* Recurrencia */}
       {recurrence && (
         <div className="mt-2 p-2 cx-bg-surface rounded border cx-border-border">
           <div className="text-[9px] font-semibold cx-text-text-muted uppercase tracking-wide">Relación de Recurrencia</div>
@@ -585,7 +571,6 @@ function DiscreteMathDisplay({ formula, variables, recurrence, explanation, tipo
         </div>
       )}
 
-      {/* Explicación */}
       {explanation && (
         <div className="mt-2 text-xs cx-text-text-secondary italic">
           💡 {explanation}
@@ -662,7 +647,6 @@ function InteresTab() {
   const [anios, setAnios] = useState(3);
   const [modalRow, setModalRow] = useState(null);
 
-  // Modos
   const [dashboardOn, setDashboardOn] = useState(true);
   const [tutorialOn, setTutorialOn] = useState(false);
   const [discreteOn, setDiscreteOn] = useState(false);
@@ -686,11 +670,10 @@ function InteresTab() {
 
   const chartData = resultado.rows?.map((row) => ({ periodo: row.t, Capital: row.capital, Interés: row.interes })) || [];
 
-  // Tutorial
   const tutorialSteps = [
     { index: 0, titulo: '📈 Interés Simple vs Compuesto', texto: 'Esta pestaña compara dos formas de hacer crecer tu dinero. El interés simple es lineal; el compuesto es exponencial.', consejo: 'Cambia entre los dos modos y observa la diferencia en el gráfico.' },
     { index: 1, titulo: '🔢 Configura tus parámetros', texto: 'Ingresa el capital inicial, la tasa nominal anual y el número de periodos. La capitalización define cada cuánto se aplica la tasa.', consejo: 'Prueba con capitalización mensual vs. trimestral.' },
-    { index: 2, titulo: '📊 Interpreta los resultados', texto: 'El saldo final y el interés total te muestran el rendimiento de tu inversión. El gráfico de barras desglosa capital vs. interés.', consejo: 'En interés compuesto, el interés generado también genera interés.' },
+    { index: 2, titulo: '📊 Interpreta los resultados', texto: 'El saldo final y el interés total te muestran el rendimiento de tu inversión.', consejo: 'En interés compuesto, el interés generado también genera interés.' },
   ];
 
   const discreteData = {
@@ -1240,10 +1223,6 @@ function SimuladorTab() {
   );
 }
 
-// ============================================================
-// QUIZZES
-// ============================================================
-
 function QuizTab() {
   const [nivel, setNivel] = useState(1);
   const [respuesta, setRespuesta] = useState('');
@@ -1320,31 +1299,76 @@ function QuizTab() {
 }
 
 function FormularioTab() {
-  // Formulario simplificado para este ejemplo
+  const [dashboardOn, setDashboardOn] = useState(true);
+  const [tutorialOn, setTutorialOn] = useState(false);
+  const [discreteOn, setDiscreteOn] = useState(false);
+  const [tutorialStep, setTutorialStep] = useState(0);
+
+  const tutorialSteps = [
+    { index: 0, titulo: '📚 Formulario de Fórmulas', texto: 'Todas las fórmulas organizadas por tema. Úsalo como referencia rápida durante los quizzes.', consejo: 'Puedes imprimir esta sección con el botón "Generar PDF".' },
+  ];
+
   return (
     <div className="space-y-6">
+      <ControlPanel 
+        dashboardOn={dashboardOn} setDashboardOn={setDashboardOn}
+        tutorialOn={tutorialOn} setTutorialOn={setTutorialOn}
+        discreteOn={discreteOn} setDiscreteOn={setDiscreteOn}
+        onReset={() => {}} 
+      />
+
+      {discreteOn && (
+        <DiscreteMathDisplay 
+          formula={<>Σ · Serie · Recurrencia</>}
+          variables={[
+            { simbolo: 'Σ', desc: 'Sumatoria de términos' },
+            { simbolo: 'Sₙ', desc: 'Suma de la serie' }
+          ]}
+          recurrence="Sₜ = Sₜ₋₁ · (1+r) − C"
+          explanation="Todas las fórmulas financieras se derivan de estos conceptos discretos: sumatorias, series y relaciones de recurrencia."
+          tipo="sumatoria"
+        />
+      )}
+
       <div className="cx-bg-surface border cx-border-border p-5 rounded-lg">
-        <h3 className="font-semibold text-lg cx-text-text-primary mb-1" style={{ fontFamily: "'Fraunces', serif" }}>Formulario de Fórmulas</h3>
-        <p className="text-sm cx-text-text-secondary">Todas las fórmulas organizadas por tema.</p>
+        <h3 className="font-semibold text-lg cx-text-text-primary mb-1" style={{ fontFamily: "'Fraunces', serif" }}>📐 Formulario de Fórmulas</h3>
+        <p className="text-sm cx-text-text-secondary">Todas las fórmulas organizadas por tema. Úsalas como referencia.</p>
       </div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div className="cx-bg-surface border cx-border-border rounded-lg p-4">
-          <h4 className="font-bold text-sm cx-text-accent-primary">Interés Simple</h4>
-          <div className="font-serif text-center py-2">F = P · (1 + r · t)</div>
+
+      {dashboardOn && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="cx-bg-surface border cx-border-border rounded-lg p-4">
+            <h4 className="font-bold text-sm cx-text-accent-primary">Interés Simple</h4>
+            <div className="font-serif text-center py-2 text-sm">F = P · (1 + r · t)</div>
+            <div className="text-xs cx-text-text-muted text-center">I = P · r · t</div>
+          </div>
+          <div className="cx-bg-surface border cx-border-border rounded-lg p-4">
+            <h4 className="font-bold text-sm cx-text-accent-primary">Interés Compuesto</h4>
+            <div className="font-serif text-center py-2 text-sm">F = P · (1 + r)ᵗ</div>
+            <div className="text-xs cx-text-text-muted text-center">F = P · e^(r·t) (Continua)</div>
+          </div>
+          <div className="cx-bg-surface border cx-border-border rounded-lg p-4">
+            <h4 className="font-bold text-sm cx-text-accent-primary">Cuota Francesa</h4>
+            <div className="font-serif text-center py-2 text-xs">C = (P·r) / (1 − (1+r)⁻ⁿ)</div>
+          </div>
+          <div className="cx-bg-surface border cx-border-border rounded-lg p-4">
+            <h4 className="font-bold text-sm cx-text-accent-primary">Tasa Efectiva Anual</h4>
+            <div className="font-serif text-center py-2 text-sm">TEA = (1 + j/m)ᵐ − 1</div>
+          </div>
+          <div className="cx-bg-surface border cx-border-border rounded-lg p-4 sm:col-span-2">
+            <h4 className="font-bold text-sm cx-text-accent-primary">Relación de Recurrencia</h4>
+            <div className="font-serif text-center py-2 text-sm">Sₜ = Sₜ₋₁ · (1 + r) − C</div>
+            <div className="text-xs cx-text-text-muted text-center">Motor de todos los cálculos de saldo</div>
+          </div>
         </div>
-        <div className="cx-bg-surface border cx-border-border rounded-lg p-4">
-          <h4 className="font-bold text-sm cx-text-accent-primary">Interés Compuesto</h4>
-          <div className="font-serif text-center py-2">F = P · (1 + r)ᵗ</div>
-        </div>
-        <div className="cx-bg-surface border cx-border-border rounded-lg p-4">
-          <h4 className="font-bold text-sm cx-text-accent-primary">Cuota Francesa</h4>
-          <div className="font-serif text-center py-2 text-sm">C = (P·r) / (1 − (1+r)⁻ⁿ)</div>
-        </div>
-        <div className="cx-bg-surface border cx-border-border rounded-lg p-4">
-          <h4 className="font-bold text-sm cx-text-accent-primary">Tasa Efectiva Anual</h4>
-          <div className="font-serif text-center py-2">TEA = (1 + j/m)ᵐ − 1</div>
-        </div>
-      </div>
+      )}
+
+      {tutorialOn && (
+        <TutorialStep step={tutorialSteps[tutorialStep]} total={tutorialSteps.length} 
+          onNext={() => setTutorialStep(Math.min(tutorialSteps.length - 1, tutorialStep + 1))}
+          onPrev={() => setTutorialStep(Math.max(0, tutorialStep - 1))}
+          onClose={() => setTutorialOn(false)} />
+      )}
     </div>
   );
 }
