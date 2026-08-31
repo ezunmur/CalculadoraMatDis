@@ -688,6 +688,427 @@ function LineChartComponent({ data, lines, colors, height = 240, label, referenc
 }
 
 // ============================================================
+// TASAS EQUIVALENTES TAB - CON BURBUJA BLANCA Y FÓRMULA GENERAL
+// ============================================================
+
+function TasasEquivalentesTab() {
+  const [tasaValor, setTasaValor] = useState(18);
+  const [origen, setOrigen] = useState('anual');
+  const [destino, setDestino] = useState('mensual');
+  const [tipoOrigen, setTipoOrigen] = useState('nominal');
+  const [tipoDestino, setTipoDestino] = useState('efectiva');
+
+  const [dashboardOn, setDashboardOn] = useState(true);
+  const [tutorialOn, setTutorialOn] = useState(false);
+  const [discreteOn, setDiscreteOn] = useState(false);
+  const [tutorialStep, setTutorialStep] = useState(0);
+
+  const tOrigen = getTemporalidad(origen);
+  const tDestino = getTemporalidad(destino);
+  
+  const tea = calcularTEADesdeOrigen(tasaValor, tipoOrigen, origen);
+  const tasaDestino = calcularTasaDestinoDesdeTEA(tea, tipoDestino, destino);
+  const periodicaDestino = destino === 'continua' 
+    ? null 
+    : (tipoDestino === 'nominal' ? tasaDestino / 100 / tDestino.m : tasaDestino / 100);
+
+  const chartData = TEMPORALIDADES.map((t) => ({
+    temporalidad: t.label,
+    'Tasa equivalente': calcularTasaDestinoDesdeTEA(tea, tipoDestino, t.key),
+  }));
+
+  const opcionesTemporalidad = TEMPORALIDADES.map((t) => ({ value: t.key, label: t.label }));
+  const opcionesTipo = [
+    { value: 'nominal', label: 'Nominal' },
+    { value: 'efectiva', label: 'Efectiva' }
+  ];
+
+  // ============================================================
+  // FÓRMULA GENERAL CON VARIABLES SIMBÓLICAS
+  // ============================================================
+  function getFormulaDisplay() {
+    const j = (tasaValor / 100).toFixed(4);
+    const m = tOrigen.m || '∞';
+    const m2 = tDestino.m || '∞';
+    const teaValue = (tea * 100).toFixed(4);
+    const destValue = tasaDestino.toFixed(4);
+    const periodicValue = periodicaDestino ? (periodicaDestino * 100).toFixed(4) : '—';
+
+    const origenLabel = tipoOrigen === 'nominal' ? 'Nominal' : 'Efectiva';
+    const destinoLabel = tipoDestino === 'nominal' ? 'Nominal' : 'Efectiva';
+    const origenTemp = tOrigen.label.toLowerCase();
+    const destTemp = tDestino.label.toLowerCase();
+
+    // Caso: Continua → Continua
+    if (origen === 'continua' && destino === 'continua') {
+      return {
+        titulo: `${origenLabel} Continua → ${destinoLabel} Continua`,
+        formula: 'TEA = e^{j} − 1',
+        formulaConValores: `TEA = e^{${j}} − 1 = ${teaValue}%`,
+        variables: [
+          { simbolo: 'j', desc: 'Tasa nominal continua' },
+          { simbolo: 'e', desc: 'Constante de Euler (≈ 2.71828)' },
+          { simbolo: 'TEA', desc: 'Tasa efectiva anual' }
+        ],
+        pasos: [
+          `Tasa continua origen: ${(tasaValor / 100).toFixed(4)}`,
+          `TEA = e^{${j}} − 1 = ${teaValue}%`,
+          `Tasa continua destino: ${destValue}%`
+        ],
+        periodic: periodicValue
+      };
+    }
+
+    // Caso: Continua → Efectiva/Nominal
+    if (origen === 'continua') {
+      return {
+        titulo: `${origenLabel} Continua → ${destinoLabel} (${destTemp})`,
+        formula: 'TEA = e^{j} − 1',
+        formulaConValores: `TEA = e^{${j}} − 1 = ${teaValue}%`,
+        variables: [
+          { simbolo: 'j', desc: 'Tasa nominal continua' },
+          { simbolo: 'e', desc: 'Constante de Euler (≈ 2.71828)' },
+          { simbolo: 'TEA', desc: 'Tasa efectiva anual' }
+        ],
+        pasos: [
+          `Tasa continua origen: ${(tasaValor / 100).toFixed(4)}`,
+          `TEA = e^{${j}} − 1 = ${teaValue}%`,
+          `Tasa ${destinoLabel.toLowerCase()} ${destTemp}: ${destValue}%`
+        ],
+        periodic: periodicValue
+      };
+    }
+
+    // Caso: Efectiva/Nominal → Continua
+    if (destino === 'continua') {
+      return {
+        titulo: `${origenLabel} (${origenTemp}) → ${destinoLabel} Continua`,
+        formula: 'j₂ = \\ln(1 + TEA)',
+        formulaConValores: `j₂ = \\ln(1 + ${(tea).toFixed(4)}) = ${destValue}%`,
+        variables: [
+          { simbolo: 'TEA', desc: 'Tasa efectiva anual' },
+          { simbolo: 'ln', desc: 'Logaritmo natural' },
+          { simbolo: 'j₂', desc: 'Tasa nominal continua destino' }
+        ],
+        pasos: [
+          `Tasa ${origenLabel.toLowerCase()} ${origenTemp}: ${(tasaValor / 100).toFixed(4)}`,
+          `TEA = ${teaValue}%`,
+          `Tasa continua destino: ln(1 + ${(tea).toFixed(4)}) = ${destValue}%`
+        ],
+        periodic: periodicValue
+      };
+    }
+
+    // Caso: Nominal → Nominal
+    if (tipoOrigen === 'nominal' && tipoDestino === 'nominal') {
+      return {
+        titulo: `Nominal (${origenTemp}) → Nominal (${destTemp})`,
+        formula: 'TEA = \\left(1 + \\frac{j}{m}\\right)^m − 1',
+        formulaConValores: `TEA = \\left(1 + \\frac{${j}}{${m}}\\right)^{${m}} − 1 = ${teaValue}%`,
+        variables: [
+          { simbolo: 'j', desc: 'Tasa nominal anual' },
+          { simbolo: 'm', desc: 'Capitalizaciones por año (origen)' },
+          { simbolo: 'TEA', desc: 'Tasa efectiva anual' }
+        ],
+        pasos: [
+          `Tasa nominal ${origenTemp}: ${(tasaValor / 100).toFixed(4)}`,
+          `TEA = (1 + ${j}/${m})^{${m}} − 1 = ${teaValue}%`,
+          `Tasa nominal ${destTemp}: j₂ = ${destValue}%`
+        ],
+        periodic: periodicValue
+      };
+    }
+
+    // Caso: Nominal → Efectiva
+    if (tipoOrigen === 'nominal' && tipoDestino === 'efectiva') {
+      return {
+        titulo: `Nominal (${origenTemp}) → Efectiva (${destTemp})`,
+        formula: 'TEA = \\left(1 + \\frac{j}{m}\\right)^m − 1',
+        formulaConValores: `TEA = \\left(1 + \\frac{${j}}{${m}}\\right)^{${m}} − 1 = ${teaValue}%`,
+        variables: [
+          { simbolo: 'j', desc: 'Tasa nominal anual' },
+          { simbolo: 'm', desc: 'Capitalizaciones por año (origen)' },
+          { simbolo: 'TEA', desc: 'Tasa efectiva anual' }
+        ],
+        pasos: [
+          `Tasa nominal ${origenTemp}: ${(tasaValor / 100).toFixed(4)}`,
+          `TEA = (1 + ${j}/${m})^{${m}} − 1 = ${teaValue}%`,
+          `Tasa efectiva ${destTemp}: i₂ = ${(tasaDestino / 100).toFixed(4)}%`
+        ],
+        periodic: periodicValue
+      };
+    }
+
+    // Caso: Efectiva → Nominal
+    if (tipoOrigen === 'efectiva' && tipoDestino === 'nominal') {
+      return {
+        titulo: `Efectiva (${origenTemp}) → Nominal (${destTemp})`,
+        formula: 'TEA = (1 + i)^m − 1',
+        formulaConValores: `TEA = (1 + ${(tasaValor / 100).toFixed(4)})^{${m}} − 1 = ${teaValue}%`,
+        variables: [
+          { simbolo: 'i', desc: 'Tasa efectiva del periodo origen' },
+          { simbolo: 'm', desc: 'Capitalizaciones por año (origen)' },
+          { simbolo: 'TEA', desc: 'Tasa efectiva anual' }
+        ],
+        pasos: [
+          `Tasa efectiva ${origenTemp}: ${(tasaValor / 100).toFixed(4)}`,
+          `TEA = (1 + ${(tasaValor / 100).toFixed(4)})^{${m}} − 1 = ${teaValue}%`,
+          `Tasa nominal ${destTemp}: j₂ = ${destValue}%`
+        ],
+        periodic: periodicValue
+      };
+    }
+
+    // Caso: Efectiva → Efectiva
+    return {
+      titulo: `Efectiva (${origenTemp}) → Efectiva (${destTemp})`,
+      formula: 'TEA = (1 + i)^m − 1',
+      formulaConValores: `TEA = (1 + ${(tasaValor / 100).toFixed(4)})^{${m}} − 1 = ${teaValue}%`,
+      variables: [
+        { simbolo: 'i', desc: 'Tasa efectiva del periodo origen' },
+        { simbolo: 'm', desc: 'Capitalizaciones por año (origen)' },
+        { simbolo: 'TEA', desc: 'Tasa efectiva anual' }
+      ],
+      pasos: [
+        `Tasa efectiva ${origenTemp}: ${(tasaValor / 100).toFixed(4)}`,
+        `TEA = (1 + ${(tasaValor / 100).toFixed(4)})^{${m}} − 1 = ${teaValue}%`,
+        `Tasa efectiva ${destTemp}: i₂ = ${(tasaDestino / 100).toFixed(4)}%`
+      ],
+      periodic: periodicValue
+    };
+  }
+
+  const formulaData = getFormulaDisplay();
+
+  const tutorialSteps = [
+    { index: 0, titulo: '🔄 Tasas Equivalentes', texto: 'Convierte entre tasas con distintas capitalizaciones.', consejo: 'La TEA es el "puente" para comparar tasas.' },
+  ];
+
+  // ============================================================
+  // RENDER
+  // ============================================================
+  return (
+    <div className="space-y-6">
+      <ControlPanel 
+        dashboardOn={dashboardOn} setDashboardOn={setDashboardOn}
+        tutorialOn={tutorialOn} setTutorialOn={setTutorialOn}
+        discreteOn={discreteOn} setDiscreteOn={setDiscreteOn}
+        onReset={() => { setTasaValor(18); setOrigen('anual'); setDestino('mensual'); setTipoOrigen('nominal'); setTipoDestino('efectiva'); }} 
+      />
+
+      {discreteOn && (
+        <DiscreteMathDisplay 
+          formula={<>TEA = <Pow base={<>(1 + <Frac num={<Var>j</Var>} den={<Var>m</Var>} />)</>} exp={<Var>m</Var>} /> − 1</>}
+          variables={[
+            { simbolo: 'j', desc: 'Tasa nominal anual' },
+            { simbolo: 'm', desc: 'Capitalizaciones por año' },
+            { simbolo: 'TEA', desc: 'Tasa efectiva anual' }
+          ]}
+          recurrence="TEA = (1 + j/m)ᵐ − 1"
+          explanation="Base para comparar tasas con diferentes capitalizaciones."
+          tipo="sumatoria"
+        />
+      )}
+
+      {/* ============================================================
+          SECCIÓN TASAS EQUIVALENTES - ESTILO BURBUJA BLANCA
+          ============================================================ */}
+      <div className="cx-bg-surface-alt rounded-lg border cx-border-border p-5">
+        <div className="flex items-center gap-2 mb-3">
+          <Sparkles size={16} className="cx-text-accent-primary" />
+          <span className="font-semibold text-[15px] cx-text-text-primary" style={{ fontFamily: "'Fraunces', sans-serif" }}>
+            ¿Qué son las tasas equivalentes?
+          </span>
+        </div>
+        <p className="text-sm cx-text-text-secondary mb-4">
+          Dos tasas con distinta capitalización pueden producir el mismo rendimiento.
+        </p>
+
+        {/* Título de la fórmula */}
+        <div className="text-[11px] cx-text-text-muted font-semibold uppercase tracking-wide mb-1 text-center">
+          {tipoOrigen === 'nominal' ? 'Tasa nominal' : 'Tasa efectiva'} → {tipoDestino === 'nominal' ? 'Tasa nominal' : 'Tasa efectiva'}
+        </div>
+
+        {/* FÓRMULA GENERAL (con variables simbólicas) */}
+        <div className="bg-white dark:bg-black/20 rounded-lg p-4 mb-3 border cx-border-border shadow-sm">
+          <div className="text-center font-serif text-base sm:text-lg cx-text-text-primary" style={{ fontFamily: "'STIX Two Text', 'Cambria Math', serif" }}>
+            {formulaData.formula}
+          </div>
+        </div>
+
+        {/* Variables */}
+        {formulaData.variables && formulaData.variables.length > 0 && (
+          <div className="mt-3">
+            <div className="text-[10px] font-semibold cx-text-text-muted uppercase tracking-wide mb-1.5">Variables</div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-1 text-xs">
+              {formulaData.variables.map((v, i) => (
+                <div key={i} className="flex items-baseline gap-1 cx-bg-surface px-2 py-1 rounded">
+                  <span className="font-serif italic font-bold cx-text-accent-primary">{v.simbolo}</span>
+                  <span className="cx-text-text-muted text-[10px]">= {v.desc}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Configuración */}
+      <div className="cx-bg-surface p-4 rounded-lg border cx-border-border space-y-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <Field 
+            label={`Tasa ${tipoOrigen === 'nominal' ? 'nominal' : 'efectiva'} (${tOrigen.label.toLowerCase()})`} 
+            suffix="%" 
+            value={tasaValor} 
+            onChange={setTasaValor} 
+            min={0} 
+            step={0.1} 
+          />
+          <div className="grid grid-cols-2 gap-3">
+            <SelectField 
+              label="Capitalización origen" 
+              value={origen} 
+              onChange={setOrigen} 
+              options={opcionesTemporalidad} 
+            />
+            <SelectField 
+              label="Capitalización destino" 
+              value={destino} 
+              onChange={setDestino} 
+              options={opcionesTemporalidad} 
+            />
+          </div>
+        </div>
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-1">
+          <SelectField 
+            label="Tipo origen" 
+            value={tipoOrigen} 
+            onChange={setTipoOrigen} 
+            options={opcionesTipo} 
+          />
+          <span className="text-sm italic cx-text-text-muted" style={{ fontFamily: "'Fraunces', serif" }}>
+            a
+          </span>
+          <SelectField 
+            label="Tipo destino" 
+            value={tipoDestino} 
+            onChange={setTipoDestino} 
+            options={opcionesTipo} 
+          />
+        </div>
+      </div>
+
+      {/* Resultados */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <StatCard 
+          label="Tasa efectiva anual (TEA)" 
+          value={`${(tea * 100).toFixed(4)}%`} 
+          accent="blue" 
+        />
+        <StatCard 
+          label={`Tasa ${tipoDestino} ${tDestino.label.toLowerCase()}`} 
+          value={`${tasaDestino.toFixed(4)}%`} 
+          accent="teal" 
+        />
+        <StatCard 
+          label="Tasa periódica destino" 
+          value={periodicaDestino === null ? '—' : `${(periodicaDestino * 100).toFixed(4)}%`} 
+          accent="coral" 
+        />
+      </div>
+
+      {/* Desarrollo del cálculo con fórmula general y valores */}
+      <div className="cx-bg-surface-alt rounded-lg p-4 space-y-3">
+        <div className="text-[10px] cx-text-text-muted font-semibold uppercase tracking-wide text-center">
+          Desarrollo del cálculo · {formulaData.titulo}
+        </div>
+        
+        {/* Fórmula general */}
+        <div className="bg-white dark:bg-black/20 rounded-lg p-3 border cx-border-border shadow-sm">
+          <div className="text-center font-serif text-base" style={{ fontFamily: "'STIX Two Text', 'Cambria Math', serif" }}>
+            {formulaData.formula}
+          </div>
+        </div>
+        
+        {/* Fórmula con valores específicos */}
+        <div className="bg-white dark:bg-black/20 rounded-lg p-3 border cx-border-border shadow-sm">
+          <div className="text-center font-serif text-base" style={{ fontFamily: "'STIX Two Text', 'Cambria Math', serif" }}>
+            {formulaData.formulaConValores}
+          </div>
+        </div>
+        
+        <div className="text-xs cx-text-text-secondary space-y-0.5 mt-2 border-t cx-border-border pt-2 text-center">
+          {formulaData.pasos.map((paso, i) => (
+            <p key={i} className="text-center">{paso}</p>
+          ))}
+        </div>
+        
+        {formulaData.periodic !== '—' && (
+          <div className="text-center text-xs cx-text-text-muted mt-1">
+            Tasa periódica: {formulaData.periodic}%
+          </div>
+        )}
+      </div>
+
+      {/* Gráfico */}
+      <div>
+        <div className="flex items-center gap-2 mb-2 flex-wrap">
+          <BarChart3 size={16} className="cx-text-accent-primary flex-shrink-0" />
+          <span className="text-xs font-semibold cx-text-text-muted uppercase tracking-wide">
+            La misma TEA expresada como tasa {tipoDestino} en cada capitalización
+          </span>
+        </div>
+        <div className="cx-bg-surface border cx-border-border rounded-lg p-3" style={{ height: 280, minHeight: 200 }}>
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={chartData} margin={{ top: 8, right: 8, left: 0, bottom: 48 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid)" vertical={false} />
+              <XAxis 
+                dataKey="temporalidad" 
+                tick={{ fontSize: 10, fill: 'var(--chart-axis)' }} 
+                angle={-35} 
+                textAnchor="end" 
+                interval={0} 
+              />
+              <YAxis 
+                tick={{ fontSize: 11, fill: 'var(--chart-axis)' }} 
+                tickFormatter={(v) => v.toFixed(2) + '%'} 
+              />
+              <Tooltip 
+                formatter={(v) => v.toFixed(4) + '%'} 
+                contentStyle={{ 
+                  fontSize: 12, 
+                  borderRadius: 12, 
+                  background: 'var(--surface)', 
+                  color: 'var(--text-primary)', 
+                  border: '1px solid var(--border)' 
+                }} 
+              />
+              <Bar dataKey="Tasa equivalente" fill="var(--accent-primary)" radius={[4, 4, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+        <p className="text-xs cx-text-text-muted mt-2 text-center sm:text-left">
+          Todas estas tasas generan la misma tasa efectiva anual ({fmtPct(tea * 100)}) — por eso se llaman "equivalentes".
+        </p>
+      </div>
+
+      {tutorialOn && (
+        <TutorialStep 
+          step={tutorialSteps[tutorialStep]} 
+          total={tutorialSteps.length} 
+          onNext={() => setTutorialStep(Math.min(tutorialSteps.length - 1, tutorialStep + 1))}
+          onPrev={() => setTutorialStep(Math.max(0, tutorialStep - 1))}
+          onClose={() => setTutorialOn(false)} 
+        />
+      )}
+    </div>
+  );
+}
+
+function fmtPct(n) {
+  return n.toLocaleString('es-EC', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '%';
+}
+
+// ============================================================
 // INTERES TAB
 // ============================================================
 
@@ -826,402 +1247,6 @@ function InteresTab() {
       )}
     </div>
   );
-}
-
-// ============================================================
-// TASAS EQUIVALENTES TAB - CON BURBUJA BLANCA
-// ============================================================
-
-function TasasEquivalentesTab() {
-  const [tasaValor, setTasaValor] = useState(18);
-  const [origen, setOrigen] = useState('anual');
-  const [destino, setDestino] = useState('mensual');
-  const [tipoOrigen, setTipoOrigen] = useState('nominal');
-  const [tipoDestino, setTipoDestino] = useState('efectiva');
-
-  const [dashboardOn, setDashboardOn] = useState(true);
-  const [tutorialOn, setTutorialOn] = useState(false);
-  const [discreteOn, setDiscreteOn] = useState(false);
-  const [tutorialStep, setTutorialStep] = useState(0);
-
-  const tOrigen = getTemporalidad(origen);
-  const tDestino = getTemporalidad(destino);
-  
-  const tea = calcularTEADesdeOrigen(tasaValor, tipoOrigen, origen);
-  const tasaDestino = calcularTasaDestinoDesdeTEA(tea, tipoDestino, destino);
-  const periodicaDestino = destino === 'continua' 
-    ? null 
-    : (tipoDestino === 'nominal' ? tasaDestino / 100 / tDestino.m : tasaDestino / 100);
-
-  const chartData = TEMPORALIDADES.map((t) => ({
-    temporalidad: t.label,
-    'Tasa equivalente': calcularTasaDestinoDesdeTEA(tea, tipoDestino, t.key),
-  }));
-
-  const opcionesTemporalidad = TEMPORALIDADES.map((t) => ({ value: t.key, label: t.label }));
-  const opcionesTipo = [
-    { value: 'nominal', label: 'Nominal' },
-    { value: 'efectiva', label: 'Efectiva' }
-  ];
-
-  function getFormulaDisplay() {
-    const j = (tasaValor / 100).toFixed(4);
-    const m = tOrigen.m || '∞';
-    const m2 = tDestino.m || '∞';
-    const teaValue = (tea * 100).toFixed(4);
-    const destValue = tasaDestino.toFixed(4);
-    const periodicValue = periodicaDestino ? (periodicaDestino * 100).toFixed(4) : '—';
-
-    const origenLabel = tipoOrigen === 'nominal' ? 'Nominal' : 'Efectiva';
-    const destinoLabel = tipoDestino === 'nominal' ? 'Nominal' : 'Efectiva';
-    const origenTemp = tOrigen.label.toLowerCase();
-    const destTemp = tDestino.label.toLowerCase();
-
-    // Caso: Continua → Continua
-    if (origen === 'continua' && destino === 'continua') {
-      return {
-        titulo: `${origenLabel} Continua → ${destinoLabel} Continua`,
-        formula: `TEA = e^${j} − 1 = ${teaValue}%`,
-        variables: [
-          { simbolo: 'j', desc: 'Tasa nominal continua' },
-          { simbolo: 'e', desc: 'Constante de Euler (≈ 2.71828)' },
-          { simbolo: 'TEA', desc: 'Tasa efectiva anual' }
-        ],
-        pasos: [
-          `Tasa continua origen: ${(tasaValor / 100).toFixed(4)}`,
-          `TEA = e^${j} − 1 = ${teaValue}%`,
-          `Tasa continua destino: ${destValue}%`
-        ],
-        periodic: periodicValue
-      };
-    }
-
-    // Caso: Continua → Efectiva/Nominal
-    if (origen === 'continua') {
-      return {
-        titulo: `${origenLabel} Continua → ${destinoLabel} (${destTemp})`,
-        formula: `TEA = e^${j} − 1 = ${teaValue}%`,
-        variables: [
-          { simbolo: 'j', desc: 'Tasa nominal continua' },
-          { simbolo: 'e', desc: 'Constante de Euler (≈ 2.71828)' },
-          { simbolo: 'TEA', desc: 'Tasa efectiva anual' }
-        ],
-        pasos: [
-          `Tasa continua origen: ${(tasaValor / 100).toFixed(4)}`,
-          `TEA = e^${j} − 1 = ${teaValue}%`,
-          `Tasa ${destinoLabel.toLowerCase()} ${destTemp}: ${destValue}%`
-        ],
-        periodic: periodicValue
-      };
-    }
-
-    // Caso: Efectiva/Nominal → Continua
-    if (destino === 'continua') {
-      return {
-        titulo: `${origenLabel} (${origenTemp}) → ${destinoLabel} Continua`,
-        formula: `j₂ = ln(1 + TEA) = ${destValue}%`,
-        variables: [
-          { simbolo: 'TEA', desc: 'Tasa efectiva anual' },
-          { simbolo: 'ln', desc: 'Logaritmo natural' },
-          { simbolo: 'j₂', desc: 'Tasa nominal continua destino' }
-        ],
-        pasos: [
-          `Tasa ${origenLabel.toLowerCase()} ${origenTemp}: ${(tasaValor / 100).toFixed(4)}`,
-          `TEA = ${teaValue}%`,
-          `Tasa continua destino: ln(1 + ${(tea).toFixed(4)}) = ${destValue}%`
-        ],
-        periodic: periodicValue
-      };
-    }
-
-    // Caso: Nominal → Nominal
-    if (tipoOrigen === 'nominal' && tipoDestino === 'nominal') {
-      return {
-        titulo: `Nominal (${origenTemp}) → Nominal (${destTemp})`,
-        formula: `TEA = (1 + ${j}/${m})^${m} − 1 = ${teaValue}%`,
-        variables: [
-          { simbolo: 'j', desc: 'Tasa nominal anual' },
-          { simbolo: 'm', desc: 'Capitalizaciones por año (origen)' },
-          { simbolo: 'TEA', desc: 'Tasa efectiva anual' }
-        ],
-        pasos: [
-          `Tasa nominal ${origenTemp}: ${(tasaValor / 100).toFixed(4)}`,
-          `TEA = (1 + ${j}/${m})^${m} − 1 = ${teaValue}%`,
-          `Tasa nominal ${destTemp}: j₂ = ${destValue}%`
-        ],
-        periodic: periodicValue
-      };
-    }
-
-    // Caso: Nominal → Efectiva
-    if (tipoOrigen === 'nominal' && tipoDestino === 'efectiva') {
-      return {
-        titulo: `Nominal (${origenTemp}) → Efectiva (${destTemp})`,
-        formula: `TEA = (1 + ${j}/${m})^${m} − 1 = ${teaValue}%`,
-        variables: [
-          { simbolo: 'j', desc: 'Tasa nominal anual' },
-          { simbolo: 'm', desc: 'Capitalizaciones por año (origen)' },
-          { simbolo: 'TEA', desc: 'Tasa efectiva anual' }
-        ],
-        pasos: [
-          `Tasa nominal ${origenTemp}: ${(tasaValor / 100).toFixed(4)}`,
-          `TEA = (1 + ${j}/${m})^${m} − 1 = ${teaValue}%`,
-          `Tasa efectiva ${destTemp}: i₂ = ${(tasaDestino / 100).toFixed(4)}%`
-        ],
-        periodic: periodicValue
-      };
-    }
-
-    // Caso: Efectiva → Nominal
-    if (tipoOrigen === 'efectiva' && tipoDestino === 'nominal') {
-      return {
-        titulo: `Efectiva (${origenTemp}) → Nominal (${destTemp})`,
-        formula: `TEA = (1 + ${(tasaValor / 100).toFixed(4)})^${m} − 1 = ${teaValue}%`,
-        variables: [
-          { simbolo: 'i', desc: 'Tasa efectiva del periodo origen' },
-          { simbolo: 'm', desc: 'Capitalizaciones por año (origen)' },
-          { simbolo: 'TEA', desc: 'Tasa efectiva anual' }
-        ],
-        pasos: [
-          `Tasa efectiva ${origenTemp}: ${(tasaValor / 100).toFixed(4)}`,
-          `TEA = (1 + ${(tasaValor / 100).toFixed(4)})^${m} − 1 = ${teaValue}%`,
-          `Tasa nominal ${destTemp}: j₂ = ${destValue}%`
-        ],
-        periodic: periodicValue
-      };
-    }
-
-    // Caso: Efectiva → Efectiva
-    return {
-      titulo: `Efectiva (${origenTemp}) → Efectiva (${destTemp})`,
-      formula: `TEA = (1 + ${(tasaValor / 100).toFixed(4)})^${m} − 1 = ${teaValue}%`,
-      variables: [
-        { simbolo: 'i', desc: 'Tasa efectiva del periodo origen' },
-        { simbolo: 'm', desc: 'Capitalizaciones por año (origen)' },
-        { simbolo: 'TEA', desc: 'Tasa efectiva anual' }
-      ],
-      pasos: [
-        `Tasa efectiva ${origenTemp}: ${(tasaValor / 100).toFixed(4)}`,
-        `TEA = (1 + ${(tasaValor / 100).toFixed(4)})^${m} − 1 = ${teaValue}%`,
-        `Tasa efectiva ${destTemp}: i₂ = ${(tasaDestino / 100).toFixed(4)}%`
-      ],
-      periodic: periodicValue
-    };
-  }
-
-  const formulaData = getFormulaDisplay();
-
-  const tutorialSteps = [
-    { index: 0, titulo: '🔄 Tasas Equivalentes', texto: 'Convierte entre tasas con distintas capitalizaciones.', consejo: 'La TEA es el "puente" para comparar tasas.' },
-  ];
-
-  return (
-    <div className="space-y-6">
-      <ControlPanel 
-        dashboardOn={dashboardOn} setDashboardOn={setDashboardOn}
-        tutorialOn={tutorialOn} setTutorialOn={setTutorialOn}
-        discreteOn={discreteOn} setDiscreteOn={setDiscreteOn}
-        onReset={() => { setTasaValor(18); setOrigen('anual'); setDestino('mensual'); setTipoOrigen('nominal'); setTipoDestino('efectiva'); }} 
-      />
-
-      {discreteOn && (
-        <DiscreteMathDisplay 
-          formula={<>TEA = <Pow base={<>(1 + <Frac num={<Var>j</Var>} den={<Var>m</Var>} />)</>} exp={<Var>m</Var>} /> − 1</>}
-          variables={[
-            { simbolo: 'j', desc: 'Tasa nominal anual' },
-            { simbolo: 'm', desc: 'Capitalizaciones por año' },
-            { simbolo: 'TEA', desc: 'Tasa efectiva anual' }
-          ]}
-          recurrence="TEA = (1 + j/m)ᵐ − 1"
-          explanation="Base para comparar tasas con diferentes capitalizaciones."
-          tipo="sumatoria"
-        />
-      )}
-
-      {/* ============================================================
-          SECCIÓN TASAS EQUIVALENTES - ESTILO BURBUJA BLANCA
-          ============================================================ */}
-      <div className="cx-bg-surface-alt rounded-lg border cx-border-border p-5">
-        <div className="flex items-center gap-2 mb-3">
-          <Sparkles size={16} className="cx-text-accent-primary" />
-          <span className="font-semibold text-[15px] cx-text-text-primary" style={{ fontFamily: "'Fraunces', sans-serif" }}>
-            ¿Qué son las tasas equivalentes?
-          </span>
-        </div>
-        <p className="text-sm cx-text-text-secondary mb-4">
-          Dos tasas con distinta capitalización pueden producir el mismo rendimiento.
-        </p>
-
-        <div className="bg-white dark:bg-black/20 rounded-lg p-4 mb-3 border cx-border-border shadow-sm">
-          <div className="text-[11px] cx-text-text-muted font-semibold uppercase tracking-wide mb-1 text-center">
-            {tipoOrigen === 'nominal' ? 'Tasa nominal' : 'Tasa efectiva'} → {tipoDestino === 'nominal' ? 'Tasa nominal' : 'Tasa efectiva'}
-          </div>
-          <div className="text-center font-serif text-base sm:text-lg cx-text-text-primary" style={{ fontFamily: "'STIX Two Text', 'Cambria Math', serif" }}>
-            {formulaData.formula}
-          </div>
-        </div>
-
-        {formulaData.variables && formulaData.variables.length > 0 && (
-          <div className="mt-3">
-            <div className="text-[10px] font-semibold cx-text-text-muted uppercase tracking-wide mb-1.5">Variables</div>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-1 text-xs">
-              {formulaData.variables.map((v, i) => (
-                <div key={i} className="flex items-baseline gap-1 cx-bg-surface px-2 py-1 rounded">
-                  <span className="font-serif italic font-bold cx-text-accent-primary">{v.simbolo}</span>
-                  <span className="cx-text-text-muted text-[10px]">= {v.desc}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Configuración */}
-      <div className="cx-bg-surface p-4 rounded-lg border cx-border-border space-y-4">
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <Field 
-            label={`Tasa ${tipoOrigen === 'nominal' ? 'nominal' : 'efectiva'} (${tOrigen.label.toLowerCase()})`} 
-            suffix="%" 
-            value={tasaValor} 
-            onChange={setTasaValor} 
-            min={0} 
-            step={0.1} 
-          />
-          <div className="grid grid-cols-2 gap-3">
-            <SelectField 
-              label="Capitalización origen" 
-              value={origen} 
-              onChange={setOrigen} 
-              options={opcionesTemporalidad} 
-            />
-            <SelectField 
-              label="Capitalización destino" 
-              value={destino} 
-              onChange={setDestino} 
-              options={opcionesTemporalidad} 
-            />
-          </div>
-        </div>
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-1">
-          <SelectField 
-            label="Tipo origen" 
-            value={tipoOrigen} 
-            onChange={setTipoOrigen} 
-            options={opcionesTipo} 
-          />
-          <span className="text-sm italic cx-text-text-muted" style={{ fontFamily: "'Fraunces', serif" }}>
-            a
-          </span>
-          <SelectField 
-            label="Tipo destino" 
-            value={tipoDestino} 
-            onChange={setTipoDestino} 
-            options={opcionesTipo} 
-          />
-        </div>
-      </div>
-
-      {/* Resultados */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <StatCard 
-          label="Tasa efectiva anual (TEA)" 
-          value={`${(tea * 100).toFixed(4)}%`} 
-          accent="blue" 
-        />
-        <StatCard 
-          label={`Tasa ${tipoDestino} ${tDestino.label.toLowerCase()}`} 
-          value={`${tasaDestino.toFixed(4)}%`} 
-          accent="teal" 
-        />
-        <StatCard 
-          label="Tasa periódica destino" 
-          value={periodicaDestino === null ? '—' : `${(periodicaDestino * 100).toFixed(4)}%`} 
-          accent="coral" 
-        />
-      </div>
-
-      {/* Desarrollo del cálculo */}
-      <div className="cx-bg-surface-alt rounded-lg p-4 space-y-3">
-        <div className="text-[10px] cx-text-text-muted font-semibold uppercase tracking-wide text-center">
-          Desarrollo del cálculo · {formulaData.titulo}
-        </div>
-        
-        <div className="bg-white dark:bg-black/20 rounded-lg p-3 border cx-border-border shadow-sm">
-          <div className="text-center font-serif text-base" style={{ fontFamily: "'STIX Two Text', 'Cambria Math', serif" }}>
-            {formulaData.formula}
-          </div>
-        </div>
-        
-        <div className="text-xs cx-text-text-secondary space-y-0.5 mt-2 border-t cx-border-border pt-2 text-center">
-          {formulaData.pasos.map((paso, i) => (
-            <p key={i} className="text-center">{paso}</p>
-          ))}
-        </div>
-        
-        {formulaData.periodic !== '—' && (
-          <div className="text-center text-xs cx-text-text-muted mt-1">
-            Tasa periódica: {formulaData.periodic}%
-          </div>
-        )}
-      </div>
-
-      {/* Gráfico */}
-      <div>
-        <div className="flex items-center gap-2 mb-2 flex-wrap">
-          <BarChart3 size={16} className="cx-text-accent-primary flex-shrink-0" />
-          <span className="text-xs font-semibold cx-text-text-muted uppercase tracking-wide">
-            La misma TEA expresada como tasa {tipoDestino} en cada capitalización
-          </span>
-        </div>
-        <div className="cx-bg-surface border cx-border-border rounded-lg p-3" style={{ height: 280, minHeight: 200 }}>
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={chartData} margin={{ top: 8, right: 8, left: 0, bottom: 48 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid)" vertical={false} />
-              <XAxis 
-                dataKey="temporalidad" 
-                tick={{ fontSize: 10, fill: 'var(--chart-axis)' }} 
-                angle={-35} 
-                textAnchor="end" 
-                interval={0} 
-              />
-              <YAxis 
-                tick={{ fontSize: 11, fill: 'var(--chart-axis)' }} 
-                tickFormatter={(v) => v.toFixed(2) + '%'} 
-              />
-              <Tooltip 
-                formatter={(v) => v.toFixed(4) + '%'} 
-                contentStyle={{ 
-                  fontSize: 12, 
-                  borderRadius: 12, 
-                  background: 'var(--surface)', 
-                  color: 'var(--text-primary)', 
-                  border: '1px solid var(--border)' 
-                }} 
-              />
-              <Bar dataKey="Tasa equivalente" fill="var(--accent-primary)" radius={[4, 4, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-        <p className="text-xs cx-text-text-muted mt-2 text-center sm:text-left">
-          Todas estas tasas generan la misma tasa efectiva anual ({fmtPct(tea * 100)}) — por eso se llaman "equivalentes".
-        </p>
-      </div>
-
-      {tutorialOn && (
-        <TutorialStep 
-          step={tutorialSteps[tutorialStep]} 
-          total={tutorialSteps.length} 
-          onNext={() => setTutorialStep(Math.min(tutorialSteps.length - 1, tutorialStep + 1))}
-          onPrev={() => setTutorialStep(Math.max(0, tutorialStep - 1))}
-          onClose={() => setTutorialOn(false)} 
-        />
-      )}
-    </div>
-  );
-}
-
-function fmtPct(n) {
-  return n.toLocaleString('es-EC', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '%';
 }
 
 // ============================================================
@@ -1548,7 +1573,7 @@ function SimuladorTab() {
 }
 
 // ============================================================
-// QUIZ TAB
+// QUIZ TAB (simplificado)
 // ============================================================
 
 function QuizTab() {
