@@ -724,7 +724,7 @@ function TasasEquivalentesTab() {
   ];
 
   // ============================================================
-  // FÓRMULA GENERAL CON VARIABLES SIMBÓLICAS
+  // FÓRMULA GENERAL CON VARIABLES SIMBÓLICAS (SIN NÚMEROS)
   // ============================================================
   function getFormulaDisplay() {
     const j = (tasaValor / 100).toFixed(4);
@@ -743,7 +743,7 @@ function TasasEquivalentesTab() {
     if (origen === 'continua' && destino === 'continua') {
       return {
         titulo: `${origenLabel} Continua → ${destinoLabel} Continua`,
-        formula: 'TEA = e^{j} − 1',
+        formulaGeneral: 'TEA = e^{j} − 1',
         formulaConValores: `TEA = e^{${j}} − 1 = ${teaValue}%`,
         variables: [
           { simbolo: 'j', desc: 'Tasa nominal continua' },
@@ -763,7 +763,7 @@ function TasasEquivalentesTab() {
     if (origen === 'continua') {
       return {
         titulo: `${origenLabel} Continua → ${destinoLabel} (${destTemp})`,
-        formula: 'TEA = e^{j} − 1',
+        formulaGeneral: 'TEA = e^{j} − 1',
         formulaConValores: `TEA = e^{${j}} − 1 = ${teaValue}%`,
         variables: [
           { simbolo: 'j', desc: 'Tasa nominal continua' },
@@ -783,7 +783,7 @@ function TasasEquivalentesTab() {
     if (destino === 'continua') {
       return {
         titulo: `${origenLabel} (${origenTemp}) → ${destinoLabel} Continua`,
-        formula: 'j₂ = \\ln(1 + TEA)',
+        formulaGeneral: 'j₂ = \\ln(1 + TEA)',
         formulaConValores: `j₂ = \\ln(1 + ${(tea).toFixed(4)}) = ${destValue}%`,
         variables: [
           { simbolo: 'TEA', desc: 'Tasa efectiva anual' },
@@ -803,7 +803,7 @@ function TasasEquivalentesTab() {
     if (tipoOrigen === 'nominal' && tipoDestino === 'nominal') {
       return {
         titulo: `Nominal (${origenTemp}) → Nominal (${destTemp})`,
-        formula: 'TEA = \\left(1 + \\frac{j}{m}\\right)^m − 1',
+        formulaGeneral: 'TEA = \\left(1 + \\frac{j}{m}\\right)^m − 1',
         formulaConValores: `TEA = \\left(1 + \\frac{${j}}{${m}}\\right)^{${m}} − 1 = ${teaValue}%`,
         variables: [
           { simbolo: 'j', desc: 'Tasa nominal anual' },
@@ -823,7 +823,7 @@ function TasasEquivalentesTab() {
     if (tipoOrigen === 'nominal' && tipoDestino === 'efectiva') {
       return {
         titulo: `Nominal (${origenTemp}) → Efectiva (${destTemp})`,
-        formula: 'TEA = \\left(1 + \\frac{j}{m}\\right)^m − 1',
+        formulaGeneral: 'TEA = \\left(1 + \\frac{j}{m}\\right)^m − 1',
         formulaConValores: `TEA = \\left(1 + \\frac{${j}}{${m}}\\right)^{${m}} − 1 = ${teaValue}%`,
         variables: [
           { simbolo: 'j', desc: 'Tasa nominal anual' },
@@ -843,7 +843,7 @@ function TasasEquivalentesTab() {
     if (tipoOrigen === 'efectiva' && tipoDestino === 'nominal') {
       return {
         titulo: `Efectiva (${origenTemp}) → Nominal (${destTemp})`,
-        formula: 'TEA = (1 + i)^m − 1',
+        formulaGeneral: 'TEA = (1 + i)^m − 1',
         formulaConValores: `TEA = (1 + ${(tasaValor / 100).toFixed(4)})^{${m}} − 1 = ${teaValue}%`,
         variables: [
           { simbolo: 'i', desc: 'Tasa efectiva del periodo origen' },
@@ -862,7 +862,7 @@ function TasasEquivalentesTab() {
     // Caso: Efectiva → Efectiva
     return {
       titulo: `Efectiva (${origenTemp}) → Efectiva (${destTemp})`,
-      formula: 'TEA = (1 + i)^m − 1',
+      formulaGeneral: 'TEA = (1 + i)^m − 1',
       formulaConValores: `TEA = (1 + ${(tasaValor / 100).toFixed(4)})^{${m}} − 1 = ${teaValue}%`,
       variables: [
         { simbolo: 'i', desc: 'Tasa efectiva del periodo origen' },
@@ -912,6 +912,7 @@ function TasasEquivalentesTab() {
 
       {/* ============================================================
           SECCIÓN TASAS EQUIVALENTES - ESTILO BURBUJA BLANCA
+          CON FÓRMULA GENERAL (VARIABLES SIMBÓLICAS)
           ============================================================ */}
       <div className="cx-bg-surface-alt rounded-lg border cx-border-border p-5">
         <div className="flex items-center gap-2 mb-3">
@@ -929,10 +930,10 @@ function TasasEquivalentesTab() {
           {tipoOrigen === 'nominal' ? 'Tasa nominal' : 'Tasa efectiva'} → {tipoDestino === 'nominal' ? 'Tasa nominal' : 'Tasa efectiva'}
         </div>
 
-        {/* FÓRMULA GENERAL (con variables simbólicas) */}
+        {/* FÓRMULA GENERAL - SOLO VARIABLES SIMBÓLICAS */}
         <div className="bg-white dark:bg-black/20 rounded-lg p-4 mb-3 border cx-border-border shadow-sm">
           <div className="text-center font-serif text-base sm:text-lg cx-text-text-primary" style={{ fontFamily: "'STIX Two Text', 'Cambria Math', serif" }}>
-            {formulaData.formula}
+            {formulaData.formulaGeneral}
           </div>
         </div>
 
@@ -1022,10 +1023,10 @@ function TasasEquivalentesTab() {
           Desarrollo del cálculo · {formulaData.titulo}
         </div>
         
-        {/* Fórmula general */}
+        {/* Fórmula general (solo variables) */}
         <div className="bg-white dark:bg-black/20 rounded-lg p-3 border cx-border-border shadow-sm">
           <div className="text-center font-serif text-base" style={{ fontFamily: "'STIX Two Text', 'Cambria Math', serif" }}>
-            {formulaData.formula}
+            {formulaData.formulaGeneral}
           </div>
         </div>
         
@@ -1250,7 +1251,7 @@ function InteresTab() {
 }
 
 // ============================================================
-// ANUALIDADES TAB
+// ANUALIDADES TAB (simplificada)
 // ============================================================
 
 function AnualidadesTab() {
@@ -1573,7 +1574,7 @@ function SimuladorTab() {
 }
 
 // ============================================================
-// QUIZ TAB (simplificado)
+// QUIZ TAB
 // ============================================================
 
 function QuizTab() {
