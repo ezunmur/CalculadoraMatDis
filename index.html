@@ -2336,15 +2336,41 @@ function GameMenu({ onSelect }) {
 function SplashScreen({ fadingOut }) {
   const [frase] = useState(() => FRASES_CARGA[Math.floor(Math.random() * FRASES_CARGA.length)]);
   return (
-    <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center transition-all duration-300" style={{ background: 'var(--bg)', opacity: fadingOut ? 0 : 1, transform: fadingOut ? 'scale(1.03)' : 'scale(1)' }}>
-      <div className="absolute inset-0 opacity-[0.05] pointer-events-none" style={{ backgroundImage: 'repeating-linear-gradient(to bottom, transparent, transparent 27px, #000 27px, #000 28px)' }} />
+    <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center transition-all duration-300" 
+         style={{ background: 'var(--bg)', opacity: fadingOut ? 0 : 1, transform: fadingOut ? 'scale(1.03)' : 'scale(1)' }}>
+      <div className="absolute inset-0 opacity-[0.05] pointer-events-none" 
+           style={{ backgroundImage: 'repeating-linear-gradient(to bottom, transparent, transparent 27px, #000 27px, #000 28px)' }} />
       <div className="relative flex flex-col items-center px-6 text-center">
-        <img src={ESPOL_LOGO} alt="ESPOL" className="espol-logo w-24 sm:w-28 mb-5" />
-        <div className="text-2xl sm:text-3xl mb-1" style={{ fontFamily: "'Fraunces', serif", fontWeight: 600, color: 'var(--text-primary)' }}>Proyecto de Matemáticas Discretas</div>
-        <div className="text-xs uppercase tracking-[0.2em] font-semibold mb-8" style={{ color: 'var(--text-muted)' }}>Escuela Superior Politécnica del Litoral</div>
-        <div className="w-56 h-1.5 rounded-full overflow-hidden" style={{ background: 'var(--border)' }}><div className="h-full splash-bar" style={{ background: 'var(--accent-primary)' }} /></div>
-        <div className="text-[11px] mt-3" style={{ color: 'var(--text-faint)' }}>Cargando datos y archivos contables…</div>
-        <div className="text-[12px] mt-4 max-w-xs italic" style={{ color: 'var(--text-muted)', fontFamily: "'Fraunces', serif" }}>"{frase}"</div>
+        <div className="coin-wrapper mb-5" style={{ perspective: '600px' }}>
+          <img 
+            src={ESPOL_LOGO} 
+            alt="ESPOL" 
+            className="espol-logo coin-spinning w-24 sm:w-28"
+            style={{ 
+              transformStyle: 'preserve-3d',
+              animation: 'coinSpin 2.5s ease-in-out infinite'
+            }}
+          />
+        </div>
+        <div className="text-2xl sm:text-3xl mb-1" 
+             style={{ fontFamily: "'Fraunces', serif", fontWeight: 600, color: 'var(--text-primary)' }}>
+          Proyecto de Matemáticas Discretas
+        </div>
+        <div className="text-xs uppercase tracking-[0.2em] font-semibold mb-8" 
+             style={{ color: 'var(--text-muted)' }}>
+          Escuela Superior Politécnica del Litoral
+        </div>
+        <div className="w-56 h-1.5 rounded-full overflow-hidden" 
+             style={{ background: 'var(--border)' }}>
+          <div className="h-full splash-bar" style={{ background: 'var(--accent-primary)' }} />
+        </div>
+        <div className="text-[11px] mt-3" style={{ color: 'var(--text-faint)' }}>
+          Cargando datos y archivos contables…
+        </div>
+        <div className="text-[12px] mt-4 max-w-xs italic" 
+             style={{ color: 'var(--text-muted)', fontFamily: "'Fraunces', serif" }}>
+          "{frase}"
+        </div>
       </div>
     </div>
   );
@@ -2396,6 +2422,57 @@ const APP_STYLES = `
   .cx-border-accent-coral-border { border-color: var(--accent-coral-border); }
   .cx-hover-text-accent-primary:hover { color: var(--accent-primary); }
   .formula-centered { text-align: center; display: flex; justify-content: center; align-items: center; flex-wrap: wrap; gap: 0.25rem; }
+  @keyframes coinSpin {
+    0% {
+      transform: rotateY(0deg);
+    }
+    100% {
+      transform: rotateY(360deg);
+    }
+  }
+  
+  @keyframes coinSpinPaused {
+    0% {
+      transform: rotateY(0deg);
+    }
+    25% {
+      transform: rotateY(180deg);
+    }
+    45% {
+      transform: rotateY(180deg);
+    }
+    70% {
+      transform: rotateY(360deg);
+    }
+    85% {
+      transform: rotateY(360deg);
+    }
+    100% {
+      transform: rotateY(0deg);
+    }
+  }
+  
+  .coin-spinning {
+    animation: coinSpin 2.5s ease-in-out infinite;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+    filter: drop-shadow(0 0 12px rgba(217, 201, 138, 0.3));
+    will-change: transform;
+  }
+  
+  .coin-spinning-paused {
+    animation: coinSpinPaused 4s ease-in-out infinite;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+    filter: drop-shadow(0 0 15px rgba(217, 201, 138, 0.4));
+    will-change: transform;
+  }
+  
+  .coin-wrapper {
+    display: inline-block;
+    perspective: 600px;
+    transform-style: preserve-3d;
+  }
   @media (max-width: 640px) {
     .finapp-root .max-w-5xl { padding-left: 0.75rem; padding-right: 0.75rem; }
     .finapp-root .cx-bg-surface { padding: 0.75rem; }
