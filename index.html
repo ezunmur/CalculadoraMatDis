@@ -239,7 +239,8 @@ function simularCamino({ tipo, monto, base, tasaAnual = 0, extraMensual = 0, ext
   return { meses: Infinity, totalInteres: interesTotal, serie, nuncaPaga: false };
 }
 
-// Reduce una serie larga a un número manejable de filas para tablas (siempre conserva la última).
+// Reduce un arreglo largo a un número manejable de filas para tablas (siempre conserva la última).
+// Funciona con cualquier forma de fila (mes/saldo, periodo/interés, amortización, etc.)
 function sampleSerie(serie, maxRows) {
   if (!serie || serie.length === 0) return [];
   if (serie.length <= maxRows) return serie;
@@ -247,7 +248,7 @@ function sampleSerie(serie, maxRows) {
   const out = [];
   for (let i = 0; i < serie.length; i += step) out.push(serie[i]);
   const last = serie[serie.length - 1];
-  if (out[out.length - 1].mes !== last.mes) out.push(last);
+  if (out[out.length - 1] !== last) out.push(last);
   return out;
 }
 
@@ -1143,11 +1144,13 @@ function InteresTab() {
 
   const chartData = resultado.rows?.map((row) => ({ periodo: row.t, Capital: row.capital, Interés: row.interes })) || [];
   const evolutionData = resultado.rows?.map((row) => ({ mes: row.t, Saldo: row.saldoFinal })) || [];
+  const tablaInteres = useMemo(() => sampleSerie(resultado.rows || [], 120), [resultado.rows]);
 
   const tutorialSteps = [
     { index: 0, titulo: '📈 Interés Simple vs Compuesto', texto: 'Elige el tipo de interés arriba y ajusta el capital, la tasa y el número de periodos.', consejo: 'Con interés simple, la ganancia por periodo siempre es la misma.' },
-    { index: 1, titulo: '🧮 Lee el gráfico de barras', texto: 'La barra apilada muestra cuánto del saldo es capital original y cuánto es interés acumulado en cada periodo.', consejo: 'Con interés compuesto, la porción de "interés" crece cada vez más rápido.' },
-    { index: 2, titulo: '📊 Activa el Dashboard', texto: 'El panel de control (arriba) te permite mostrar/ocultar el resumen numérico y la vista de matemáticas discretas.', consejo: 'Prueba activar "Matemáticas Discretas" para ver la relación de recurrencia.' },
+    { index: 1, titulo: '📋 Tabla de incremento del interés', texto: 'La tabla muestra, periodo a periodo, el saldo inicial, el interés generado ese periodo y el saldo final.', consejo: 'Compara la columna "Interés generado" entre simple y compuesto: en compuesto va creciendo.' },
+    { index: 2, titulo: '🧮 Lee el gráfico de barras', texto: 'La barra apilada muestra cuánto del saldo es capital original y cuánto es interés acumulado en cada periodo.', consejo: 'Con interés compuesto, la porción de "interés" crece cada vez más rápido.' },
+    { index: 3, titulo: '📊 Activa el Dashboard', texto: 'El panel de control (arriba) te permite mostrar/ocultar el resumen numérico y la vista de matemáticas discretas.', consejo: 'Prueba activar "Matemáticas Discretas" para ver la relación de recurrencia.' },
   ];
 
   return (
@@ -1217,6 +1220,41 @@ function InteresTab() {
         </div>
       )}
 
+      {!esContinua && tablaInteres.length > 0 && (
+        <div>
+          <div className="flex items-center gap-2 mb-2 flex-wrap">
+            <FileText size={16} className="cx-text-accent-primary flex-shrink-0" />
+            <span className="text-xs font-semibold cx-text-text-muted uppercase tracking-wide">
+              Tabla de incremento del interés {tablaInteres.length < (resultado.rows?.length || 0) ? '(muestreada)' : ''}
+            </span>
+          </div>
+          <div className="border cx-border-border rounded-lg overflow-hidden">
+            <div className="overflow-y-auto" style={{ maxHeight: 320 }}>
+              <table className="w-full text-xs">
+                <thead className="sticky top-0 cx-bg-surface-alt">
+                  <tr>
+                    <th className="text-left px-3 py-2 font-semibold cx-text-text-muted">{t.periodo.charAt(0).toUpperCase() + t.periodo.slice(1)}</th>
+                    <th className="text-right px-3 py-2 font-semibold cx-text-text-muted">Saldo inicial</th>
+                    <th className="text-right px-3 py-2 font-semibold cx-text-text-muted">Interés generado</th>
+                    <th className="text-right px-3 py-2 font-semibold cx-text-text-muted">Saldo final</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {tablaInteres.map((row) => (
+                    <tr key={row.t} className="border-t cx-border-border">
+                      <td className="px-3 py-1.5 cx-text-text-secondary" style={{ fontFamily: "'JetBrains Mono', monospace" }}>{row.t}</td>
+                      <td className="px-3 py-1.5 text-right cx-text-text-secondary" style={{ fontFamily: "'JetBrains Mono', monospace" }}>{fmt(row.saldoInicial)}</td>
+                      <td className="px-3 py-1.5 text-right cx-text-accent-green-text" style={{ fontFamily: "'JetBrains Mono', monospace" }}>+{fmt(row.interes)}</td>
+                      <td className="px-3 py-1.5 text-right cx-text-text-primary font-semibold" style={{ fontFamily: "'JetBrains Mono', monospace" }}>{fmt(row.saldoFinal)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
       {!esContinua && chartData.length > 0 && (
         <div>
           <div className="flex items-center gap-2 mb-2 flex-wrap">
@@ -1281,11 +1319,13 @@ function AnualidadesTab() {
   const resultado = useMemo(() => calcularAmortizacion(P, r, n, sistema), [P, r, n, sistema]);
   const chartData = resultado.rows.map((row) => ({ periodo: row.t, Capital: row.capital, Interés: row.interes }));
   const saldoData = resultado.rows.map((row) => ({ mes: row.t, Saldo: row.saldoFinal }));
+  const tablaAmortizacion = useMemo(() => sampleSerie(resultado.rows, 120), [resultado.rows]);
 
   const tutorialSteps = [
     { index: 0, titulo: '🏦 Sistemas de Amortización', texto: 'Elige entre Francesa (cuota fija), Alemana (capital fijo) o Americana (bullet) y ajusta el préstamo.', consejo: 'La Francesa es la más común en créditos de consumo.' },
-    { index: 1, titulo: '💵 Composición del pago', texto: 'El gráfico apilado muestra cuánto de cada cuota es capital y cuánto es interés.', consejo: 'En la Francesa, al inicio pagas mayormente interés; al final, mayormente capital.' },
-    { index: 2, titulo: '📉 Saldo pendiente', texto: 'El gráfico de línea muestra cómo baja la deuda pendiente periodo a periodo.', consejo: 'Compara los tres sistemas con el mismo préstamo para ver cuál te conviene.' },
+    { index: 1, titulo: '📋 Tabla de amortización', texto: 'La tabla muestra cuota por cuota: saldo inicial, cuota, cuánto es interés, cuánto es capital y saldo final.', consejo: 'Es la tabla completa que normalmente entrega un banco al desembolsar un crédito.' },
+    { index: 2, titulo: '💵 Composición del pago', texto: 'El gráfico apilado muestra cuánto de cada cuota es capital y cuánto es interés.', consejo: 'En la Francesa, al inicio pagas mayormente interés; al final, mayormente capital.' },
+    { index: 3, titulo: '📉 Saldo pendiente', texto: 'El gráfico de línea muestra cómo baja la deuda pendiente periodo a periodo.', consejo: 'Compara los tres sistemas con el mismo préstamo para ver cuál te conviene.' },
   ];
 
   return (
@@ -1333,6 +1373,45 @@ function AnualidadesTab() {
           )}
           <StatCard label="Interés total" value={fmt(resultado.totalInteres)} accent="coral" />
           <StatCard label="Capital total" value={fmt(P)} accent="teal" />
+        </div>
+      )}
+
+      {tablaAmortizacion.length > 0 && (
+        <div>
+          <div className="flex items-center gap-2 mb-2 flex-wrap">
+            <FileText size={16} className="cx-text-accent-primary flex-shrink-0" />
+            <span className="text-xs font-semibold cx-text-text-muted uppercase tracking-wide">
+              Tabla de amortización {tablaAmortizacion.length < resultado.rows.length ? '(muestreada)' : ''}
+            </span>
+          </div>
+          <div className="border cx-border-border rounded-lg overflow-hidden">
+            <div className="overflow-y-auto" style={{ maxHeight: 360 }}>
+              <table className="w-full text-xs">
+                <thead className="sticky top-0 cx-bg-surface-alt">
+                  <tr>
+                    <th className="text-left px-3 py-2 font-semibold cx-text-text-muted">{t.periodo.charAt(0).toUpperCase() + t.periodo.slice(1)}</th>
+                    <th className="text-right px-3 py-2 font-semibold cx-text-text-muted">Saldo inicial</th>
+                    <th className="text-right px-3 py-2 font-semibold cx-text-text-muted">Cuota</th>
+                    <th className="text-right px-3 py-2 font-semibold cx-text-text-muted">Interés</th>
+                    <th className="text-right px-3 py-2 font-semibold cx-text-text-muted">Capital</th>
+                    <th className="text-right px-3 py-2 font-semibold cx-text-text-muted">Saldo final</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {tablaAmortizacion.map((row) => (
+                    <tr key={row.t} className="border-t cx-border-border">
+                      <td className="px-3 py-1.5 cx-text-text-secondary" style={{ fontFamily: "'JetBrains Mono', monospace" }}>{row.t}</td>
+                      <td className="px-3 py-1.5 text-right cx-text-text-secondary" style={{ fontFamily: "'JetBrains Mono', monospace" }}>{fmt(row.saldoInicial)}</td>
+                      <td className="px-3 py-1.5 text-right cx-text-text-primary" style={{ fontFamily: "'JetBrains Mono', monospace" }}>{fmt(row.pago)}</td>
+                      <td className="px-3 py-1.5 text-right cx-text-accent-coral-text" style={{ fontFamily: "'JetBrains Mono', monospace" }}>{fmt(row.interes)}</td>
+                      <td className="px-3 py-1.5 text-right cx-text-accent-green-text" style={{ fontFamily: "'JetBrains Mono', monospace" }}>{fmt(row.capital)}</td>
+                      <td className="px-3 py-1.5 text-right cx-text-text-primary font-semibold" style={{ fontFamily: "'JetBrains Mono', monospace" }}>{fmt(row.saldoFinal)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
         </div>
       )}
 
