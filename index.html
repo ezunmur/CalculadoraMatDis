@@ -42,7 +42,7 @@ import {
   TrendingUp, AlertTriangle, Sparkles, ArrowRight, RotateCcw, Plus,
   GraduationCap, ChevronLeft, ChevronRight, Youtube, Lightbulb, Home,
   Settings2, Check, ArrowLeftRight, Sun, Moon, Info, Printer, FileText,
-  BarChart3, LineChart as LineChartIcon, PieChart
+  BarChart3, LineChart as LineChartIcon
 } from 'lucide-react';
 
 const ESPOL_LOGO = 'logo.svg';
@@ -267,6 +267,11 @@ function ListaVariables({ items, compact }) {
       ))}
     </dl>
   );
+}
+
+function TextoConNegritas({ texto }) {
+  const partes = texto.split('**');
+  return <>{partes.map((p, i) => i % 2 === 1 ? <strong key={i} style={{ color: 'var(--text-primary)' }}>{p}</strong> : <span key={i}>{p}</span>)}</>;
 }
 
 function PillButton({ active, onClick, children }) {
@@ -651,29 +656,12 @@ function InteresTab() {
   }, [tipo, P, r, n]);
 
   const chartData = resultado.rows?.map((row) => ({ periodo: row.t, Capital: row.capital, Interés: row.interes })) || [];
-  const evolutionData = resultado.rows?.map((row) => ({ periodo: row.t, Saldo: row.saldoFinal })) || [];
+  const evolutionData = resultado.rows?.map((row) => ({ mes: row.t, Saldo: row.saldoFinal })) || [];
 
   const tutorialSteps = [
     { index: 0, titulo: '📈 Interés Simple vs Compuesto', texto: 'Compara dos formas de hacer crecer tu dinero.', consejo: 'Observa la diferencia en el gráfico.' },
     { index: 1, titulo: '📊 Interpreta el gráfico', texto: 'Las barras apiladas muestran capital (verde) vs interés (rojo) por periodo.', consejo: 'En interés compuesto, el interés crece exponencialmente.' },
   ];
-
-  const discreteData = {
-    recurrencia: {
-      formula: <><Var>S</Var><Sub>t</Sub> = <Var>S</Var><Sub>t−1</Sub> · (1 + <Var>r</Var>)</>,
-      variables: [{ simbolo: 'Sₜ', desc: 'Saldo en periodo t' }, { simbolo: 'Sₜ₋₁', desc: 'Saldo anterior' }, { simbolo: 'r', desc: 'Tasa por periodo' }],
-      recurrence: 'Sₜ = Sₜ₋₁ · (1 + r)',
-      explanation: tipo === 'simple' ? 'Serie aritmética: crece linealmente.' : 'Serie geométrica: crece exponencialmente.'
-    },
-    serie_geometrica: {
-      formula: <><Var>F</Var> = <Var>P</Var> · <Pow base={<>(1 + <Var>r</Var>)</>} exp={<Var>t</Var>} /></>,
-      variables: [{ simbolo: 'P', desc: 'Capital inicial' }, { simbolo: 'r', desc: 'Tasa por periodo' }, { simbolo: 't', desc: 'Periodos' }],
-      recurrence: 'F = P · (1+r)ᵗ',
-      explanation: 'Fórmula cerrada del interés compuesto.'
-    }
-  };
-
-  const currentDiscrete = tipo === 'simple' ? discreteData.recurrencia : discreteData.serie_geometrica;
 
   return (
     <div className="space-y-6">
@@ -686,10 +674,10 @@ function InteresTab() {
 
       {discreteOn && (
         <DiscreteMathDisplay 
-          formula={currentDiscrete.formula}
-          variables={currentDiscrete.variables}
-          recurrence={currentDiscrete.recurrence}
-          explanation={currentDiscrete.explanation}
+          formula={<><Var>S</Var><Sub>t</Sub> = <Var>S</Var><Sub>t−1</Sub> · (1 + <Var>r</Var>)</>}
+          variables={[{ simbolo: 'Sₜ', desc: 'Saldo en periodo t' }, { simbolo: 'Sₜ₋₁', desc: 'Saldo anterior' }, { simbolo: 'r', desc: 'Tasa por periodo' }]}
+          recurrence="Sₜ = Sₜ₋₁ · (1 + r)"
+          explanation={tipo === 'simple' ? 'Serie aritmética: crece linealmente.' : 'Serie geométrica: crece exponencialmente.'}
           tipo={tipo === 'simple' ? 'serie_aritmetica' : 'serie_geometrica'}
         />
       )}
@@ -732,7 +720,6 @@ function InteresTab() {
         </div>
       )}
 
-      {/* GRÁFICO DE BARRAS - Capital vs Interés */}
       {!esContinua && chartData.length > 0 && (
         <div>
           <div className="flex items-center gap-2 mb-2">
@@ -747,22 +734,19 @@ function InteresTab() {
             label={`Periodo (${t.periodo})`}
           />
           <p className="text-xs cx-text-text-muted mt-2">
-            {tipo === 'simple' 
-              ? 'El interés simple crece de forma lineal: cada periodo suma exactamente lo mismo.' 
-              : 'El interés compuesto crece de forma exponencial: el interés generado también genera interés.'}
+            {tipo === 'simple' ? 'El interés simple crece de forma lineal.' : 'El interés compuesto crece de forma exponencial.'}
           </p>
         </div>
       )}
 
-      {/* GRÁFICO DE LÍNEAS - Evolución del saldo */}
       {!esContinua && evolutionData.length > 0 && (
         <div>
           <div className="flex items-center gap-2 mb-2">
             <LineChartIcon size={16} className="cx-text-accent-primary" />
-            <span className="text-xs font-semibold cx-text-text-muted uppercase tracking-wide">Evolución del saldo en el tiempo</span>
+            <span className="text-xs font-semibold cx-text-text-muted uppercase tracking-wide">Evolución del saldo</span>
           </div>
           <LineChartComponent 
-            data={evolutionData.map(d => ({ mes: d.periodo, Saldo: d.Saldo }))}
+            data={evolutionData}
             lines={['Saldo']}
             colors={['var(--accent-primary)']}
             label="Periodo"
@@ -852,7 +836,6 @@ function TasasEquivalentesTab() {
         </div>
       )}
 
-      {/* GRÁFICO DE BARRAS - Tasas equivalentes */}
       <div>
         <div className="flex items-center gap-2 mb-2">
           <BarChart3 size={16} className="cx-text-accent-primary" />
@@ -900,34 +883,11 @@ function AnualidadesTab() {
 
   const resultado = useMemo(() => calcularAmortizacion(P, r, n, sistema), [P, r, n, sistema]);
   const chartData = resultado.rows.map((row) => ({ periodo: row.t, Capital: row.capital, Interés: row.interes }));
-  const saldoData = resultado.rows.map((row) => ({ periodo: row.t, Saldo: row.saldoFinal }));
+  const saldoData = resultado.rows.map((row) => ({ mes: row.t, Saldo: row.saldoFinal }));
 
   const tutorialSteps = [
     { index: 0, titulo: '🏦 Sistemas de Amortización', texto: 'Compara tres sistemas para pagar un préstamo.', consejo: 'Observa cómo cambia la distribución del pago.' },
   ];
-
-  const discreteData = {
-    francesa: {
-      formula: <>Pago = <Frac num={<><Var>P</Var> · <Var>r</Var></>} den={<>1 − <Pow base={<>(1+<Var>r</Var>)</>} exp={<>−<Var>n</Var></>} /></>} /></>,
-      variables: [{ simbolo: 'P', desc: 'Monto del préstamo' }, { simbolo: 'r', desc: 'Tasa por periodo' }, { simbolo: 'n', desc: 'Número de cuotas' }],
-      recurrence: 'Sₜ = Sₜ₋₁ · (1+r) − C',
-      explanation: 'Sistema francés: cuota constante, derivado de serie geométrica.'
-    },
-    alemana: {
-      formula: <>Capital = <Frac num={<Var>P</Var>} den={<Var>n</Var>} /></>,
-      variables: [{ simbolo: 'P', desc: 'Monto del préstamo' }, { simbolo: 'n', desc: 'Número de cuotas' }],
-      recurrence: 'Sₜ = Sₜ₋₁ · (1+r) − (P/n)',
-      explanation: 'Sistema alemán: capital fijo, interés decrece aritméticamente.'
-    },
-    americana: {
-      formula: <>Pago = Interés · Capital al final = <Var>P</Var></>,
-      variables: [{ simbolo: 'P', desc: 'Monto del préstamo' }, { simbolo: 'r', desc: 'Tasa por periodo' }],
-      recurrence: 'Sₜ = Sₜ₋₁ (el saldo no cambia)',
-      explanation: 'Sistema americano: solo paga interés hasta el final.'
-    }
-  };
-
-  const currentDiscrete = discreteData[sistema] || discreteData.francesa;
 
   return (
     <div className="space-y-6">
@@ -940,10 +900,10 @@ function AnualidadesTab() {
 
       {discreteOn && (
         <DiscreteMathDisplay 
-          formula={currentDiscrete.formula}
-          variables={currentDiscrete.variables}
-          recurrence={currentDiscrete.recurrence}
-          explanation={currentDiscrete.explanation}
+          formula={<>Pago = <Frac num={<><Var>P</Var> · <Var>r</Var></>} den={<>1 − <Pow base={<>(1+<Var>r</Var>)</>} exp={<>−<Var>n</Var></>} /></>} /></>}
+          variables={[{ simbolo: 'P', desc: 'Monto del préstamo' }, { simbolo: 'r', desc: 'Tasa por periodo' }, { simbolo: 'n', desc: 'Número de cuotas' }]}
+          recurrence="Sₜ = Sₜ₋₁ · (1+r) − C"
+          explanation={sistema === 'francesa' ? 'Sistema francés: cuota constante.' : sistema === 'alemana' ? 'Sistema alemán: capital fijo.' : 'Sistema americano: solo intereses.'}
           tipo="recurrencia"
         />
       )}
@@ -977,7 +937,6 @@ function AnualidadesTab() {
         </div>
       )}
 
-      {/* GRÁFICO DE BARRAS - Capital vs Interés */}
       {chartData.length > 0 && (
         <div>
           <div className="flex items-center gap-2 mb-2">
@@ -993,13 +952,12 @@ function AnualidadesTab() {
           />
           <p className="text-xs cx-text-text-muted mt-2">
             {sistema === 'francesa' && 'El pago total es siempre el mismo, pero su composición cambia.'}
-            {sistema === 'alemana' && 'El capital que pagas es siempre el mismo; el interés baja con el tiempo.'}
-            {sistema === 'americana' && 'Solo pagas interés hasta el último periodo, cuando devuelves todo el capital.'}
+            {sistema === 'alemana' && 'El capital que pagas es siempre el mismo.'}
+            {sistema === 'americana' && 'Solo pagas interés hasta el último periodo.'}
           </p>
         </div>
       )}
 
-      {/* GRÁFICO DE LÍNEAS - Evolución del saldo */}
       {saldoData.length > 0 && (
         <div>
           <div className="flex items-center gap-2 mb-2">
@@ -1007,12 +965,11 @@ function AnualidadesTab() {
             <span className="text-xs font-semibold cx-text-text-muted uppercase tracking-wide">Evolución del saldo pendiente</span>
           </div>
           <LineChartComponent 
-            data={saldoData.map(d => ({ mes: d.periodo, Saldo: d.Saldo }))}
+            data={saldoData}
             lines={['Saldo']}
             colors={['var(--accent-primary)']}
             label="Periodo"
           />
-          <p className="text-xs cx-text-text-muted mt-2">El saldo disminuye hasta llegar a cero al final del préstamo.</p>
         </div>
       )}
 
@@ -1048,7 +1005,6 @@ function SimuladorTab() {
 
   const setTasa = (key) => (e) => setTasas((t) => ({ ...t, [key]: parseFloat(e.target.value) || 0 }));
 
-  // Datos para gráficos de ahorro
   const ahorroChart = useMemo(() => {
     const maxM = Math.min(240, Math.max(
       isFinite(resultados.alcancia.meses) ? resultados.alcancia.meses : 0,
@@ -1068,7 +1024,6 @@ function SimuladorTab() {
     return data;
   }, [resultados]);
 
-  // Datos para gráficos de deuda
   const deudaChart = useMemo(() => {
     const maxM = Math.min(240, Math.max(
       isFinite(resultados.prestamo.meses) ? resultados.prestamo.meses : 60,
@@ -1095,7 +1050,7 @@ function SimuladorTab() {
   ];
 
   const tutorialSteps = [
-    { index: 0, titulo: '🎯 Simulador de Destinos', texto: 'Compara 5 caminos financieros con los mismos números.', consejo: 'Los caminos verdes son ahorro; los rojos son deudas.' },
+    { index: 0, titulo: '🎯 Simulador de Destinos', texto: 'Compara 5 caminos financieros.', consejo: 'Los caminos verdes son ahorro; los rojos son deudas.' },
     { index: 1, titulo: '📊 Interpreta los gráficos', texto: 'Los gráficos de líneas muestran la evolución de cada camino.', consejo: 'Compara visualmente cuál llega más rápido a la meta.' },
   ];
 
@@ -1113,7 +1068,7 @@ function SimuladorTab() {
           formula={<><Var>S</Var><Sub>t</Sub> = <Var>S</Var><Sub>t−1</Sub> · (1 + <Var>r</Var>) − <Var>C</Var></>}
           variables={[{ simbolo: 'Sₜ', desc: 'Saldo en periodo t' }, { simbolo: 'r', desc: 'Tasa por periodo' }, { simbolo: 'C', desc: 'Cuota o pago' }]}
           recurrence="Sₜ = Sₜ₋₁ · (1 + r) − C"
-          explanation="Motor de todos los cálculos. Modela evolución de deuda o ahorro."
+          explanation="Motor de todos los cálculos del simulador."
           tipo="recurrencia"
         />
       )}
@@ -1175,12 +1130,11 @@ function SimuladorTab() {
         })}
       </div>
 
-      {/* GRÁFICOS DE LÍNEAS - Comparativa de caminos */}
       <div className="grid sm:grid-cols-2 gap-4">
         <div>
           <div className="flex items-center gap-2 mb-2">
             <LineChartIcon size={16} className="cx-text-accent-green-text" />
-            <span className="text-xs font-semibold cx-text-text-muted uppercase tracking-wide">Caminos de ahorro (llegar al objetivo)</span>
+            <span className="text-xs font-semibold cx-text-text-muted uppercase tracking-wide">Caminos de ahorro</span>
           </div>
           <LineChartComponent 
             data={ahorroChart}
@@ -1193,7 +1147,7 @@ function SimuladorTab() {
         <div>
           <div className="flex items-center gap-2 mb-2">
             <LineChartIcon size={16} className="cx-text-accent-coral-text" />
-            <span className="text-xs font-semibold cx-text-text-muted uppercase tracking-wide">Caminos de deuda (llegar a saldo cero)</span>
+            <span className="text-xs font-semibold cx-text-text-muted uppercase tracking-wide">Caminos de deuda</span>
           </div>
           <LineChartComponent 
             data={deudaChart}
@@ -1211,9 +1165,7 @@ function SimuladorTab() {
           </div>
           <h3 className="text-2xl cx-text-text-primary mb-4" style={{ fontFamily: "'Fraunces', sans-serif", fontWeight: 600 }}>Analiza este destino</h3>
           <p className="text-sm cx-text-text-secondary mb-4">
-            {detalle.tipo === 'deuda' 
-              ? 'Prueba qué pasa si abonas un poco más cada mes, o si agregas pagos extraordinarios.' 
-              : 'Prueba qué pasa si aportas un poco más cada mes, o si agregas aportes únicos.'}
+            {detalle.tipo === 'deuda' ? 'Prueba qué pasa si abonas un poco más cada mes.' : 'Prueba qué pasa si aportas un poco más cada mes.'}
           </p>
           <button onClick={() => setDetalle(null)} className="w-full py-2 rounded-lg text-sm font-semibold text-white" style={{ background: 'var(--accent-primary)' }}>Cerrar</button>
         </Modal>
@@ -1229,28 +1181,439 @@ function SimuladorTab() {
   );
 }
 
+// ============================================================
+// QUIZ TAB - COMPLETO CON EVALUACIÓN
+// ============================================================
+
 function QuizTab() {
+  // ======================== ESTADOS ========================
+  const [modo, setModo] = useState('quiz');
   const [nivel, setNivel] = useState(1);
-  const [respuesta, setRespuesta] = useState('');
+  const [pregunta, setPregunta] = useState(null);
+  const [respuestaTexto, setRespuestaTexto] = useState('');
+  const [verificado, setVerificado] = useState(false);
+  const [correcto, setCorrecto] = useState(false);
+  const [puntaje, setPuntaje] = useState({ aciertos: 0, total: 0 });
+  const [historial, setHistorial] = useState([]);
+  const [mostrarInforme, setMostrarInforme] = useState(false);
+  
+  const [temasSeleccionados, setTemasSeleccionados] = useState([]);
+  const [dificultadEval, setDificultadEval] = useState('medio');
+  const [evaluacionActiva, setEvaluacionActiva] = useState(false);
+  const [preguntasEval, setPreguntasEval] = useState([]);
+  const [preguntaEvalIndex, setPreguntaEvalIndex] = useState(0);
+  const [respuestasEval, setRespuestasEval] = useState([]);
+  const [evaluacionCompletada, setEvaluacionCompletada] = useState(false);
 
   const [dashboardOn, setDashboardOn] = useState(true);
   const [tutorialOn, setTutorialOn] = useState(false);
   const [discreteOn, setDiscreteOn] = useState(false);
   const [tutorialStep, setTutorialStep] = useState(0);
 
-  const niveles = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
-
-  const tutorialSteps = [
-    { index: 0, titulo: '📝 Quizzes Interactivos', texto: '10 niveles de dificultad con preguntas aleatorias.', consejo: 'Empieza en el nivel 1.' },
+  // ======================== DEFINICIONES ========================
+  const TEMAS = [
+    { id: 'interes_simple', label: 'Interés Simple', icon: '📊' },
+    { id: 'interes_compuesto', label: 'Interés Compuesto', icon: '📈' },
+    { id: 'tasas_equivalentes', label: 'Tasas Equivalentes', icon: '🔄' },
+    { id: 'valor_presente', label: 'Valor Presente', icon: '💰' },
+    { id: 'anualidades', label: 'Anualidades y Préstamos', icon: '🏦' },
+    { id: 'problemas_integradores', label: 'Problemas Integradores', icon: '🧩' },
   ];
 
+  const NIVELES_META = [
+    { nivel: 1, titulo: 'Interés simple · interés generado', tag: 'Interés simple', dificultad: 'Fácil' },
+    { nivel: 2, titulo: 'Interés simple · monto final', tag: 'Interés simple', dificultad: 'Fácil' },
+    { nivel: 3, titulo: 'Interés compuesto · monto final', tag: 'Interés compuesto', dificultad: 'Fácil' },
+    { nivel: 4, titulo: 'Interés compuesto · número de periodos', tag: 'Interés compuesto', dificultad: 'Medio' },
+    { nivel: 5, titulo: 'Tasa efectiva anual (TEA)', tag: 'Tasas equivalentes', dificultad: 'Medio' },
+    { nivel: 6, titulo: 'Tasa nominal desde la TEA', tag: 'Tasas equivalentes', dificultad: 'Medio' },
+    { nivel: 7, titulo: 'Valor presente', tag: 'Valor presente', dificultad: 'Difícil' },
+    { nivel: 8, titulo: 'Anualidades · cuota fija', tag: 'Anualidades', dificultad: 'Difícil' },
+    { nivel: 9, titulo: 'Mixto · tiempo total en años', tag: 'Problemas integradores', dificultad: 'Experto' },
+    { nivel: 10, titulo: 'Problema de destino', tag: 'Problemas integradores', dificultad: 'Master' },
+  ];
+
+  const DIFICULTADES = [
+    { id: 'facil', label: '🌟 Fácil', color: 'text-emerald-600' },
+    { id: 'medio', label: '⚡ Medio', color: 'text-blue-600' },
+    { id: 'dificil', label: '🔥 Difícil', color: 'text-orange-600' },
+    { id: 'experto', label: '💎 Experto', color: 'text-purple-600' },
+    { id: 'master', label: '👑 Master', color: 'text-red-600' },
+  ];
+
+  // ======================== GENERADORES ========================
+  function randInt(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
+  function randChoice(arr) { return arr[randInt(0, arr.length - 1)]; }
+  function round2(n) { return Math.round(n * 100) / 100; }
+  const fmtPct = (n) => n.toLocaleString('es-EC', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '%';
+
+  function valorPresente(F, r, n) { return F / Math.pow(1 + r, n); }
+  function cuotaFrancesa(P, r, n) { return r === 0 ? P / n : (P * r) / (1 - Math.pow(1 + r, -n)); }
+  function periodosNecesarios(P, F, r) { return Math.log(F / P) / Math.log(1 + r); }
+  function valorFuturoLumpSum(P, r, n) { return P * Math.pow(1 + r, n); }
+
+  function dentroDeTolerancia(valorUsuario, correcto, unidad) {
+    if (!isFinite(valorUsuario)) return false;
+    if (unidad === '$') { const tol = Math.max(1, Math.abs(correcto) * 0.01); return Math.abs(valorUsuario - correcto) <= tol; }
+    if (unidad === '%') { return Math.abs(valorUsuario - correcto) <= 0.15; }
+    if (unidad === 'periodos') { return Math.abs(valorUsuario - correcto) <= 0.3; }
+    if (unidad === 'años') { return Math.abs(valorUsuario - correcto) <= 0.15; }
+    return Math.abs(valorUsuario - correcto) <= Math.abs(correcto) * 0.02;
+  }
+
+  // Generadores por nivel
+  function genInteresSimpleInteres() {
+    const P = randInt(2, 50) * 1000;
+    const tasaAnualPct = randInt(6, 24);
+    const tMeses = randChoice([3, 6, 9, 12, 18, 24]);
+    const r = tasaAnualPct / 100 / 12;
+    const I = P * r * tMeses;
+    return { tema: 'interes_simple', categoria: 'Interés simple', enunciado: `Un capital de ${fmt(P)} se invierte a una tasa simple del ${tasaAnualPct}% anual durante ${tMeses} meses. **¿Cuál es el interés (I) generado al final del plazo?**`, unidad: '$', respuesta: round2(I), solucion: [`Tasa periódica mensual: r = j / 12 = ${tasaAnualPct}% / 12 = ${(r * 100).toFixed(4)}% mensual.`, `Interés simple: I = P · r · t = ${fmt(P)} · ${(r * 100).toFixed(4)}% · ${tMeses} = ${fmt(I)}.`], dificultad: 'facil' };
+  }
+
+  function genInteresSimpleMonto() {
+    const P = randInt(3, 60) * 1000;
+    const tasaAnualPct = randInt(6, 24);
+    const tMeses = randChoice([3, 6, 9, 12, 18, 24]);
+    const r = tasaAnualPct / 100 / 12;
+    const F = P * (1 + r * tMeses);
+    return { tema: 'interes_simple', categoria: 'Interés simple', enunciado: `Se depositan ${fmt(P)} en una cuenta que paga una tasa simple del ${tasaAnualPct}% anual. **¿Cuál es el monto acumulado (F) después de ${tMeses} meses?**`, unidad: '$', respuesta: round2(F), solucion: [`Tasa periódica mensual: r = ${tasaAnualPct}% / 12 = ${(r * 100).toFixed(4)}% mensual.`, `Monto: F = P · (1 + r · t) = ${fmt(P)} · (1 + ${(r * tMeses).toFixed(4)}) = ${fmt(F)}.`], dificultad: 'facil' };
+  }
+
+  function genInteresCompuestoMonto() {
+    const P = randInt(3, 80) * 1000;
+    const tasaNominalPct = randInt(8, 30);
+    const temporalidad = randChoice(['mensual', 'trimestral', 'semestral']);
+    const t = getTemporalidad(temporalidad);
+    const anios = randChoice([1, 2, 3, 4, 5]);
+    const n = anios * t.m;
+    const r = tasaPeriodica(tasaNominalPct, temporalidad);
+    const F = valorFuturoLumpSum(P, r, n);
+    return { tema: 'interes_compuesto', categoria: 'Interés compuesto', enunciado: `Un capital de ${fmt(P)} se coloca a una tasa nominal anual del ${tasaNominalPct}%, capitalizable de forma ${temporalidad}, durante ${anios} años. **¿Cuál es el monto final (F)?**`, unidad: '$', respuesta: round2(F), solucion: [`Tasa periódica: r = j / m = ${tasaNominalPct}% / ${t.m} = ${(r * 100).toFixed(4)}% por ${t.periodo}.`, `Monto: F = P · (1 + r)ⁿ = ${fmt(P)} · (1 + ${(r * 100).toFixed(4)}%)^${n} = ${fmt(F)}.`], dificultad: 'facil' };
+  }
+
+  function genInteresCompuestoPeriodos() {
+    const P = randInt(4, 60) * 1000;
+    const multiplo = randChoice([1.2, 1.5, 1.8, 2, 2.5, 3]);
+    const F = round2(P * multiplo);
+    const tasaNominalPct = randInt(10, 36);
+    const temporalidad = randChoice(['mensual', 'trimestral']);
+    const t = getTemporalidad(temporalidad);
+    const r = tasaPeriodica(tasaNominalPct, temporalidad);
+    const n = periodosNecesarios(P, F, r);
+    return { tema: 'interes_compuesto', categoria: 'Cálculo de periodos', enunciado: `**¿Cuántos periodos (n) de capitalización ${temporalidad} se necesitan para que un capital de ${fmt(P)} crezca hasta ${fmt(F)}, si la tasa nominal anual es del ${tasaNominalPct}%?**`, unidad: 'periodos', respuesta: round2(n), solucion: [`Tasa periódica: r = ${tasaNominalPct}% / ${t.m} = ${(r * 100).toFixed(4)}% por ${t.periodo}.`, `n = ln(F/P) / ln(1+r) = ln(${(F / P).toFixed(4)}) / ln(1 + ${(r * 100).toFixed(4)}%) ≈ ${n.toFixed(2)} ${t.periodoPlural}.`], dificultad: 'medio' };
+  }
+
+  function genTasaEfectivaAnual() {
+    const tasaNominalPct = randInt(10, 42);
+    const temporalidad = randChoice(['mensual', 'trimestral', 'semestral', 'bimestral']);
+    const t = getTemporalidad(temporalidad);
+    const tea = calcularTEADesdeOrigen(tasaNominalPct, 'nominal', temporalidad) * 100;
+    return { tema: 'tasas_equivalentes', categoria: 'Tasas equivalentes', enunciado: `Un banco ofrece una tasa nominal anual del ${tasaNominalPct}%, capitalizable de forma ${temporalidad}. **¿Cuál es la tasa efectiva anual (TEA) equivalente?**`, unidad: '%', respuesta: round2(tea), solucion: [`TEA = (1 + j/m)^m − 1 = (1 + ${tasaNominalPct}%/${t.m})^${t.m} − 1.`, `TEA ≈ ${fmtPct(tea)}.`], dificultad: 'medio' };
+  }
+
+  function genTasaNominalDesdeEfectiva() {
+    const teaPct = randInt(15, 45);
+    const temporalidad = randChoice(['mensual', 'trimestral', 'semestral']);
+    const t = getTemporalidad(temporalidad);
+    const j = calcularTasaDestinoDesdeTEA(teaPct / 100, 'nominal', temporalidad);
+    return { tema: 'tasas_equivalentes', categoria: 'Tasas equivalentes', enunciado: `Si la tasa efectiva anual (TEA) de una inversión es del ${teaPct}%, **¿cuál es la tasa nominal anual equivalente capitalizable de forma ${temporalidad}?**`, unidad: '%', respuesta: round2(j), solucion: [`j = [(1 + TEA)^(1/m) − 1] · m = [(1 + ${teaPct}%)^(1/${t.m}) − 1] · ${t.m}.`, `j ≈ ${fmtPct(j)} nominal anual, capitalizable ${temporalidad}.`], dificultad: 'medio' };
+  }
+
+  function genValorPresente() {
+    const F = randInt(5, 150) * 1000;
+    const tasaNominalPct = randInt(8, 30);
+    const temporalidad = randChoice(['mensual', 'trimestral', 'semestral']);
+    const t = getTemporalidad(temporalidad);
+    const anios = randChoice([1, 2, 3, 4]);
+    const n = anios * t.m;
+    const r = tasaPeriodica(tasaNominalPct, temporalidad);
+    const P = valorPresente(F, r, n);
+    return { tema: 'valor_presente', categoria: 'Valor presente', enunciado: `**¿Qué capital (P) se debe invertir hoy, a una tasa nominal anual del ${tasaNominalPct}% capitalizable ${temporalidad}, para contar con ${fmt(F)} dentro de ${anios} años?**`, unidad: '$', respuesta: round2(P), solucion: [`Tasa periódica: r = ${tasaNominalPct}% / ${t.m} = ${(r * 100).toFixed(4)}% por ${t.periodo}; n = ${n} ${t.periodoPlural}.`, `Valor presente: P = F / (1 + r)ⁿ = ${fmt(F)} / (1 + ${(r * 100).toFixed(4)}%)^${n} = ${fmt(P)}.`], dificultad: 'dificil' };
+  }
+
+  function genCuotaFrancesa() {
+    const P = randInt(5, 60) * 1000;
+    const tasaNominalPct = randInt(12, 36);
+    const n = randChoice([6, 12, 18, 24, 36]);
+    const r = tasaNominalPct / 100 / 12;
+    const cuota = cuotaFrancesa(P, r, n);
+    return { tema: 'anualidades', categoria: 'Anualidades', enunciado: `Un préstamo de ${fmt(P)} se paga en ${n} cuotas mensuales iguales bajo el sistema francés, con una tasa nominal anual del ${tasaNominalPct}% capitalizable mensualmente. **¿Cuál es el valor de la cuota fija?**`, unidad: '$', respuesta: round2(cuota), solucion: [`Tasa periódica mensual: r = ${tasaNominalPct}% / 12 = ${(r * 100).toFixed(4)}% mensual.`, `Cuota = P·r / [1 − (1+r)^(−n)] = ${fmt(P)} · ${(r * 100).toFixed(4)}% / [1 − (1+${(r * 100).toFixed(4)}%)^(−${n})] = ${fmt(cuota)}.`], dificultad: 'dificil' };
+  }
+
+  function genMixtoTiempoAnios() {
+    const P = randInt(3, 50) * 1000;
+    const multiplo = randChoice([1.3, 1.5, 2, 2.5, 3]);
+    const F = round2(P * multiplo);
+    const tasaNominalPct = randInt(12, 40);
+    const temporalidad = randChoice(['mensual', 'trimestral', 'semestral']);
+    const t = getTemporalidad(temporalidad);
+    const r = tasaPeriodica(tasaNominalPct, temporalidad);
+    const n = periodosNecesarios(P, F, r);
+    const anios = n / t.m;
+    return { tema: 'problemas_integradores', categoria: 'Tasas + periodos', enunciado: `Con una tasa nominal anual del ${tasaNominalPct}% capitalizable de forma ${temporalidad}, **¿en cuántos años un capital de ${fmt(P)} se convertirá en al menos ${fmt(F)}?**`, unidad: 'años', respuesta: round2(anios), solucion: [`Tasa periódica: r = ${tasaNominalPct}% / ${t.m} = ${(r * 100).toFixed(4)}% por ${t.periodo}.`, `n = ln(F/P) / ln(1+r) = ln(${(F / P).toFixed(4)}) / ln(1 + ${(r * 100).toFixed(4)}%) ≈ ${n.toFixed(2)} ${t.periodoPlural}.`, `En años: t = n / ${t.m} ≈ ${anios.toFixed(2)} años.`], dificultad: 'experto' };
+  }
+
+  function genDestinoVerborrea() {
+    const nombres = ['Mateo', 'Valentina', 'Camila', 'Joel', 'Doménica', 'Emilio', 'Ariana', 'Josué', 'Andrea', 'Carlos', 'Kevin', 'María José', 'Luis', 'Steven'];
+    const destinos = ['un viaje a Galápagos', 'la entrada de un vehículo', 'el enganche de un departamento', 'una maestría en el extranjero', 'abrir un pequeño emprendimiento', 'comprar su primera vivienda'];
+    const rellenos = ['que trabaja en una empresa de exportación', 'que acaba de terminar sus prácticas', 'que administra una pequeña cevichería', 'que estudia en la ESPOL', 'que acaba de recibir un bono'];
+
+    const nombre = randChoice(nombres);
+    const relleno = randChoice(rellenos);
+    const destino = randChoice(destinos);
+    const P = randInt(3, 25) * 500;
+    const multiplo = randChoice([1.4, 1.6, 1.8, 2, 2.2, 2.5]);
+    const F = round2(P * multiplo);
+    const tasaNominalPct = randInt(10, 28);
+    const temporalidad = randChoice(['mensual', 'trimestral']);
+    const t = getTemporalidad(temporalidad);
+    const r = tasaPeriodica(tasaNominalPct, temporalidad);
+    const n = periodosNecesarios(P, F, r);
+    const anios = n / t.m;
+    const bancoImaginario = randChoice(['Banco del Litoral', 'Cooperativa Andina', 'Financiera del Pacífico', 'Banco San Rafael']);
+    const edad = randInt(20, 45);
+    const gastoIrrelevante = randInt(150, 400);
+
+    const enunciado = `${nombre} tiene ${edad} años, ${relleno}, y desde hace un tiempo ha estado pensando seriamente en organizar sus finanzas personales para cumplir una meta que le ilusiona: ${destino}. Actualmente destina alrededor de ${fmt(gastoIrrelevante)} mensuales a gastos varios. Después de revisar varias opciones, decidió abrir un depósito a plazo en ${bancoImaginario}, colocando de una sola vez ${fmt(P)} de sus ahorros. Esta entidad le ofreció una tasa nominal anual del ${tasaNominalPct}%, capitalizable de forma ${temporalidad}. Se ha propuesto que, cuando el saldo llegue a ${fmt(F)}, retirará el dinero. **¿Cuántos años como mínimo deberá esperar ${nombre} para que el depósito alcance ese monto?**`;
+
+    return { tema: 'problemas_integradores', categoria: 'Problema de destino', enunciado, unidad: 'años', respuesta: round2(anios), solucion: [`Datos relevantes: P = ${fmt(P)}, F = ${fmt(F)}, tasa = ${tasaNominalPct}% capitalizable ${temporalidad}.`, `Tasa periódica: r = ${tasaNominalPct}% / ${t.m} = ${(r * 100).toFixed(4)}% por ${t.periodo}.`, `n = ln(F/P) / ln(1+r) ≈ ${n.toFixed(2)} ${t.periodoPlural}.`, `En años: t = n / ${t.m} ≈ ${anios.toFixed(2)} años.`], dificultad: 'master' };
+  }
+
+  const GENERADORES_QUIZ = [genInteresSimpleInteres, genInteresSimpleMonto, genInteresCompuestoMonto, genInteresCompuestoPeriodos, genTasaEfectivaAnual, genTasaNominalDesdeEfectiva, genValorPresente, genCuotaFrancesa, genMixtoTiempoAnios, genDestinoVerborrea];
+
+  const GENERADORES_POR_TEMA = {
+    interes_simple: [genInteresSimpleInteres, genInteresSimpleMonto],
+    interes_compuesto: [genInteresCompuestoMonto, genInteresCompuestoPeriodos],
+    tasas_equivalentes: [genTasaEfectivaAnual, genTasaNominalDesdeEfectiva],
+    valor_presente: [genValorPresente],
+    anualidades: [genCuotaFrancesa],
+    problemas_integradores: [genMixtoTiempoAnios, genDestinoVerborrea],
+  };
+
+  function generarPreguntaNivel(nivel) {
+    const gen = GENERADORES_QUIZ[nivel - 1] || GENERADORES_QUIZ[0];
+    return { ...gen(), nivel };
+  }
+
+  function generarPreguntaPorTema(tema, dificultad) {
+    const gens = GENERADORES_POR_TEMA[tema] || GENERADORES_POR_TEMA.interes_simple;
+    const gen = randChoice(gens);
+    const p = gen();
+    p.dificultad = dificultad;
+    p.tema = tema;
+    return p;
+  }
+
+  // ======================== FUNCIONES DEL QUIZ ========================
+  const cambiarNivel = (n) => {
+    setNivel(n);
+    setPregunta(generarPreguntaNivel(n));
+    setRespuestaTexto('');
+    setVerificado(false);
+    setCorrecto(false);
+    setPuntaje({ aciertos: 0, total: 0 });
+    setHistorial([]);
+    setMostrarInforme(false);
+  };
+
+  const nuevaPregunta = () => {
+    const p = generarPreguntaNivel(nivel);
+    setPregunta(p);
+    setRespuestaTexto('');
+    setVerificado(false);
+    setCorrecto(false);
+  };
+
+  const verificar = () => {
+    const valor = parseFloat(respuestaTexto.replace(',', '.'));
+    const ok = dentroDeTolerancia(valor, pregunta.respuesta, pregunta.unidad);
+    setCorrecto(ok);
+    setVerificado(true);
+    setPuntaje((p) => ({ aciertos: p.aciertos + (ok ? 1 : 0), total: p.total + 1 }));
+    setHistorial((h) => [...h, { pregunta, respuestaUsuario: valor, correcto: ok, respuestaCorrecta: pregunta.respuesta }]);
+    if (puntaje.total + 1 >= 5) setMostrarInforme(true);
+  };
+
+  // ======================== FUNCIONES DE EVALUACIÓN ========================
+  const iniciarEvaluacion = () => {
+    if (temasSeleccionados.length === 0) { alert('Selecciona al menos un tema.'); return; }
+    const cantidadPreguntas = temasSeleccionados.length * 2;
+    const preguntas = [];
+    for (let i = 0; i < cantidadPreguntas; i++) {
+      const tema = temasSeleccionados[i % temasSeleccionados.length];
+      preguntas.push(generarPreguntaPorTema(tema, dificultadEval));
+    }
+    for (let i = preguntas.length - 1; i > 0; i--) {
+      const j = randInt(0, i);
+      [preguntas[i], preguntas[j]] = [preguntas[j], preguntas[i]];
+    }
+    setPreguntasEval(preguntas);
+    setPreguntaEvalIndex(0);
+    setRespuestasEval([]);
+    setEvaluacionActiva(true);
+    setEvaluacionCompletada(false);
+  };
+
+  const responderEvaluacion = () => {
+    const valor = parseFloat(respuestaTexto.replace(',', '.'));
+    const p = preguntasEval[preguntaEvalIndex];
+    const ok = dentroDeTolerancia(valor, p.respuesta, p.unidad);
+    setRespuestasEval((r) => [...r, { pregunta: p, respuestaUsuario: valor, correcto: ok, respuestaCorrecta: p.respuesta }]);
+    if (preguntaEvalIndex < preguntasEval.length - 1) {
+      setPreguntaEvalIndex(preguntaEvalIndex + 1);
+      setRespuestaTexto('');
+      setVerificado(false);
+    } else {
+      setEvaluacionCompletada(true);
+      setEvaluacionActiva(false);
+    }
+  };
+
+  const reiniciarEvaluacion = () => {
+    setEvaluacionActiva(false);
+    setEvaluacionCompletada(false);
+    setPreguntasEval([]);
+    setRespuestasEval([]);
+    setPreguntaEvalIndex(0);
+    setRespuestaTexto('');
+  };
+
+  // ======================== TUTORIAL ========================
+  const tutorialSteps = [
+    { index: 0, titulo: '📝 Quizzes y Evaluaciones', texto: 'Puedes practicar por niveles o hacer una evaluación personalizada.', consejo: 'Los niveles van de 1 (fácil) a 10 (master).' },
+    { index: 1, titulo: '🎯 Modo Evaluación', texto: 'Selecciona los temas, elige la dificultad y obtén un informe detallado.', consejo: 'La evaluación genera 2 preguntas por tema.' },
+  ];
+
+  // ======================== RENDER ========================
+  if (evaluacionActiva) {
+    const p = preguntasEval[preguntaEvalIndex];
+    if (!p) return null;
+    const unidadSufijo = p.unidad === '%' ? '%' : p.unidad === '$' ? '$' : p.unidad === 'años' ? 'años' : 'periodos';
+    const progress = ((preguntaEvalIndex) / preguntasEval.length * 100);
+
+    return (
+      <div className="space-y-5">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <GraduationCap size={18} className="cx-text-accent-primary" />
+            <span className="text-sm font-semibold cx-text-text-primary">Evaluación en progreso</span>
+          </div>
+          <button onClick={reiniciarEvaluacion} className="text-xs px-3 py-1.5 rounded-md cx-bg-surface cx-text-text-muted border cx-border-border hover:cx-border-border-hover"><X size={12} className="inline mr-1" /> Salir</button>
+        </div>
+        <div className="w-full h-2 cx-bg-surface-alt rounded-full overflow-hidden"><div className="h-full bg-emerald-500 transition-all duration-300" style={{ width: `${progress}%` }} /></div>
+        <div className="text-xs cx-text-text-muted">Pregunta {preguntaEvalIndex + 1} de {preguntasEval.length}</div>
+        <div className="cx-bg-surface border cx-border-border rounded-lg p-4 sm:p-5 space-y-4">
+          <div className="flex items-center gap-2 cx-text-accent-primary-text font-semibold text-xs uppercase tracking-wide"><Lightbulb size={14} /> {p.categoria} · {DIFICULTADES.find(d => d.id === p.dificultad)?.label || 'Media'}</div>
+          <p className="text-[15px] cx-text-text-strong-gray leading-relaxed"><TextoConNegritas texto={p.enunciado} /></p>
+          <div className="flex flex-col sm:flex-row gap-3 sm:items-end">
+            <label className="flex-1 flex flex-col gap-1">
+              <span className="text-xs uppercase tracking-wide cx-text-text-muted font-semibold">Tu respuesta ({unidadSufijo})</span>
+              <input type="text" inputMode="decimal" value={respuestaTexto} onChange={(e) => setRespuestaTexto(e.target.value)} placeholder={p.unidad === '$' ? 'Ej. 12500.50' : 'Ej. 14.25'} className="w-full px-3 py-2.5 border-2 cx-border-border rounded-lg outline-none cx-focus-border-accent-primary cx-bg-surface cx-text-text-primary" style={{ fontFamily: "'JetBrains Mono', monospace" }} onKeyDown={(e) => e.key === 'Enter' && responderEvaluacion()} />
+            </label>
+            <button onClick={responderEvaluacion} disabled={respuestaTexto.trim() === ''} className="px-6 py-2.5 rounded-lg text-sm font-semibold text-white disabled:opacity-40" style={{ background: 'var(--accent-primary)' }}>{preguntaEvalIndex < preguntasEval.length - 1 ? 'Siguiente →' : 'Finalizar'}</button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (evaluacionCompletada) {
+    const total = respuestasEval.length;
+    const aciertos = respuestasEval.filter(r => r.correcto).length;
+    const porcentaje = Math.round((aciertos / total) * 100);
+    const errores = respuestasEval.filter(r => !r.correcto);
+    const aciertosPorTema = {};
+    const erroresPorTema = {};
+
+    respuestasEval.forEach(r => {
+      const tema = r.pregunta.tema || 'general';
+      if (!aciertosPorTema[tema]) aciertosPorTema[tema] = { aciertos: 0, total: 0 };
+      aciertosPorTema[tema].total++;
+      if (r.correcto) aciertosPorTema[tema].aciertos++;
+      if (!r.correcto) { if (!erroresPorTema[tema]) erroresPorTema[tema] = []; erroresPorTema[tema].push(r); }
+    });
+
+    const temasRecomendados = Object.keys(erroresPorTema).filter(t => erroresPorTema[t].length > 0);
+
+    return (
+      <div className="space-y-5">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2"><Check size={18} className="cx-text-accent-green-text" /><span className="text-sm font-semibold cx-text-text-primary">Evaluación Completada</span></div>
+          <button onClick={reiniciarEvaluacion} className="text-xs px-3 py-1.5 rounded-md cx-bg-surface cx-text-text-muted border cx-border-border hover:cx-border-border-hover"><RotateCcw size={12} className="inline mr-1" /> Nueva evaluación</button>
+        </div>
+        <div className="grid grid-cols-3 gap-3">
+          <StatCard label="Aciertos" value={`${aciertos}/${total}`} accent="teal" />
+          <StatCard label="Calificación" value={`${porcentaje}%`} accent={porcentaje >= 70 ? 'teal' : 'coral'} />
+          <StatCard label="Nivel" value={porcentaje >= 90 ? '🌟 Excelente' : porcentaje >= 70 ? '👍 Bueno' : '📚 Estudiar más'} accent="blue" />
+        </div>
+        <div className="cx-bg-surface border cx-border-border rounded-lg p-4">
+          <h4 className="text-sm font-semibold cx-text-text-primary mb-3">📊 Desempeño por tema</h4>
+          <div className="space-y-2">
+            {Object.keys(aciertosPorTema).map(tema => {
+              const data = aciertosPorTema[tema];
+              const pct = Math.round((data.aciertos / data.total) * 100);
+              const temaLabel = TEMAS.find(t => t.id === tema)?.label || tema;
+              return (
+                <div key={tema} className="flex items-center gap-3">
+                  <span className="text-xs w-32 cx-text-text-secondary truncate">{temaLabel}</span>
+                  <div className="flex-1 h-2 cx-bg-surface-alt rounded-full overflow-hidden"><div className={`h-full transition-all duration-500 ${pct >= 70 ? 'bg-emerald-500' : 'bg-orange-500'}`} style={{ width: `${pct}%` }} /></div>
+                  <span className="text-xs font-semibold cx-text-text-muted">{pct}%</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+        {temasRecomendados.length > 0 && (
+          <div className="cx-bg-accent-coral-bg border cx-border-accent-coral-border rounded-lg p-4">
+            <div className="flex items-center gap-2 mb-2"><Lightbulb size={16} className="cx-text-accent-coral-text" /><span className="text-sm font-semibold cx-text-accent-coral-text">📚 Temas para estudiar</span></div>
+            <ul className="space-y-1">
+              {temasRecomendados.map(tema => {
+                const temaLabel = TEMAS.find(t => t.id === tema)?.label || tema;
+                const erroresTema = erroresPorTema[tema] || [];
+                return (
+                  <li key={tema} className="text-xs cx-text-text-secondary flex items-start gap-2">
+                    <span className="text-red-500">•</span>
+                    <span><strong>{temaLabel}</strong> - {erroresTema.length} error(es)
+                      {erroresTema.length > 0 && <span className="block text-[10px] cx-text-text-muted mt-0.5">Revisa: {erroresTema.map((e, i) => <span key={i}>{e.pregunta.categoria}{i < erroresTema.length - 1 ? ', ' : ''}</span>)}</span>}
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        )}
+        {errores.length > 0 && (
+          <details className="cx-bg-surface border cx-border-border rounded-lg p-4">
+            <summary className="cursor-pointer text-sm font-semibold cx-text-text-primary">🔍 Ver errores en detalle ({errores.length})</summary>
+            <div className="mt-3 space-y-3">
+              {errores.map((err, i) => (
+                <div key={i} className="p-3 cx-bg-surface-alt rounded-lg border cx-border-border">
+                  <p className="text-xs cx-text-text-muted font-semibold">{err.pregunta.categoria}</p>
+                  <p className="text-sm cx-text-text-primary mt-1">{err.pregunta.enunciado.replace(/\*\*/g, '')}</p>
+                  <div className="flex gap-4 mt-2 text-xs">
+                    <span className="cx-text-accent-coral-text">❌ Tu respuesta: {err.respuestaUsuario || 'No respondida'}</span>
+                    <span className="cx-text-accent-green-text">✅ Correcta: {err.pregunta.unidad === '%' || err.pregunta.unidad === 'años' || err.pregunta.unidad === 'periodos' ? err.respuestaCorrecta.toFixed(2) + (err.pregunta.unidad === '%' ? '%' : '') : fmt(err.respuestaCorrecta)}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </details>
+        )}
+      </div>
+    );
+  }
+
+  // ======================== MODO QUIZ ========================
+  const meta = NIVELES_META[nivel - 1] || NIVELES_META[0];
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <ControlPanel 
         dashboardOn={dashboardOn} setDashboardOn={setDashboardOn}
         tutorialOn={tutorialOn} setTutorialOn={setTutorialOn}
         discreteOn={discreteOn} setDiscreteOn={setDiscreteOn}
-        onReset={() => setNivel(1)} 
+        onReset={() => { setNivel(1); setPregunta(generarPreguntaNivel(1)); setPuntaje({ aciertos: 0, total: 0 }); setHistorial([]); setMostrarInforme(false); setModo('quiz'); }} 
       />
 
       {discreteOn && (
@@ -1263,31 +1626,84 @@ function QuizTab() {
         />
       )}
 
-      <div>
-        <div className="text-xs uppercase tracking-wide cx-text-text-muted font-semibold mb-2">Nivel de dificultad</div>
-        <div className="flex flex-wrap gap-1.5">
-          {niveles.map((n) => (
-            <PillButton key={n} active={nivel === n} onClick={() => setNivel(n)}>{n}</PillButton>
-          ))}
-        </div>
+      <div className="flex gap-2 cx-bg-surface p-2 rounded-lg border cx-border-border">
+        <button onClick={() => setModo('quiz')} className={`flex-1 py-2 rounded-md text-sm font-semibold transition-colors ${modo === 'quiz' ? 'text-white' : 'cx-text-text-secondary cx-bg-surface'}`} style={{ background: modo === 'quiz' ? 'var(--accent-primary)' : undefined }}>📝 Práctica por niveles</button>
+        <button onClick={() => setModo('evaluacion')} className={`flex-1 py-2 rounded-md text-sm font-semibold transition-colors ${modo === 'evaluacion' ? 'text-white' : 'cx-text-text-secondary cx-bg-surface'}`} style={{ background: modo === 'evaluacion' ? 'var(--accent-primary)' : undefined }}>📊 Evaluación personalizada</button>
       </div>
 
-      <div className="cx-bg-surface border cx-border-border rounded-lg p-4 sm:p-5 space-y-4">
-        <p className="text-[15px] cx-text-text-strong-gray leading-relaxed">
-          <strong>Nivel {nivel}:</strong> {nivel <= 3 ? 'Cálculo de interés simple y compuesto' : nivel <= 6 ? 'Tasas equivalentes' : nivel <= 8 ? 'Anualidades' : 'Problemas integradores'}
-        </p>
-        <div className="flex flex-col sm:flex-row gap-3 sm:items-end">
-          <label className="flex-1 flex flex-col gap-1">
-            <span className="text-xs uppercase tracking-wide cx-text-text-muted font-semibold">Tu respuesta</span>
-            <input type="text" value={respuesta} onChange={(e) => setRespuesta(e.target.value)} placeholder="Escribe tu respuesta..." className="w-full px-3 py-2.5 border-2 cx-border-border rounded-lg outline-none cx-focus-border-accent-primary cx-bg-surface cx-text-text-primary" />
-          </label>
-          <div className="flex gap-2">
-            <button className="px-4 py-2.5 rounded-lg text-sm font-semibold text-white" style={{ background: 'var(--accent-primary)' }}>Verificar</button>
-            <button className="px-4 py-2.5 rounded-lg text-sm font-semibold cx-bg-surface cx-text-text-secondary border-2 cx-border-border cx-hover-border-border-hover flex items-center gap-1.5"><RotateCcw size={14} /> Nueva</button>
+      {modo === 'quiz' ? (
+        <>
+          <div><div className="text-xs uppercase tracking-wide cx-text-text-muted font-semibold mb-2">Nivel de dificultad</div>
+            <div className="flex flex-wrap gap-1.5">{NIVELES_META.map((m) => (<PillButton key={m.nivel} active={nivel === m.nivel} onClick={() => cambiarNivel(m.nivel)}>{m.nivel}</PillButton>))}</div>
           </div>
+          <div className="grid sm:grid-cols-3 gap-3">
+            <StatCard label="Nivel actual" value={`${nivel} · ${meta.tag}`} accent="blue" />
+            <StatCard label="Aciertos" value={`${puntaje.aciertos} / ${puntaje.total}`} accent="teal" />
+            <StatCard label="Efectividad" value={puntaje.total ? `${Math.round((puntaje.aciertos / puntaje.total) * 100)}%` : '—'} accent="coral" />
+          </div>
+          {mostrarInforme && puntaje.total > 0 && (
+            <div className="cx-bg-accent-primary-bg border cx-border-accent-primary/30 rounded-lg p-4">
+              <div className="flex items-center gap-2 mb-2"><Check size={16} className="cx-text-accent-green-text" /><span className="text-sm font-semibold cx-text-text-primary">📊 Informe de progreso</span></div>
+              <div className="flex gap-4 text-sm"><span className="cx-text-text-secondary">Aciertos: <strong>{puntaje.aciertos}</strong></span><span className="cx-text-text-secondary">Total: <strong>{puntaje.total}</strong></span><span className="cx-text-text-secondary">Efectividad: <strong>{Math.round((puntaje.aciertos / puntaje.total) * 100)}%</strong></span><span className="cx-text-text-secondary">Nivel: <strong>{meta.dificultad}</strong></span></div>
+              <button onClick={() => setMostrarInforme(false)} className="mt-2 text-xs cx-text-accent-primary font-semibold">Ocultar informe</button>
+            </div>
+          )}
+          {pregunta ? (
+            <div className="cx-bg-surface border cx-border-border rounded-lg p-4 sm:p-5 space-y-4">
+              <div className="flex items-center gap-2 cx-text-accent-primary-text font-semibold text-xs uppercase tracking-wide"><Lightbulb size={14} /> {pregunta.categoria} · Nivel {nivel} · {meta.dificultad}</div>
+              <p className="text-[15px] cx-text-text-strong-gray leading-relaxed"><TextoConNegritas texto={pregunta.enunciado} /></p>
+              <div className="flex flex-col sm:flex-row gap-3 sm:items-end">
+                <label className="flex-1 flex flex-col gap-1">
+                  <span className="text-xs uppercase tracking-wide cx-text-text-muted font-semibold">Tu respuesta ({pregunta.unidad === '%' ? '%' : pregunta.unidad === '$' ? '$' : pregunta.unidad === 'años' ? 'años' : 'periodos'})</span>
+                  <input type="text" inputMode="decimal" value={respuestaTexto} onChange={(e) => setRespuestaTexto(e.target.value)} placeholder={pregunta.unidad === '$' ? 'Ej. 12500.50' : 'Ej. 14.25'} className="w-full px-3 py-2.5 border-2 cx-border-border rounded-lg outline-none cx-focus-border-accent-primary cx-bg-surface cx-text-text-primary" style={{ fontFamily: "'JetBrains Mono', monospace" }} onKeyDown={(e) => e.key === 'Enter' && verificar()} />
+                </label>
+                <div className="flex gap-2">
+                  <button onClick={verificar} disabled={respuestaTexto.trim() === ''} className="px-4 py-2.5 rounded-lg text-sm font-semibold text-white disabled:opacity-40" style={{ background: 'var(--accent-primary)' }}>Verificar</button>
+                  <button onClick={nuevaPregunta} className="px-4 py-2.5 rounded-lg text-sm font-semibold cx-bg-surface cx-text-text-secondary border-2 cx-border-border cx-hover-border-border-hover flex items-center gap-1.5"><RotateCcw size={14} /> Nueva</button>
+                </div>
+              </div>
+              {verificado && (
+                <div className={`rounded-lg p-4 space-y-2 ${correcto ? 'cx-bg-accent-green-bg' : 'cx-bg-accent-coral-bg'}`}>
+                  <div className={`flex items-center gap-2 font-semibold text-sm ${correcto ? 'cx-text-accent-green-text' : 'cx-text-accent-coral-text'}`}>{correcto ? <Check size={16} /> : <X size={16} />}{correcto ? '¡Correcto!' : 'No es correcto todavía.'}</div>
+                  <p className="text-sm cx-text-text-strong-gray">Respuesta esperada: <strong>{pregunta.unidad === '%' || pregunta.unidad === 'años' || pregunta.unidad === 'periodos' ? pregunta.respuesta.toLocaleString('es-EC', { maximumFractionDigits: 2 }) + (pregunta.unidad === '%' ? '%' : '') : fmt(pregunta.respuesta)}</strong></p>
+                  <div className="space-y-1 pt-1 border-t" style={{ borderColor: 'var(--border)' }}>{pregunta.solucion.map((linea, i) => (<p key={i} className="text-xs cx-text-text-secondary leading-relaxed">{linea}</p>))}</div>
+                </div>
+              )}
+            </div>
+          ) : <div className="text-center py-8 cx-text-text-muted">Cargando pregunta...</div>}
+          <p className="text-[11px] cx-text-text-faint">Cada nivel genera preguntas nuevas con números aleatorios. La tolerancia considera redondeos normales.</p>
+        </>
+      ) : (
+        // ======================== MODO EVALUACIÓN ========================
+        <div className="cx-bg-surface border cx-border-border rounded-lg p-5 space-y-4">
+          <h3 className="text-base font-semibold cx-text-text-primary" style={{ fontFamily: "'Fraunces', sans-serif" }}>📊 Configura tu evaluación</h3>
+          <p className="text-sm cx-text-text-secondary">Selecciona los temas que quieres evaluar y la dificultad. La evaluación generará 2 preguntas por tema.</p>
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-semibold cx-text-text-muted uppercase tracking-wide">Temas a evaluar</span>
+              <button onClick={() => { if (temasSeleccionados.length === TEMAS.length) setTemasSeleccionados([]); else setTemasSeleccionados(TEMAS.map(t => t.id)); }} className="text-xs cx-text-accent-primary font-semibold">{temasSeleccionados.length === TEMAS.length ? 'Deseleccionar todos' : 'Seleccionar todos'}</button>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+              {TEMAS.map((tema) => (
+                <label key={tema.id} className="flex items-center gap-2 p-2 rounded-lg cx-bg-surface-alt border cx-border-border cursor-pointer hover:cx-border-border-hover transition-colors">
+                  <input type="checkbox" checked={temasSeleccionados.includes(tema.id)} onChange={() => { if (temasSeleccionados.includes(tema.id)) setTemasSeleccionados(temasSeleccionados.filter(t => t !== tema.id)); else setTemasSeleccionados([...temasSeleccionados, tema.id]); }} className="w-4 h-4 accent-emerald-600" />
+                  <span className="text-xs cx-text-text-secondary">{tema.icon} {tema.label}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+          <div>
+            <span className="text-xs font-semibold cx-text-text-muted uppercase tracking-wide">Dificultad</span>
+            <div className="flex flex-wrap gap-2 mt-1">
+              {DIFICULTADES.map((d) => (
+                <button key={d.id} onClick={() => setDificultadEval(d.id)} className={`px-3 py-1.5 rounded-md text-xs font-semibold border-2 transition-colors ${dificultadEval === d.id ? 'border-accent-primary text-white' : 'cx-border-border cx-text-text-secondary'}`} style={{ background: dificultadEval === d.id ? 'var(--accent-primary)' : undefined }}>{d.label}</button>
+              ))}
+            </div>
+          </div>
+          <button onClick={iniciarEvaluacion} disabled={temasSeleccionados.length === 0} className="w-full py-3 rounded-lg text-sm font-semibold text-white disabled:opacity-40 transition-opacity" style={{ background: 'var(--accent-primary)' }}>{temasSeleccionados.length === 0 ? 'Selecciona al menos un tema' : `Iniciar evaluación (${temasSeleccionados.length * 2} preguntas)`}</button>
+          <div className="cx-bg-accent-primary-bg border cx-border-accent-primary/15 rounded-lg p-4"><p className="text-xs cx-text-text-secondary">💡 La evaluación generará preguntas aleatorias de los temas seleccionados. Al finalizar, recibirás un informe con tus aciertos y recomendaciones de estudio.</p></div>
         </div>
-        <p className="text-[11px] cx-text-text-faint">Cada nivel genera preguntas nuevas con números aleatorios.</p>
-      </div>
+      )}
 
       {tutorialOn && (
         <TutorialStep step={tutorialSteps[tutorialStep]} total={tutorialSteps.length} 
@@ -1298,6 +1714,10 @@ function QuizTab() {
     </div>
   );
 }
+
+// ============================================================
+// FORMULARIO TAB
+// ============================================================
 
 function FormularioTab() {
   const [dashboardOn, setDashboardOn] = useState(true);
@@ -1313,34 +1733,17 @@ function FormularioTab() {
         discreteOn={discreteOn} setDiscreteOn={setDiscreteOn}
         onReset={() => {}} 
       />
-
       <div className="cx-bg-surface border cx-border-border p-5 rounded-lg">
         <h3 className="font-semibold text-lg cx-text-text-primary mb-1" style={{ fontFamily: "'Fraunces', serif" }}>📐 Formulario de Fórmulas</h3>
         <p className="text-sm cx-text-text-secondary">Todas las fórmulas organizadas por tema.</p>
       </div>
-
       {dashboardOn && (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div className="cx-bg-surface border cx-border-border rounded-lg p-4">
-            <h4 className="font-bold text-sm cx-text-accent-primary">Interés Simple</h4>
-            <div className="font-serif text-center py-2 text-sm">F = P · (1 + r · t)</div>
-          </div>
-          <div className="cx-bg-surface border cx-border-border rounded-lg p-4">
-            <h4 className="font-bold text-sm cx-text-accent-primary">Interés Compuesto</h4>
-            <div className="font-serif text-center py-2 text-sm">F = P · (1 + r)ᵗ</div>
-          </div>
-          <div className="cx-bg-surface border cx-border-border rounded-lg p-4">
-            <h4 className="font-bold text-sm cx-text-accent-primary">Cuota Francesa</h4>
-            <div className="font-serif text-center py-2 text-xs">C = (P·r) / (1 − (1+r)⁻ⁿ)</div>
-          </div>
-          <div className="cx-bg-surface border cx-border-border rounded-lg p-4">
-            <h4 className="font-bold text-sm cx-text-accent-primary">Tasa Efectiva Anual</h4>
-            <div className="font-serif text-center py-2 text-sm">TEA = (1 + j/m)ᵐ − 1</div>
-          </div>
-          <div className="cx-bg-surface border cx-border-border rounded-lg p-4 sm:col-span-2">
-            <h4 className="font-bold text-sm cx-text-accent-primary">Relación de Recurrencia</h4>
-            <div className="font-serif text-center py-2 text-sm">Sₜ = Sₜ₋₁ · (1 + r) − C</div>
-          </div>
+          <div className="cx-bg-surface border cx-border-border rounded-lg p-4"><h4 className="font-bold text-sm cx-text-accent-primary">Interés Simple</h4><div className="font-serif text-center py-2 text-sm">F = P · (1 + r · t)</div></div>
+          <div className="cx-bg-surface border cx-border-border rounded-lg p-4"><h4 className="font-bold text-sm cx-text-accent-primary">Interés Compuesto</h4><div className="font-serif text-center py-2 text-sm">F = P · (1 + r)ᵗ</div></div>
+          <div className="cx-bg-surface border cx-border-border rounded-lg p-4"><h4 className="font-bold text-sm cx-text-accent-primary">Cuota Francesa</h4><div className="font-serif text-center py-2 text-xs">C = (P·r) / (1 − (1+r)⁻ⁿ)</div></div>
+          <div className="cx-bg-surface border cx-border-border rounded-lg p-4"><h4 className="font-bold text-sm cx-text-accent-primary">Tasa Efectiva Anual</h4><div className="font-serif text-center py-2 text-sm">TEA = (1 + j/m)ᵐ − 1</div></div>
+          <div className="cx-bg-surface border cx-border-border rounded-lg p-4 sm:col-span-2"><h4 className="font-bold text-sm cx-text-accent-primary">Relación de Recurrencia</h4><div className="font-serif text-center py-2 text-sm">Sₜ = Sₜ₋₁ · (1 + r) − C</div></div>
         </div>
       )}
     </div>
@@ -1364,12 +1767,8 @@ function GameMenu({ onSelect }) {
   return (
     <div className="flex flex-col items-center justify-center py-8 sm:py-14 px-2">
       <div className="text-center mb-8">
-        <div className="inline-flex items-center gap-2 text-[11px] uppercase tracking-[0.25em] font-semibold mb-2" style={{ color: 'var(--accent-primary)' }}>
-          <Sparkles size={13} /> Elige tu ruta
-        </div>
-        <h2 className="text-2xl sm:text-[28px]" style={{ fontFamily: "'Fraunces', sans-serif", fontWeight: 600, color: 'var(--text-primary)' }}>
-          ¿Qué quieres explorar hoy?
-        </h2>
+        <div className="inline-flex items-center gap-2 text-[11px] uppercase tracking-[0.25em] font-semibold mb-2" style={{ color: 'var(--accent-primary)' }}><Sparkles size={13} /> Elige tu ruta</div>
+        <h2 className="text-2xl sm:text-[28px]" style={{ fontFamily: "'Fraunces', sans-serif", fontWeight: 600, color: 'var(--text-primary)' }}>¿Qué quieres explorar hoy?</h2>
       </div>
       <div className="flex flex-col items-stretch gap-3 w-full max-w-sm">
         {FOLDERS.map((f) => {
@@ -1539,7 +1938,7 @@ function FinanzasApp() {
           <Modal onClose={() => setAcercaDeOpen(false)}>
             <div className="flex items-center gap-2 cx-text-accent-primary font-semibold text-sm mb-1" style={{ fontFamily: "'Fraunces', sans-serif" }}><Calculator size={16} /> Proyecto de Matemáticas Discretas</div>
             <h3 className="text-2xl mb-3" style={{ fontFamily: "'Fraunces', sans-serif", fontWeight: 600, color: 'var(--text-primary)' }}>PROTOTIPO EDUCATIVO ESPOL</h3>
-            <p className="text-sm leading-relaxed" style={{ color: 'var(--text-secondary)' }}>Organizado por carpetas, con modo tutorial, dashboard y matemáticas discretas. Explora interés simple, compuesto, tasas equivalentes y préstamos en cuotas.</p>
+            <p className="text-sm leading-relaxed" style={{ color: 'var(--text-secondary)' }}>Organizado por carpetas, con modo tutorial, dashboard y matemáticas discretas.</p>
             <p className="text-xs mt-4 pt-4 border-t" style={{ color: 'var(--text-faint)', borderColor: 'var(--border)' }}>Prototipo educativo · cifras ilustrativas.</p>
           </Modal>
         )}
