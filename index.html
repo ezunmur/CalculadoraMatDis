@@ -24,133 +24,6 @@
         .mode-discrete { border-left: 3px solid #8B5CF6; }
         .mode-tutorial { border-left: 3px solid #3B82F6; }
         .mode-dashboard { border-left: 3px solid #10B981; }
-        @keyframes fillbar { from { width: 0%; } to { width: 100%; } }
-        .splash-bar { width: 0%; animation: fillbar 1.6s ease-out forwards; }
-        .formula-centered { text-align: center; display: flex; justify-content: center; align-items: center; flex-wrap: wrap; gap: 0.25rem; }
-        @media (max-width: 640px) {
-          .finapp-root .max-w-5xl { padding-left: 0.75rem; padding-right: 0.75rem; }
-          .finapp-root .cx-bg-surface { padding: 0.75rem; }
-        }
-        .respuesta-destacada {
-          border: 2px solid var(--accent-primary);
-          border-radius: 8px;
-          background: var(--accent-primary-bg);
-          padding: 4px 8px;
-          font-weight: 700;
-          color: var(--accent-primary-text);
-        }
-        .detalle-tabla th, .detalle-tabla td { padding: 6px 8px; text-align: right; }
-        .detalle-tabla th:first-child, .detalle-tabla td:first-child { text-align: left; }
-        .coin-3d {
-          border-radius: 50%;
-          box-shadow: 
-            0 0 0 3px var(--accent-primary),
-            0 0 0 6px color-mix(in srgb, var(--accent-primary) 60%, transparent),
-            0 0 0 9px color-mix(in srgb, var(--accent-primary) 30%, transparent);
-          background: radial-gradient(circle at 30% 30%, #f0e8d0, #c4b898);
-          padding: 6px;
-        }
-        .coin-3d img {
-          border-radius: 50%;
-          display: block;
-          background: #f0e8d0;
-        }
-        .finapp-root[data-theme='dark'] .coin-3d {
-          box-shadow: 
-            0 0 0 3px var(--accent-primary),
-            0 0 0 6px color-mix(in srgb, var(--accent-primary) 40%, transparent),
-            0 0 0 9px color-mix(in srgb, var(--accent-primary) 20%, transparent);
-          background: radial-gradient(circle at 30% 30%, #3a3528, #1a1610);
-        }
-        .finapp-root[data-theme='dark'] .coin-3d img {
-          background: #2a2518;
-        }
-        @keyframes coinSpin {
-          0% { transform: rotateY(0deg); }
-          100% { transform: rotateY(360deg); }
-        }
-        .coin-spinning {
-          animation: coinSpin 2.5s ease-in-out infinite;
-          backface-visibility: hidden;
-          -webkit-backface-visibility: hidden;
-          will-change: transform;
-        }
-        .coin-spinning-paused {
-          animation: coinSpin 1.2s ease-in-out 1 forwards;
-          backface-visibility: hidden;
-          -webkit-backface-visibility: hidden;
-          will-change: transform;
-        }
-        .coin-wrapper {
-          display: inline-block;
-          perspective: 400px;
-          transform-style: preserve-3d;
-          padding: 4px;
-        }
-        .tema-checkbox:checked {
-          accent-color: var(--accent-primary);
-        }
-        .tema-checkbox {
-          width: 1.1rem;
-          height: 1.1rem;
-          cursor: pointer;
-          flex-shrink: 0;
-        }
-        .tooltip-trigger {
-          position: relative;
-          cursor: help;
-        }
-        .tooltip-trigger .tooltip-text {
-          visibility: hidden;
-          width: 220px;
-          background-color: var(--surface);
-          color: var(--text-primary);
-          text-align: left;
-          border-radius: 8px;
-          padding: 8px 12px;
-          position: absolute;
-          z-index: 100;
-          bottom: 125%;
-          left: 50%;
-          transform: translateX(-50%);
-          opacity: 0;
-          transition: opacity 0.3s;
-          font-size: 11px;
-          font-weight: 400;
-          border: 1px solid var(--border);
-          box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-          line-height: 1.4;
-        }
-        .tooltip-trigger .tooltip-text::after {
-          content: "";
-          position: absolute;
-          top: 100%;
-          left: 50%;
-          margin-left: -5px;
-          border-width: 5px;
-          border-style: solid;
-          border-color: var(--border) transparent transparent transparent;
-        }
-        .tooltip-trigger:hover .tooltip-text {
-          visibility: visible;
-          opacity: 1;
-        }
-        .comparador-tabla th, .comparador-tabla td {
-          padding: 8px 10px;
-          text-align: center;
-          font-size: 12px;
-        }
-        .comparador-tabla th {
-          font-weight: 600;
-          background: var(--accent-primary-bg);
-        }
-        .comparador-tabla tr:nth-child(even) {
-          background: var(--surface-alt);
-        }
-        .comparador-tabla .destacado {
-          font-weight: 700;
-          color: var(--accent-primary-text);
-        }
     </style>
 </head>
 <body class="m-0 p-0">
@@ -3023,24 +2896,22 @@ function GameMenu({ onSelect }) {
 // ============================================================
 // SPLASH SCREEN
 // ============================================================
-function SplashScreen({ fadingOut, progress }) {
+function SplashScreen({ fadingOut }) {
   const [frase] = useState(() => FRASES_CARGA[Math.floor(Math.random() * FRASES_CARGA.length)]);
-  
-  const spinClass = progress >= 95 ? 'coin-spinning-paused' : 'coin-spinning';
-  
+
   return (
-    <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center transition-all duration-300" 
+    <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center transition-all duration-300"
          style={{ background: 'var(--bg)', opacity: fadingOut ? 0 : 1, transform: fadingOut ? 'scale(1.03)' : 'scale(1)' }}>
-      <div className="absolute inset-0 opacity-[0.05] pointer-events-none" 
+      <div className="absolute inset-0 opacity-[0.05] pointer-events-none"
            style={{ backgroundImage: 'repeating-linear-gradient(to bottom, transparent, transparent 27px, #000 27px, #000 28px)' }} />
       <div className="relative flex flex-col items-center px-6 text-center">
         <div className="coin-wrapper mb-5">
-          <div className={`coin-3d ${spinClass}`} style={{ display: 'inline-block' }}>
-            <img 
-              src={ESPOL_LOGO} 
-              alt="ESPOL" 
+          <div className={`coin-3d ${fadingOut ? 'coin-spinning-paused' : 'coin-spinning'}`} style={{ display: 'inline-block' }}>
+            <img
+              src={ESPOL_LOGO}
+              alt="ESPOL"
               className="w-24 sm:w-28"
-              style={{ 
+              style={{
                 backfaceVisibility: 'hidden',
                 WebkitBackfaceVisibility: 'hidden',
                 willChange: 'transform',
@@ -3050,22 +2921,19 @@ function SplashScreen({ fadingOut, progress }) {
             />
           </div>
         </div>
-        <div className="text-2xl sm:text-3xl mb-1" 
+        <div className="text-2xl sm:text-3xl mb-1"
              style={{ fontFamily: "'Fraunces', serif", fontWeight: 600, color: 'var(--text-primary)' }}>
           Proyecto de Matemáticas Discretas
         </div>
-        <div className="text-xs uppercase tracking-[0.2em] font-semibold mb-8" 
+        <div className="text-xs uppercase tracking-[0.2em] font-semibold mb-8"
              style={{ color: 'var(--text-muted)' }}>
           Escuela Superior Politécnica del Litoral
         </div>
-        <div className="w-56 h-1.5 rounded-full overflow-hidden" 
-             style={{ background: 'var(--border)' }}>
-          <div className="h-full" style={{ background: 'var(--accent-primary)', width: `${Math.min(100, progress)}%`, transition: 'width 0.3s ease-out' }} />
-        </div>
+        <div className="splash-spinner" role="status" aria-label="Cargando" />
         <div className="text-[11px] mt-3" style={{ color: 'var(--text-faint)' }}>
-          Cargando datos y archivos contables… {Math.round(progress)}%
+          Cargando datos y archivos contables…
         </div>
-        <div className="text-[12px] mt-4 max-w-xs italic" 
+        <div className="text-[12px] mt-4 max-w-xs italic"
              style={{ color: 'var(--text-muted)', fontFamily: "'Fraunces', serif" }}>
           "{frase}"
         </div>
@@ -3174,6 +3042,18 @@ const APP_STYLES = `
     transform-style: preserve-3d;
     padding: 4px;
   }
+  @keyframes spinnerRotate { to { transform: rotate(360deg); } }
+  .splash-spinner {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    border: 3.5px solid color-mix(in srgb, var(--accent-primary) 18%, transparent);
+    border-top-color: var(--accent-primary);
+    animation: spinnerRotate 0.85s linear infinite;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .splash-spinner, .coin-spinning, .coin-spinning-paused { animation: none; }
+  }
   .tema-checkbox:checked {
     accent-color: var(--accent-primary);
   }
@@ -3274,21 +3154,13 @@ function FinanzasApp() {
   const [entering, setEntering] = useState(false);
   const [leaving, setLeaving] = useState(false);
   const [origin, setOrigin] = useState({ x: 50, y: 15 });
-  const [progress, setProgress] = useState(0);
   const shellRef = useRef(null);
   const TRANSITION_MS = 190;
 
   useEffect(() => {
-    const interval = setInterval(() => {
-      setProgress(p => Math.min(100, p + 1 + Math.random() * 2));
-    }, 30);
-    
     const t1 = setTimeout(() => setBooting(false), 1700);
-    const t2 = setTimeout(() => {
-      setSplashDone(true);
-      clearInterval(interval);
-    }, 2200);
-    return () => { clearTimeout(t1); clearTimeout(t2); clearInterval(interval); };
+    const t2 = setTimeout(() => setSplashDone(true), 2200);
+    return () => { clearTimeout(t1); clearTimeout(t2); };
   }, []);
 
   const toggleTheme = () => setTheme((t) => (t === 'light' ? 'dark' : 'light'));
@@ -3319,7 +3191,7 @@ function FinanzasApp() {
 
   return (
     <div className="finapp-root min-h-screen w-full print:hidden" data-theme={theme} style={{ background: 'radial-gradient(1100px 500px at 85% -10%, rgba(31,77,58,0.07), transparent 60%), radial-gradient(900px 500px at -10% 10%, rgba(138,109,31,0.06), transparent 55%), var(--bg)' }}>
-      {!splashDone && <SplashScreen fadingOut={!booting} progress={progress} />}
+      {!splashDone && <SplashScreen fadingOut={!booting} />}
       <style>{APP_STYLES}</style>
       <div className="max-w-5xl mx-auto px-4 py-6 sm:py-8">
         <header className="relative overflow-hidden rounded-lg mb-5 px-5 py-6 sm:px-8 sm:py-8" style={{ background: 'linear-gradient(135deg, #1F4D3A 0%, #2A6349 55%, #163A2B 100%)' }}>
