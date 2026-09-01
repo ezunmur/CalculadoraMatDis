@@ -41,6 +41,52 @@
         }
         .detalle-tabla th, .detalle-tabla td { padding: 6px 8px; text-align: right; }
         .detalle-tabla th:first-child, .detalle-tabla td:first-child { text-align: left; }
+        .coin-3d {
+          border-radius: 50%;
+          box-shadow: 
+            0 0 0 3px var(--accent-primary),
+            0 0 0 6px color-mix(in srgb, var(--accent-primary) 60%, transparent),
+            0 0 0 9px color-mix(in srgb, var(--accent-primary) 30%, transparent);
+          background: radial-gradient(circle at 30% 30%, #f0e8d0, #c4b898);
+          padding: 6px;
+        }
+        .coin-3d img {
+          border-radius: 50%;
+          display: block;
+          background: #f0e8d0;
+        }
+        .finapp-root[data-theme='dark'] .coin-3d {
+          box-shadow: 
+            0 0 0 3px var(--accent-primary),
+            0 0 0 6px color-mix(in srgb, var(--accent-primary) 40%, transparent),
+            0 0 0 9px color-mix(in srgb, var(--accent-primary) 20%, transparent);
+          background: radial-gradient(circle at 30% 30%, #3a3528, #1a1610);
+        }
+        .finapp-root[data-theme='dark'] .coin-3d img {
+          background: #2a2518;
+        }
+        @keyframes coinSpin {
+          0% { transform: rotateY(0deg); }
+          100% { transform: rotateY(360deg); }
+        }
+        .coin-spinning {
+          animation: coinSpin 2.5s ease-in-out infinite;
+          backface-visibility: hidden;
+          -webkit-backface-visibility: hidden;
+          will-change: transform;
+        }
+        .coin-spinning-paused {
+          animation: coinSpin 1.2s ease-in-out 1 forwards;
+          backface-visibility: hidden;
+          -webkit-backface-visibility: hidden;
+          will-change: transform;
+        }
+        .coin-wrapper {
+          display: inline-block;
+          perspective: 400px;
+          transform-style: preserve-3d;
+          padding: 4px;
+        }
     </style>
 </head>
 <body class="m-0 p-0">
@@ -58,7 +104,7 @@ import {
   GraduationCap, ChevronLeft, ChevronRight, Lightbulb, Home,
   Settings2, Check, ArrowLeftRight, Sun, Moon, Info, FileText,
   BarChart3, LineChart as LineChartIcon, ToggleLeft, ToggleRight,
-  Clock, Calendar, DollarSign
+  Clock, Calendar, DollarSign, Trash2
 } from 'lucide-react';
 
 const ESPOL_LOGO = 'logo.svg';
@@ -578,7 +624,7 @@ function LineChartComponent({ data, lines, colors, height = 240, label, referenc
 }
 
 // ============================================================
-// TASAS EQUIVALENTES TAB (sin cambios mayores)
+// TASAS EQUIVALENTES TAB
 // ============================================================
 function TasasEquivalentesTab() {
   const [tasaValor, setTasaValor] = useState(18);
@@ -961,7 +1007,7 @@ function TasasEquivalentesTab() {
 }
 
 // ============================================================
-// INTERES TAB - CON RESPUESTA DESTACADA
+// INTERES TAB
 // ============================================================
 function InteresTab() {
   const [tipo, setTipo] = useState('compuesto');
@@ -1191,10 +1237,10 @@ function InteresTab() {
 }
 
 // ============================================================
-// ANUALIDADES TAB - CON MODO FUTURO/PRESENTE
+// ANUALIDADES TAB
 // ============================================================
 function AnualidadesTab() {
-  const [modo, setModo] = useState('presente'); // 'presente' o 'futuro'
+  const [modo, setModo] = useState('presente');
   const [sistema, setSistema] = useState('francesa');
   const [P, setP] = useState(80000);
   const [tasaNominal, setTasaNominal] = useState(24);
@@ -1213,7 +1259,6 @@ function AnualidadesTab() {
     if (modo === 'presente') {
       return calcularAmortizacion(P, r, n, sistema);
     } else {
-      // Modo futuro: calcular valor futuro de una anualidad
       const FV = aporte * ((Math.pow(1 + r, n) - 1) / r);
       const rows = [];
       let saldo = 0;
@@ -1443,7 +1488,7 @@ function AnualidadesTab() {
 }
 
 // ============================================================
-// SIMULADOR TAB - CON TABLA DE AMORTIZACIÓN COMPLETA
+// SIMULADOR TAB - CON PAGOS EXTRAS Y 10 NIVELES DE QUIZZES
 // ============================================================
 function SimuladorTab() {
   const [objetivo, setObjetivo] = useState(5000);
@@ -1451,19 +1496,36 @@ function SimuladorTab() {
   const [tasas, setTasas] = useState({ simple: 5, compuesto: 8, prestamo: 16, tarjeta: 42 });
   const [detalle, setDetalle] = useState(null);
   const [mostrarTablaCompleta, setMostrarTablaCompleta] = useState(false);
+  
+  // Pagos extras
+  const [extras, setExtras] = useState([]);
+  const [nuevoExtraMes, setNuevoExtraMes] = useState(1);
+  const [nuevoExtraMonto, setNuevoExtraMonto] = useState(100);
 
   const { dashboardOn, setDashboardOn, tutorialOn, setTutorialOn, discreteOn, setDiscreteOn, tutorialStep, setTutorialStep } = useModes();
 
   const resultados = useMemo(() => {
-    const alcancia = simularCamino({ tipo: 'alcancia', monto: objetivo, base: capacidad });
-    const ahorroSimple = simularCamino({ tipo: 'ahorroSimple', monto: objetivo, base: capacidad, tasaAnual: tasas.simple });
-    const ahorroCompuesto = simularCamino({ tipo: 'ahorroCompuesto', monto: objetivo, base: capacidad, tasaAnual: tasas.compuesto });
-    const prestamo = simularCamino({ tipo: 'deuda', monto: objetivo, base: capacidad, tasaAnual: tasas.prestamo });
-    const tarjeta = simularCamino({ tipo: 'deuda', monto: objetivo, base: capacidad, tasaAnual: tasas.tarjeta });
+    const alcancia = simularCamino({ tipo: 'alcancia', monto: objetivo, base: capacidad, extrasUnicos: extras });
+    const ahorroSimple = simularCamino({ tipo: 'ahorroSimple', monto: objetivo, base: capacidad, tasaAnual: tasas.simple, extrasUnicos: extras });
+    const ahorroCompuesto = simularCamino({ tipo: 'ahorroCompuesto', monto: objetivo, base: capacidad, tasaAnual: tasas.compuesto, extrasUnicos: extras });
+    const prestamo = simularCamino({ tipo: 'deuda', monto: objetivo, base: capacidad, tasaAnual: tasas.prestamo, extrasUnicos: extras });
+    const tarjeta = simularCamino({ tipo: 'deuda', monto: objetivo, base: capacidad, tasaAnual: tasas.tarjeta, extrasUnicos: extras });
     return { alcancia, ahorroSimple, ahorroCompuesto, prestamo, tarjeta };
-  }, [objetivo, capacidad, tasas]);
+  }, [objetivo, capacidad, tasas, extras]);
 
   const setTasa = (key) => (e) => setTasas((t) => ({ ...t, [key]: parseFloat(e.target.value) || 0 }));
+
+  const agregarExtra = () => {
+    if (nuevoExtraMes > 0 && nuevoExtraMonto > 0) {
+      setExtras([...extras, { mes: nuevoExtraMes, monto: nuevoExtraMonto }]);
+      setNuevoExtraMes(1);
+      setNuevoExtraMonto(100);
+    }
+  };
+
+  const eliminarExtra = (index) => {
+    setExtras(extras.filter((_, i) => i !== index));
+  };
 
   const ahorroChart = useMemo(() => {
     const maxM = Math.min(240, Math.max(
@@ -1549,7 +1611,7 @@ function SimuladorTab() {
         dashboardOn={dashboardOn} setDashboardOn={setDashboardOn}
         tutorialOn={tutorialOn} setTutorialOn={setTutorialOn}
         discreteOn={discreteOn} setDiscreteOn={setDiscreteOn}
-        onReset={() => { setObjetivo(5000); setCapacidad(250); setTasas({ simple: 5, compuesto: 8, prestamo: 16, tarjeta: 42 }); }}
+        onReset={() => { setObjetivo(5000); setCapacidad(250); setTasas({ simple: 5, compuesto: 8, prestamo: 16, tarjeta: 42 }); setExtras([]); }}
       />
 
       {discreteOn && (
@@ -1614,6 +1676,38 @@ function SimuladorTab() {
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 cx-bg-surface p-4 rounded-lg border cx-border-border">
         <Field label="Monto objetivo" suffix="$" value={objetivo} onChange={setObjetivo} min={1} step={100} />
         <Field label="Capacidad mensual" suffix="$" value={capacidad} onChange={setCapacidad} min={1} step={10} />
+      </div>
+
+      {/* Pagos Extras */}
+      <div className="cx-bg-surface p-4 rounded-lg border cx-border-border">
+        <div className="flex items-center gap-2 mb-3">
+          <Plus size={16} className="cx-text-accent-primary" />
+          <span className="text-sm font-semibold cx-text-text-primary">Pagos Extras</span>
+          <span className="text-xs cx-text-text-muted">(Aportes adicionales en meses específicos)</span>
+        </div>
+        <div className="flex flex-wrap items-end gap-3">
+          <Field label="Mes" value={nuevoExtraMes} onChange={setNuevoExtraMes} min={1} step={1} max={LIMITES.MESES_MAX} />
+          <Field label="Monto extra" suffix="$" value={nuevoExtraMonto} onChange={setNuevoExtraMonto} min={1} step={10} />
+          <button onClick={agregarExtra} className="px-4 py-2 rounded-md text-sm font-semibold text-white" style={{ background: 'var(--accent-primary)' }}>
+            Agregar
+          </button>
+        </div>
+        {extras.length > 0 && (
+          <div className="mt-3 flex flex-wrap gap-2">
+            {extras.map((e, i) => (
+              <div key={i} className="flex items-center gap-2 cx-bg-surface-alt border cx-border-border rounded-md px-3 py-1.5 text-xs">
+                <span className="cx-text-text-secondary">Mes {e.mes}</span>
+                <span className="cx-text-accent-green-text font-semibold">{fmt(e.monto)}</span>
+                <button onClick={() => eliminarExtra(i)} className="cx-text-text-faint hover:cx-text-accent-coral-text">
+                  <X size={14} />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+        {extras.length === 0 && (
+          <p className="text-xs cx-text-text-muted mt-2">No hay pagos extras configurados.</p>
+        )}
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -1827,7 +1921,7 @@ function SimuladorTab() {
 }
 
 // ============================================================
-// QUIZ TAB (simplificado, sin cambios mayores)
+// QUIZ TAB - 10 NIVELES COMPLETOS
 // ============================================================
 function QuizTab() {
   const [nivel, setNivel] = useState(1);
@@ -1836,6 +1930,7 @@ function QuizTab() {
   const [verificado, setVerificado] = useState(false);
   const [correcto, setCorrecto] = useState(false);
   const [puntaje, setPuntaje] = useState({ aciertos: 0, total: 0 });
+  const [mostrarInforme, setMostrarInforme] = useState(false);
 
   const { dashboardOn, setDashboardOn, tutorialOn, setTutorialOn, discreteOn, setDiscreteOn, tutorialStep, setTutorialStep } = useModes();
 
@@ -1844,6 +1939,7 @@ function QuizTab() {
   }, []);
 
   function randInt(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
+  function randChoice(arr) { return arr[randInt(0, arr.length - 1)]; }
   function round2(n) { return Math.round(n * 100) / 100; }
 
   function dentroDeToleranciaQ(valorUsuario, correcto, unidad) {
@@ -1855,6 +1951,7 @@ function QuizTab() {
     return Math.abs(valorUsuario - correcto) <= Math.abs(correcto) * 0.02;
   }
 
+  // 10 generadores de preguntas
   function nivel1_interesSimpleGanado() {
     const P = randInt(5, 50) * 1000;
     const r = randInt(4, 24);
@@ -1909,16 +2006,172 @@ function QuizTab() {
     };
   }
 
-  function generarPreguntaNivel(nivel) {
-    const generadores = {
-      1: nivel1_interesSimpleGanado,
-      2: nivel2_interesSimpleMontoFinal,
-      3: nivel3_interesCompuestoMontoFinal,
+  function nivel4_interesCompuestoPeriodos() {
+    const P = randInt(5, 40) * 1000;
+    const r = randInt(4, 18);
+    const t = randInt(3, 12);
+    const F = round2(P * Math.pow(1 + r / 100, t));
+    const nExacto = Math.log(F / P) / Math.log(1 + r / 100);
+    return {
+      categoria: 'Interés Compuesto',
+      enunciado: `Un capital de **${fmt(P)}** crece a interés compuesto con una tasa del **${r}% anual** hasta llegar a **${fmt(F)}**. ¿Cuántos años tomó ese crecimiento?`,
+      unidad: 'periodos',
+      respuesta: round2(nExacto),
+      solucion: [
+        `Fórmula: n = ln(F/P) / ln(1 + r)`,
+        `n = ln(${fmt(F)}/${fmt(P)}) / ln(1 + ${(r / 100).toFixed(2)})`,
+        `n ≈ ${nExacto.toFixed(2)} años`
+      ],
     };
-    const gen = generadores[nivel] || nivel1_interesSimpleGanado;
-    const base = gen();
-    return { tema: 'nivel', ...base };
   }
+
+  function nivel5_teaDesdeNominal() {
+    const j = randInt(8, 36);
+    const mOpciones = [2, 4, 12];
+    const m = randChoice(mOpciones);
+    const mLabel = m === 2 ? 'semestral' : m === 4 ? 'trimestral' : 'mensual';
+    const tea = (Math.pow(1 + (j / 100) / m, m) - 1) * 100;
+    return {
+      categoria: 'Tasas Equivalentes',
+      enunciado: `Un banco ofrece una tasa nominal del **${j}% anual con capitalización ${mLabel}**. ¿Cuál es la tasa efectiva anual (TEA)?`,
+      unidad: '%',
+      respuesta: round2(tea),
+      solucion: [
+        `Fórmula: TEA = (1 + j/m)ᵐ − 1`,
+        `TEA = (1 + ${(j / 100).toFixed(4)}/${m})^${m} − 1`,
+        `TEA ≈ ${tea.toFixed(2)}%`
+      ],
+    };
+  }
+
+  function nivel6_nominalDesdeTEA() {
+    const tea = randInt(10, 40);
+    const mOpciones = [2, 4, 12];
+    const m = randChoice(mOpciones);
+    const mLabel = m === 2 ? 'semestral' : m === 4 ? 'trimestral' : 'mensual';
+    const j = (Math.pow(1 + tea / 100, 1 / m) - 1) * m * 100;
+    return {
+      categoria: 'Tasas Equivalentes',
+      enunciado: `Sabiendo que la tasa efectiva anual (TEA) es del **${tea}%**, ¿cuál es la tasa nominal anual con capitalización ${mLabel} equivalente?`,
+      unidad: '%',
+      respuesta: round2(j),
+      solucion: [
+        `Fórmula: j = m · [(1 + TEA)^(1/m) − 1]`,
+        `j = ${m} · [(1 + ${(tea / 100).toFixed(2)})^(1/${m}) − 1]`,
+        `j ≈ ${j.toFixed(2)}%`
+      ],
+    };
+  }
+
+  function nivel7_valorPresente() {
+    const F = randInt(10, 80) * 1000;
+    const r = randInt(4, 20);
+    const n = randInt(2, 10);
+    const VP = F / Math.pow(1 + r / 100, n);
+    return {
+      categoria: 'Valor Presente',
+      enunciado: `Quieres recibir **${fmt(F)}** dentro de **${n} años**. Si la tasa de descuento anual es del **${r}%**, ¿cuánto debes invertir hoy (valor presente)?`,
+      unidad: '$',
+      respuesta: round2(VP),
+      solucion: [
+        `Fórmula: VP = F / (1 + r)ⁿ`,
+        `VP = ${fmt(F)} / (1 + ${(r / 100).toFixed(2)})^${n}`,
+        `VP = ${fmt(VP)}`
+      ],
+    };
+  }
+
+  function nivel8_anualidadCuotaFija() {
+    const P = randInt(5, 30) * 1000;
+    const rAnual = randInt(12, 30);
+    const n = randInt(6, 24);
+    const r = rAnual / 100 / 12;
+    const C = (P * r) / (1 - Math.pow(1 + r, -n));
+    return {
+      categoria: 'Anualidades',
+      enunciado: `Un préstamo de **${fmt(P)}** se paga en **${n} cuotas mensuales iguales** (sistema francés), con una tasa nominal del **${rAnual}% anual** capitalizada mensualmente. ¿Cuál es el valor de cada cuota?`,
+      unidad: '$',
+      respuesta: round2(C),
+      solucion: [
+        `Fórmula: C = (P · r) / (1 − (1+r)⁻ⁿ), con r = tasa mensual`,
+        `r = ${rAnual}% / 12 = ${(r * 100).toFixed(4)}% mensual`,
+        `C = (${fmt(P)} · ${r.toFixed(6)}) / (1 − (1+${r.toFixed(6)})⁻${n})`,
+        `C ≈ ${fmt(C)} por mes`
+      ],
+    };
+  }
+
+  function nivel9_mixtoTiempoEnAnios() {
+    const P = randInt(5, 30) * 1000;
+    const F = P * randChoice([2, 3, 4]);
+    const r = randInt(6, 24);
+    const nMeses = Math.log(F / P) / Math.log(1 + r / 100 / 12);
+    const anios = nMeses / 12;
+    return {
+      categoria: 'Problemas Integradores',
+      enunciado: `Un capital de **${fmt(P)}** se invierte a interés compuesto con una tasa nominal del **${r}% anual capitalizada mensualmente**. ¿Cuántos **años** (aproximados) tarda en convertirse en **${fmt(F)}**?`,
+      unidad: 'años',
+      respuesta: round2(anios),
+      solucion: [
+        `Tasa mensual: r = ${r}% / 12 = ${(r / 12).toFixed(4)}%`,
+        `n (meses) = ln(F/P) / ln(1 + r) = ln(${F}/${P}) / ln(1 + ${(r / 100 / 12).toFixed(6)})`,
+        `n ≈ ${nMeses.toFixed(1)} meses ≈ ${anios.toFixed(2)} años`
+      ],
+    };
+  }
+
+  function nivel10_problemaDeDestino() {
+    const aporte = randInt(50, 400);
+    const rAnual = randInt(4, 12);
+    const n = randInt(12, 48);
+    const r = rAnual / 100 / 12;
+    const FV = aporte * ((Math.pow(1 + r, n) - 1) / r);
+    return {
+      categoria: 'Problemas Integradores',
+      enunciado: `Ahorras **${fmt(aporte)} cada mes** en una cuenta que paga **${rAnual}% anual** (capitalización mensual), depositando al final de cada mes. ¿Cuánto tendrás acumulado después de **${n} meses**?`,
+      unidad: '$',
+      respuesta: round2(FV),
+      solucion: [
+        `Fórmula (valor futuro de una anualidad): FV = A · [(1+r)ⁿ − 1] / r`,
+        `r = ${rAnual}% / 12 = ${(r * 100).toFixed(4)}% mensual`,
+        `FV = ${fmt(aporte)} · [(1+${r.toFixed(6)})^${n} − 1] / ${r.toFixed(6)}`,
+        `FV ≈ ${fmt(FV)}`
+      ],
+    };
+  }
+
+  const GENERADORES_POR_NIVEL = {
+    1: nivel1_interesSimpleGanado,
+    2: nivel2_interesSimpleMontoFinal,
+    3: nivel3_interesCompuestoMontoFinal,
+    4: nivel4_interesCompuestoPeriodos,
+    5: nivel5_teaDesdeNominal,
+    6: nivel6_nominalDesdeTEA,
+    7: nivel7_valorPresente,
+    8: nivel8_anualidadCuotaFija,
+    9: nivel9_mixtoTiempoEnAnios,
+    10: nivel10_problemaDeDestino,
+  };
+
+  function generarPreguntaNivel(nivel) {
+    const gen = GENERADORES_POR_NIVEL[nivel] || nivel1_interesSimpleGanado;
+    const base = gen();
+    const dificultad = nivel <= 3 ? 'facil' : nivel <= 6 ? 'medio' : nivel <= 8 ? 'dificil' : nivel <= 9 ? 'experto' : 'master';
+    return { tema: 'nivel', ...base, dificultad };
+  }
+
+  const NIVELES_META = [
+    { nivel: 1, titulo: 'Interés simple · interés generado', tag: 'Interés simple', dificultad: 'Fácil' },
+    { nivel: 2, titulo: 'Interés simple · monto final', tag: 'Interés simple', dificultad: 'Fácil' },
+    { nivel: 3, titulo: 'Interés compuesto · monto final', tag: 'Interés compuesto', dificultad: 'Fácil' },
+    { nivel: 4, titulo: 'Interés compuesto · número de periodos', tag: 'Interés compuesto', dificultad: 'Medio' },
+    { nivel: 5, titulo: 'Tasa efectiva anual (TEA)', tag: 'Tasas equivalentes', dificultad: 'Medio' },
+    { nivel: 6, titulo: 'Tasa nominal desde la TEA', tag: 'Tasas equivalentes', dificultad: 'Medio' },
+    { nivel: 7, titulo: 'Valor presente', tag: 'Valor presente', dificultad: 'Difícil' },
+    { nivel: 8, titulo: 'Anualidades · cuota fija', tag: 'Anualidades', dificultad: 'Difícil' },
+    { nivel: 9, titulo: 'Mixto · tiempo total en años', tag: 'Problemas integradores', dificultad: 'Experto' },
+    { nivel: 10, titulo: 'Problema de destino', tag: 'Problemas integradores', dificultad: 'Master' },
+  ];
 
   const cambiarNivel = (n) => {
     setNivel(n);
@@ -1927,6 +2180,7 @@ function QuizTab() {
     setVerificado(false);
     setCorrecto(false);
     setPuntaje({ aciertos: 0, total: 0 });
+    setMostrarInforme(false);
   };
 
   const nuevaPregunta = () => {
@@ -1942,13 +2196,8 @@ function QuizTab() {
     setCorrecto(ok);
     setVerificado(true);
     setPuntaje((p) => ({ aciertos: p.aciertos + (ok ? 1 : 0), total: p.total + 1 }));
+    if (puntaje.total + 1 >= 5) setMostrarInforme(true);
   };
-
-  const NIVELES_META = [
-    { nivel: 1, titulo: 'Interés simple · interés generado', tag: 'Interés simple' },
-    { nivel: 2, titulo: 'Interés simple · monto final', tag: 'Interés simple' },
-    { nivel: 3, titulo: 'Interés compuesto · monto final', tag: 'Interés compuesto' },
-  ];
 
   const meta = NIVELES_META[nivel - 1] || NIVELES_META[0];
 
@@ -1971,9 +2220,17 @@ function QuizTab() {
         <StatCard label="Efectividad" value={puntaje.total ? `${Math.round((puntaje.aciertos / puntaje.total) * 100)}%` : '—'} accent="coral" />
       </div>
 
+      {mostrarInforme && puntaje.total > 0 && (
+        <div className="cx-bg-accent-primary-bg border cx-border-accent-primary/30 rounded-lg p-4">
+          <div className="flex items-center gap-2 mb-2"><Check size={16} className="cx-text-accent-green-text" /><span className="text-sm font-semibold cx-text-text-primary">📊 Informe de progreso</span></div>
+          <div className="flex flex-wrap gap-4 text-sm"><span className="cx-text-text-secondary">Aciertos: <strong>{puntaje.aciertos}</strong></span><span className="cx-text-text-secondary">Total: <strong>{puntaje.total}</strong></span><span className="cx-text-text-secondary">Efectividad: <strong>{Math.round((puntaje.aciertos / puntaje.total) * 100)}%</strong></span><span className="cx-text-text-secondary">Nivel: <strong>{meta.dificultad}</strong></span></div>
+          <button onClick={() => setMostrarInforme(false)} className="mt-2 text-xs cx-text-accent-primary font-semibold">Ocultar informe</button>
+        </div>
+      )}
+
       {pregunta ? (
         <div className="cx-bg-surface border cx-border-border rounded-lg p-4 sm:p-5 space-y-4">
-          <div className="flex items-center gap-2 cx-text-accent-primary-text font-semibold text-xs uppercase tracking-wide"><Lightbulb size={14} /> {pregunta.categoria} · Nivel {nivel}</div>
+          <div className="flex items-center gap-2 cx-text-accent-primary-text font-semibold text-xs uppercase tracking-wide"><Lightbulb size={14} /> {pregunta.categoria} · Nivel {nivel} · {meta.dificultad}</div>
           <p className="text-[15px] cx-text-text-strong-gray leading-relaxed"><TextoConNegritas texto={pregunta.enunciado} /></p>
           <div className="flex flex-col sm:flex-row gap-3 sm:items-end">
             <label className="flex-1 flex flex-col gap-1">
@@ -2038,7 +2295,7 @@ const FOLDERS = [
   { key: 'tasas', label: 'Tasas equivalentes', desc: 'Convierte entre capitalizaciones.', icon: ArrowLeftRight, accent: '#2B4570' },
   { key: 'anualidades', label: 'Anualidades y préstamos', desc: 'Sistemas de amortización.', icon: Landmark, accent: '#A3402E' },
   { key: 'simulador', label: 'Simulador de destinos', desc: 'Compara caminos de ahorro y deuda.', icon: Target, accent: '#8A6D1F' },
-  { key: 'quizzes', label: 'Quizzes y ejercicios', desc: '3 niveles de dificultad.', icon: GraduationCap, accent: '#6B4FA0' },
+  { key: 'quizzes', label: 'Quizzes y ejercicios', desc: '10 niveles de dificultad.', icon: GraduationCap, accent: '#6B4FA0' },
   { key: 'formulario', label: 'Formulario', desc: 'Todas las fórmulas en un lugar.', icon: FileText, accent: '#D97706' },
 ];
 
@@ -2067,12 +2324,12 @@ function GameMenu({ onSelect }) {
 }
 
 // ============================================================
-// SPLASH SCREEN CON ANIMACIÓN DE MONEDA MEJORADA
+// SPLASH SCREEN - MONEDA CON GIRO DE 360° Y GROSOR
 // ============================================================
 function SplashScreen({ fadingOut, progress }) {
   const [frase] = useState(() => FRASES_CARGA[Math.floor(Math.random() * FRASES_CARGA.length)]);
   
-  // Efecto de giro: al 95% se muestra el logo frontal
+  // Al 95% se activa la pausa (una vuelta completa)
   const spinClass = progress >= 95 ? 'coin-spinning-paused' : 'coin-spinning';
   
   return (
@@ -2081,21 +2338,21 @@ function SplashScreen({ fadingOut, progress }) {
       <div className="absolute inset-0 opacity-[0.05] pointer-events-none" 
            style={{ backgroundImage: 'repeating-linear-gradient(to bottom, transparent, transparent 27px, #000 27px, #000 28px)' }} />
       <div className="relative flex flex-col items-center px-6 text-center">
-        <div className="coin-wrapper mb-5" style={{ perspective: '400px' }}>
-          <img 
-            src={ESPOL_LOGO} 
-            alt="ESPOL" 
-            className={`espol-logo ${spinClass} w-24 sm:w-28`}
-            style={{ 
-              transformStyle: 'preserve-3d',
-              backfaceVisibility: 'hidden',
-              WebkitBackfaceVisibility: 'hidden',
-              willChange: 'transform',
-              filter: 'drop-shadow(0 0 15px rgba(217, 201, 138, 0.4))',
-              borderRadius: '50%',
-              boxShadow: '0 0 0 3px rgba(180, 160, 100, 0.6), 0 0 0 6px rgba(150, 130, 80, 0.4), 0 0 0 9px rgba(120, 100, 60, 0.2)'
-            }}
-          />
+        <div className="coin-wrapper mb-5">
+          <div className={`coin-3d ${spinClass}`} style={{ display: 'inline-block' }}>
+            <img 
+              src={ESPOL_LOGO} 
+              alt="ESPOL" 
+              className="w-24 sm:w-28"
+              style={{ 
+                backfaceVisibility: 'hidden',
+                WebkitBackfaceVisibility: 'hidden',
+                willChange: 'transform',
+                display: 'block',
+                borderRadius: '50%',
+              }}
+            />
+          </div>
         </div>
         <div className="text-2xl sm:text-3xl mb-1" 
              style={{ fontFamily: "'Fraunces', serif", fontWeight: 600, color: 'var(--text-primary)' }}>
@@ -2107,7 +2364,7 @@ function SplashScreen({ fadingOut, progress }) {
         </div>
         <div className="w-56 h-1.5 rounded-full overflow-hidden" 
              style={{ background: 'var(--border)' }}>
-          <div className="h-full splash-bar" style={{ background: 'var(--accent-primary)', width: `${Math.min(100, progress)}%` }} />
+          <div className="h-full" style={{ background: 'var(--accent-primary)', width: `${Math.min(100, progress)}%`, transition: 'width 0.3s ease-out' }} />
         </div>
         <div className="text-[11px] mt-3" style={{ color: 'var(--text-faint)' }}>
           Cargando datos y archivos contables… {Math.round(progress)}%
@@ -2175,32 +2432,44 @@ const APP_STYLES = `
   }
   .detalle-tabla th, .detalle-tabla td { padding: 6px 8px; text-align: right; }
   .detalle-tabla th:first-child, .detalle-tabla td:first-child { text-align: left; }
-  @keyframes coinSpin {
-    0% { transform: rotateY(0deg) scaleX(1); }
-    50% { transform: rotateY(180deg) scaleX(0.85); }
-    100% { transform: rotateY(360deg) scaleX(1); }
+  .coin-3d {
+    border-radius: 50%;
+    box-shadow: 
+      0 0 0 3px var(--accent-primary),
+      0 0 0 6px color-mix(in srgb, var(--accent-primary) 60%, transparent),
+      0 0 0 9px color-mix(in srgb, var(--accent-primary) 30%, transparent);
+    background: radial-gradient(circle at 30% 30%, #f0e8d0, #c4b898);
+    padding: 6px;
   }
-  @keyframes coinSpinPaused {
-    0% { transform: rotateY(0deg) scaleX(1); }
-    15% { transform: rotateY(180deg) scaleX(0.85); }
-    35% { transform: rotateY(180deg) scaleX(0.85); }
-    50% { transform: rotateY(360deg) scaleX(1); }
-    65% { transform: rotateY(360deg) scaleX(1); }
-    80% { transform: rotateY(0deg) scaleX(0.85); }
-    100% { transform: rotateY(0deg) scaleX(1); }
+  .coin-3d img {
+    border-radius: 50%;
+    display: block;
+    background: #f0e8d0;
+  }
+  .finapp-root[data-theme='dark'] .coin-3d {
+    box-shadow: 
+      0 0 0 3px var(--accent-primary),
+      0 0 0 6px color-mix(in srgb, var(--accent-primary) 40%, transparent),
+      0 0 0 9px color-mix(in srgb, var(--accent-primary) 20%, transparent);
+    background: radial-gradient(circle at 30% 30%, #3a3528, #1a1610);
+  }
+  .finapp-root[data-theme='dark'] .coin-3d img {
+    background: #2a2518;
+  }
+  @keyframes coinSpin {
+    0% { transform: rotateY(0deg); }
+    100% { transform: rotateY(360deg); }
   }
   .coin-spinning {
     animation: coinSpin 2.5s ease-in-out infinite;
     backface-visibility: hidden;
     -webkit-backface-visibility: hidden;
-    filter: drop-shadow(0 0 12px rgba(217, 201, 138, 0.3));
     will-change: transform;
   }
   .coin-spinning-paused {
-    animation: coinSpinPaused 3s ease-in-out infinite;
+    animation: coinSpin 1.2s ease-in-out 1 forwards;
     backface-visibility: hidden;
     -webkit-backface-visibility: hidden;
-    filter: drop-shadow(0 0 15px rgba(217, 201, 138, 0.4));
     will-change: transform;
   }
   .coin-wrapper {
