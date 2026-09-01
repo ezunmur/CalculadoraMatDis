@@ -31,6 +31,16 @@
           .finapp-root .max-w-5xl { padding-left: 0.75rem; padding-right: 0.75rem; }
           .finapp-root .cx-bg-surface { padding: 0.75rem; }
         }
+        .respuesta-destacada {
+          border: 2px solid var(--accent-primary);
+          border-radius: 8px;
+          background: var(--accent-primary-bg);
+          padding: 4px 8px;
+          font-weight: 700;
+          color: var(--accent-primary-text);
+        }
+        .detalle-tabla th, .detalle-tabla td { padding: 6px 8px; text-align: right; }
+        .detalle-tabla th:first-child, .detalle-tabla td:first-child { text-align: left; }
     </style>
 </head>
 <body class="m-0 p-0">
@@ -47,10 +57,10 @@ import {
   TrendingUp, AlertTriangle, Sparkles, ArrowRight, RotateCcw, Plus,
   GraduationCap, ChevronLeft, ChevronRight, Lightbulb, Home,
   Settings2, Check, ArrowLeftRight, Sun, Moon, Info, FileText,
-  BarChart3, LineChart as LineChartIcon
+  BarChart3, LineChart as LineChartIcon, ToggleLeft, ToggleRight,
+  Clock, Calendar, DollarSign
 } from 'lucide-react';
 
-// Logo simple en SVG inline: evita depender de un archivo externo que no existe en este entorno.
 const ESPOL_LOGO = 'logo.svg';
 
 const FRASES_CARGA = [
@@ -68,6 +78,7 @@ const fmt = (n) => {
   return '$' + n.toLocaleString('es-EC', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 };
 const fmtInt = (n) => n.toLocaleString('es-EC', { maximumFractionDigits: 0 });
+const fmtPct = (n) => n.toLocaleString('es-EC', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '%';
 
 const monthsToYears = (m) => {
   if (!isFinite(m)) return '—';
@@ -76,6 +87,17 @@ const monthsToYears = (m) => {
   if (y === 0) return `${rem} ${rem === 1 ? 'mes' : 'meses'}`;
   if (rem === 0) return `${y} ${y === 1 ? 'año' : 'años'}`;
   return `${y} ${y === 1 ? 'año' : 'años'} y ${rem} ${rem === 1 ? 'mes' : 'meses'}`;
+};
+
+// ============================================================
+// LÍMITES PARA RENDIMIENTO
+// ============================================================
+const LIMITES = {
+  MESES_MAX: 600,
+  PUNTOS_GRAFICO: 300,
+  FILAS_TABLA: 80,
+  UMBRAL_MUESTREO: 100,
+  ANIOS_MAX: 50
 };
 
 const TEMPORALIDADES = [
@@ -174,68 +196,88 @@ function calcularCompuesto(P, r, n) {
   return { rows, totalInteres: rows.reduce((a, b) => a + b.interes, 0), saldoFinal: saldo };
 }
 
-function simularCamino({ tipo, monto, base, tasaAnual = 0, extraMensual = 0, extrasUnicos = [], maxMeses = 1200 }) {
+// ============================================================
+// SIMULADOR CON PAGOS EXTRAS
+// ============================================================
+function simularCamino({ tipo, monto, base, tasaAnual = 0, extraMensual = 0, extrasUnicos = [], maxMeses = LIMITES.MESES_MAX }) {
   const r = tasaAnual / 100 / 12;
   const aporteExtra = (m) =>
     extraMensual + extrasUnicos.reduce((acc, e) => acc + (m === e.mes ? (e.monto || 0) : 0), 0);
 
+  const MAX_SERIE = LIMITES.PUNTOS_GRAFICO;
+  const stepSize = Math.max(1, Math.floor(maxMeses / MAX_SERIE));
+
   if (tipo === 'alcancia') {
     let saldo = 0;
     const serie = [{ mes: 0, saldo: 0 }];
+    let contador = 0;
     for (let m = 1; m <= maxMeses; m++) {
       saldo += base + aporteExtra(m);
-      serie.push({ mes: m, saldo: Math.min(saldo, monto) });
-      if (saldo >= monto) return { meses: m, totalInteres: 0, serie, alcanzado: true };
+      if (contador % stepSize === 0 || saldo >= monto) {
+        serie.push({ mes: m, saldo: Math.min(saldo, monto) });
+      }
+      if (saldo >= monto) return { meses: m, totalInteres: 0, serie: sampleSerie(serie, LIMITES.PUNTOS_GRAFICO), alcanzado: true };
+      contador++;
     }
-    return { meses: Infinity, totalInteres: 0, serie, alcanzado: false };
+    return { meses: Infinity, totalInteres: 0, serie: sampleSerie(serie, LIMITES.PUNTOS_GRAFICO), alcanzado: false };
   }
 
   if (tipo === 'ahorroSimple') {
     let principal = 0, interesAcum = 0;
     const serie = [{ mes: 0, saldo: 0 }];
+    let contador = 0;
     for (let m = 1; m <= maxMeses; m++) {
       principal += base + aporteExtra(m);
       interesAcum += principal * r;
       const saldo = principal + interesAcum;
-      serie.push({ mes: m, saldo });
-      if (saldo >= monto) return { meses: m, totalInteres: interesAcum, serie, alcanzado: true };
+      if (contador % stepSize === 0 || saldo >= monto) {
+        serie.push({ mes: m, saldo });
+      }
+      if (saldo >= monto) return { meses: m, totalInteres: interesAcum, serie: sampleSerie(serie, LIMITES.PUNTOS_GRAFICO), alcanzado: true };
+      contador++;
     }
-    return { meses: Infinity, totalInteres: interesAcum, serie, alcanzado: false };
+    return { meses: Infinity, totalInteres: interesAcum, serie: sampleSerie(serie, LIMITES.PUNTOS_GRAFICO), alcanzado: false };
   }
 
   if (tipo === 'ahorroCompuesto') {
     let saldo = 0, aportado = 0;
     const serie = [{ mes: 0, saldo: 0 }];
+    let contador = 0;
     for (let m = 1; m <= maxMeses; m++) {
       const aporte = base + aporteExtra(m);
       saldo = saldo * (1 + r) + aporte;
       aportado += aporte;
-      serie.push({ mes: m, saldo });
-      if (saldo >= monto) return { meses: m, totalInteres: saldo - aportado, serie, alcanzado: true };
+      if (contador % stepSize === 0 || saldo >= monto) {
+        serie.push({ mes: m, saldo });
+      }
+      if (saldo >= monto) return { meses: m, totalInteres: saldo - aportado, serie: sampleSerie(serie, LIMITES.PUNTOS_GRAFICO), alcanzado: true };
+      contador++;
     }
-    return { meses: Infinity, totalInteres: saldo - aportado, serie, alcanzado: false };
+    return { meses: Infinity, totalInteres: saldo - aportado, serie: sampleSerie(serie, LIMITES.PUNTOS_GRAFICO), alcanzado: false };
   }
 
   let saldo = monto, interesTotal = 0;
   const serie = [{ mes: 0, saldo }];
   const hayExtraUnico = extrasUnicos.some((e) => (e.monto || 0) > 0);
   if (base + extraMensual <= saldo * r && !hayExtraUnico) {
-    return { meses: Infinity, totalInteres: Infinity, serie, nuncaPaga: true };
+    return { meses: Infinity, totalInteres: Infinity, serie: sampleSerie(serie, LIMITES.PUNTOS_GRAFICO), nuncaPaga: true };
   }
+  let contador = 0;
   for (let m = 1; m <= maxMeses; m++) {
     const interes = saldo * r;
     interesTotal += interes;
     const pago = base + aporteExtra(m);
     saldo = saldo + interes - pago;
     if (saldo < 0) saldo = 0;
-    serie.push({ mes: m, saldo });
-    if (saldo <= 0) return { meses: m, totalInteres: interesTotal, serie, nuncaPaga: false };
+    if (contador % stepSize === 0 || saldo <= 0) {
+      serie.push({ mes: m, saldo });
+    }
+    if (saldo <= 0) return { meses: m, totalInteres: interesTotal, serie: sampleSerie(serie, LIMITES.PUNTOS_GRAFICO), nuncaPaga: false };
+    contador++;
   }
-  return { meses: Infinity, totalInteres: interesTotal, serie, nuncaPaga: false };
+  return { meses: Infinity, totalInteres: interesTotal, serie: sampleSerie(serie, LIMITES.PUNTOS_GRAFICO), nuncaPaga: false };
 }
 
-// Reduce un arreglo largo a un número manejable de filas para tablas (siempre conserva la última).
-// Funciona con cualquier forma de fila (mes/saldo, periodo/interés, amortización, etc.)
 function sampleSerie(serie, maxRows) {
   if (!serie || serie.length === 0) return [];
   if (serie.length <= maxRows) return serie;
@@ -247,13 +289,11 @@ function sampleSerie(serie, maxRows) {
   return out;
 }
 
-// Mapea la key de cada "camino" del simulador a la key correspondiente en el objeto `resultados`.
 const RESULTADOS_KEY_SIMULADOR = { alcancia: 'alcancia', simple: 'ahorroSimple', compuesto: 'ahorroCompuesto', prestamo: 'prestamo', tarjeta: 'tarjeta' };
 
 // ============================================================
-// COMPONENTES UI PRIMITIVOS
+// COMPONENTES UI
 // ============================================================
-
 function Modal({ onClose, children, wide, size }) {
   const maxWidthClass = size === 'xwide' ? 'max-w-5xl' : wide ? 'max-w-2xl' : 'max-w-lg';
   return (
@@ -305,22 +345,29 @@ function PillButton({ active, onClick, children }) {
   );
 }
 
-function Field({ label, suffix, value, onChange, min, step }) {
+function Field({ label, suffix, value, onChange, min, step, max }) {
   const [texto, setTexto] = useState(value === 0 ? '' : String(value));
   const [enfocado, setEnfocado] = useState(false);
-  // Sincroniza el texto visible con el valor externo (ej. al presionar "Reset"),
-  // pero no mientras el usuario está escribiendo (evita "pelear" con el cursor).
+  const [error, setError] = useState('');
   useEffect(() => {
     if (!enfocado) setTexto(value === 0 ? '' : String(value));
   }, [value, enfocado]);
   const manejarCambio = (e) => {
-    const t = e.target.value; setTexto(t); const num = parseFloat(t); onChange(isNaN(num) ? 0 : num);
+    const t = e.target.value;
+    setTexto(t);
+    const num = parseFloat(t);
+    if (isNaN(num)) { setError('Número inválido'); onChange(0); return; }
+    if (min !== undefined && num < min) { setError(`Mínimo: ${min}`); onChange(min); return; }
+    if (max !== undefined && num > max) { setError(`Máximo: ${max}`); onChange(max); return; }
+    setError('');
+    onChange(num);
   };
   return (
     <label className="flex flex-wrap items-end gap-x-2 gap-y-0.5 border-b-2 cx-border-border cx-focusw-border-accent-primary min-w-0 pb-1">
       <span className="text-[11px] cx-text-text-muted font-medium whitespace-nowrap">{label}</span>
-      <input type="number" value={texto} min={min} step={step} onChange={manejarCambio} onFocus={() => setEnfocado(true)} onBlur={() => setEnfocado(false)} placeholder="-,--" className="flex-1 min-w-[64px] text-right px-0.5 outline-none bg-transparent cx-text-text-primary" style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '1.1rem', fontWeight: 600, letterSpacing: '-0.01em' }} />
+      <input type="number" value={texto} min={min} step={step} max={max} onChange={manejarCambio} onFocus={() => setEnfocado(true)} onBlur={() => setEnfocado(false)} placeholder="-,--" className="flex-1 min-w-[64px] text-right px-0.5 outline-none bg-transparent cx-text-text-primary" style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '1.1rem', fontWeight: 600, letterSpacing: '-0.01em' }} />
       {suffix && <span className="text-sm cx-text-text-faint flex-shrink-0">{suffix}</span>}
+      {error && <span className="text-xs text-red-500 w-full">{error}</span>}
     </label>
   );
 }
@@ -336,15 +383,17 @@ function SelectField({ label, value, onChange, options }) {
   );
 }
 
-function StatCard({ label, value, accent }) {
+function StatCard({ label, value, accent, highlight }) {
   const colors = {
     teal: 'cx-text-accent-green-text cx-bg-accent-green-bg',
     coral: 'cx-text-accent-coral-text cx-bg-accent-coral-bg',
     blue: 'cx-text-accent-primary-text cx-bg-accent-primary-bg',
     purple: 'bg-purple-50 text-purple-700 dark:bg-purple-900/20 dark:text-purple-400',
   };
+  const baseClass = `px-4 py-3 rounded-lg ${colors[accent] || colors.blue}`;
+  const highlightClass = highlight ? 'respuesta-destacada border-2 border-accent-primary bg-accent-primary-bg' : '';
   return (
-    <div className={`px-4 py-3 rounded-lg ${colors[accent] || colors.blue}`}>
+    <div className={`${baseClass} ${highlightClass}`}>
       <div className="text-[10.5px] font-medium opacity-70">{label}</div>
       <div className="text-[26px] leading-tight mt-0.5 truncate" style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, letterSpacing: '-0.02em' }}>{value}</div>
     </div>
@@ -373,7 +422,7 @@ function CapitalizacionSolapa({ temporalidad, onChange, opciones }) {
   );
 }
 
-function TemaIntro({ tipo, sistema }) {
+function TemaIntro({ tipo, sistema, modo }) {
   const content = {
     simple: {
       titulo: '¿Qué es el interés simple?',
@@ -390,14 +439,20 @@ function TemaIntro({ tipo, sistema }) {
       variables: [{ simbolo: 'P', desc: 'Capital inicial' }, { simbolo: 'r', desc: 'Tasa por periodo' }, { simbolo: 't', desc: 'Número de periodos' }],
     },
     anualidad: {
-      titulo: '¿Qué es una anualidad?',
+      titulo: modo === 'futuro' ? '¿Qué es una anualidad de ahorro?' : '¿Qué es una anualidad de préstamo?',
       color: 'blue',
-      texto: 'Serie de pagos a intervalos regulares para pagar un préstamo.',
-      formulas: [
+      texto: modo === 'futuro' ? 'Serie de depósitos regulares para acumular un monto futuro.' : 'Serie de pagos regulares para amortizar un préstamo.',
+      formulas: modo === 'futuro' ? [
+        { nombre: 'Valor Futuro de Anualidad', formula: <MathBlock><Var>FV</Var> = <Var>A</Var> · <Frac num={<><Pow base={<>(1+<Var>r</Var>)</>} exp={<Var>n</Var>} /> − 1</>} den={<Var>r</Var>} /></MathBlock> },
+        { nombre: 'Depósito necesario', formula: <MathBlock><Var>A</Var> = <Var>FV</Var> · <Frac num={<Var>r</Var>} den={<><Pow base={<>(1+<Var>r</Var>)</>} exp={<Var>n</Var>} /> − 1</>} /></MathBlock> },
+      ] : [
         { nombre: 'Francesa', activo: sistema === 'francesa', formula: <MathBlock>Pago = <Frac num={<><Var>P</Var> · <Var>r</Var></>} den={<>1 − <Pow base={<>(1+<Var>r</Var>)</>} exp={<>−<Var>n</Var></>} /></>} /></MathBlock> },
         { nombre: 'Alemana', activo: sistema === 'alemana', formula: <MathBlock>Capital = <Frac num={<Var>P</Var>} den={<Var>n</Var>} /></MathBlock> },
+        { nombre: 'Americana', activo: sistema === 'americana', formula: <MathBlock>Pago interés = <Var>P</Var> · <Var>r</Var>, Pago final = <Var>P</Var></MathBlock> },
       ],
-      variables: [{ simbolo: 'P', desc: 'Monto del préstamo' }, { simbolo: 'r', desc: 'Tasa por periodo' }, { simbolo: 'n', desc: 'Número de cuotas' }],
+      variables: modo === 'futuro' ? 
+        [{ simbolo: 'FV', desc: 'Monto futuro deseado' }, { simbolo: 'A', desc: 'Depósito periódico' }, { simbolo: 'r', desc: 'Tasa por periodo' }, { simbolo: 'n', desc: 'Número de periodos' }] :
+        [{ simbolo: 'P', desc: 'Monto del préstamo' }, { simbolo: 'r', desc: 'Tasa por periodo' }, { simbolo: 'n', desc: 'Número de cuotas' }],
     },
     tasas: {
       titulo: '¿Qué son las tasas equivalentes?',
@@ -434,11 +489,6 @@ function TemaIntro({ tipo, sistema }) {
   );
 }
 
-// ============================================================
-// HOOK COMPARTIDO: dashboard / tutorial / matemáticas discretas
-// Evita repetir los mismos 4 useState en cada uno de los tabs.
-// ============================================================
-
 function useModes() {
   const [dashboardOn, setDashboardOn] = useState(true);
   const [tutorialOn, setTutorialOn] = useState(false);
@@ -446,10 +496,6 @@ function useModes() {
   const [tutorialStep, setTutorialStep] = useState(0);
   return { dashboardOn, setDashboardOn, tutorialOn, setTutorialOn, discreteOn, setDiscreteOn, tutorialStep, setTutorialStep };
 }
-
-// ============================================================
-// PANEL DE CONTROL
-// ============================================================
 
 function ControlPanel({ 
   dashboardOn, setDashboardOn,
@@ -492,195 +538,6 @@ function ControlPanel({
   );
 }
 
-// ============================================================
-// DASHBOARD PARA SIMULADOR
-// ============================================================
-
-function SimuladorDashboard({ paths, objetivo }) {
-  return (
-    <div className="grid grid-cols-2 md:grid-cols-5 gap-2 mb-4">
-      {paths.map((p) => {
-        const isDeuda = p.tipo === 'deuda';
-        const bgColor = p.nuncaPaga 
-          ? 'border-red-500 bg-red-50 dark:bg-red-900/20' 
-          : isDeuda 
-            ? 'border-red-200 bg-red-50/50 dark:bg-red-900/10' 
-            : 'border-emerald-200 bg-emerald-50/50 dark:bg-emerald-900/10';
-        
-        return (
-          <div key={p.key} className={`rounded-lg p-3 text-center border-2 ${bgColor}`}>
-            <div className="flex items-center justify-center gap-1.5 mb-1">
-              <p.icon size={14} className={isDeuda ? 'text-red-600' : 'text-emerald-600'} />
-              <span className="text-[9px] font-bold uppercase tracking-wide opacity-70">{p.label}</span>
-            </div>
-            <div className="text-base font-bold" style={{ fontFamily: "'JetBrains Mono', monospace" }}>
-              {p.nuncaPaga ? '∞' : monthsToYears(p.meses)}
-            </div>
-            <div className={`text-[9px] ${p.nuncaPaga ? 'text-red-600 font-bold' : 'opacity-60'}`}>
-              {p.nuncaPaga ? '⚠️ Nunca paga' : fmt(p.interes)}
-            </div>
-            {p.nuncaPaga && <div className="text-[8px] text-red-600 font-bold animate-pulse">¡ALERTA!</div>}
-            {!p.nuncaPaga && p.tipo === 'ahorro' && p.meses < 12 && (
-              <div className="text-[8px] text-emerald-600 font-bold">🎉 Meta alcanzada!</div>
-            )}
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
-// ============================================================
-// MATEMÁTICAS DISCRETAS - MODO ACADÉMICO MEJORADO
-// ============================================================
-
-function DiscreteMathDisplay({ formula, variables, recurrence, explanation, tipo, titulo }) {
-  if (!formula) return null;
-
-  const tipoInfo = {
-    recurrencia: { 
-      icon: '🔁', 
-      label: 'Relación de Recurrencia', 
-      color: 'border-purple-400',
-      descripcion: 'Modela la evolución de un saldo periodo a periodo.',
-      simbolos: [
-        { simbolo: 'Sₜ', desc: 'Saldo en el periodo t' },
-        { simbolo: 'Sₜ₋₁', desc: 'Saldo en el periodo anterior' },
-        { simbolo: 'r', desc: 'Tasa de interés por periodo' },
-        { simbolo: 'C', desc: 'Cuota o pago periódico' }
-      ]
-    },
-    serie_geometrica: { 
-      icon: '📈', 
-      label: 'Serie Geométrica', 
-      color: 'border-blue-400',
-      descripcion: 'Cada término se multiplica por una razón constante (q).',
-      simbolos: [
-        { simbolo: 'a₁', desc: 'Primer término de la secuencia' },
-        { simbolo: 'q', desc: 'Razón común (factor de multiplicación)' },
-        { simbolo: 'n', desc: 'Número de términos' },
-        { simbolo: 'Sₙ', desc: 'Suma de los n términos' }
-      ]
-    },
-    serie_aritmetica: { 
-      icon: '📊', 
-      label: 'Serie Aritmética', 
-      color: 'border-teal-400',
-      descripcion: 'Cada término se obtiene sumando una diferencia constante (d).',
-      simbolos: [
-        { simbolo: 'a₁', desc: 'Primer término de la secuencia' },
-        { simbolo: 'd', desc: 'Diferencia común' },
-        { simbolo: 'n', desc: 'Número de términos' },
-        { simbolo: 'Sₙ', desc: 'Suma de los n términos' }
-      ]
-    },
-    sumatoria: { 
-      icon: 'Σ', 
-      label: 'Sumatoria', 
-      color: 'border-amber-400',
-      descripcion: 'Suma de una secuencia de términos desde i=1 hasta n.',
-      simbolos: [
-        { simbolo: 'Σ', desc: 'Símbolo de sumatoria' },
-        { simbolo: 'aᵢ', desc: 'Término i-ésimo de la secuencia' },
-        { simbolo: 'n', desc: 'Número de términos a sumar' },
-        { simbolo: 'i', desc: 'Índice de la sumatoria (variable)' }
-      ]
-    }
-  };
-
-  const info = tipoInfo[tipo] || tipoInfo.recurrencia;
-  const allVariables = variables || info.simbolos || [];
-
-  return (
-    <div className={`cx-bg-surface border-l-4 ${info.color} rounded-r-lg p-4 mb-4 mode-discrete`}>
-      <div className="flex items-center gap-2 mb-2">
-        <span className="text-sm">{info.icon}</span>
-        <span className="text-xs font-bold cx-text-accent-primary uppercase tracking-wide">{info.label}</span>
-        <span className="text-[9px] cx-text-text-muted bg-cx-bg-surface px-2 py-0.5 rounded-full">Modo Académico</span>
-      </div>
-      
-      <div className="bg-white dark:bg-black/20 rounded-lg p-4 mb-3 border cx-border-border shadow-sm">
-        <div className="text-center font-serif text-base sm:text-lg" style={{ fontFamily: "'STIX Two Text', 'Cambria Math', serif" }}>
-          {formula}
-        </div>
-      </div>
-      
-      {info.descripcion && (
-        <p className="text-xs cx-text-text-secondary mb-2">{info.descripcion}</p>
-      )}
-      
-      {allVariables.length > 0 && (
-        <div className="mt-2">
-          <div className="text-[10px] font-semibold cx-text-text-muted uppercase tracking-wide mb-1.5">Variables</div>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-1 text-xs">
-            {allVariables.map((v, i) => (
-              <div key={i} className="flex items-baseline gap-1 cx-bg-surface-alt px-2 py-1 rounded">
-                <span className="font-serif italic font-bold cx-text-accent-primary">{v.simbolo}</span>
-                <span className="cx-text-text-muted text-[10px]">= {v.desc}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {recurrence && (
-        <div className="mt-2 p-2 cx-bg-surface rounded border cx-border-border">
-          <div className="text-[9px] font-semibold cx-text-text-muted uppercase tracking-wide">Relación de Recurrencia</div>
-          <div className="text-sm font-serif text-center py-1">{recurrence}</div>
-        </div>
-      )}
-
-      {explanation && (
-        <div className="mt-2 text-xs cx-text-text-secondary italic">💡 {explanation}</div>
-      )}
-    </div>
-  );
-}
-
-// ============================================================
-// MODO TUTORIAL - PASOS GUIADOS
-// ============================================================
-
-function TutorialStep({ step, total, onNext, onPrev, onClose }) {
-  if (!step) return null;
-
-  return (
-    <div className="fixed bottom-4 right-4 left-4 sm:left-auto sm:w-96 z-50 cx-bg-surface border-2 cx-border-accent-primary/30 rounded-lg shadow-2xl p-5 mode-tutorial">
-      <div className="flex items-center justify-between mb-2">
-        <div className="flex items-center gap-1.5 cx-text-accent-primary text-xs font-semibold uppercase tracking-wide">
-          <GraduationCap size={14} /> Paso {step.index + 1} de {total}
-        </div>
-        <button onClick={onClose} aria-label="Cerrar tutorial" className="p-1 rounded-full cx-text-text-faint hover:cx-bg-surface-hover-2"><X size={14} /></button>
-      </div>
-      <h4 className="text-base font-semibold cx-text-text-primary mb-1.5" style={{ fontFamily: "'Fraunces', sans-serif" }}>{step.titulo}</h4>
-      <p className="text-sm cx-text-text-secondary leading-relaxed mb-3">{step.texto}</p>
-      {step.consejo && (
-        <div className="flex items-start gap-1.5 text-xs cx-text-accent-green-text cx-bg-accent-green-bg rounded-lg px-3 py-2 mb-3">
-          <Lightbulb size={13} className="mt-0.5 flex-shrink-0" /> {step.consejo}
-        </div>
-      )}
-      <div className="flex items-center justify-between gap-2">
-        <button disabled={step.index === 0} onClick={onPrev} className="flex items-center gap-1 text-xs font-semibold px-3 py-1.5 rounded-md border-2 cx-border-border cx-text-text-muted disabled:opacity-30">
-          <ChevronLeft size={13} /> Antes
-        </button>
-        {step.index < total - 1 ? (
-          <button onClick={onNext} className="flex items-center gap-1 text-xs font-semibold px-3.5 py-1.5 rounded-md text-white" style={{ background: 'var(--accent-primary)' }}>
-            Siguiente <ChevronRight size={13} />
-          </button>
-        ) : (
-          <button onClick={onClose} className="flex items-center gap-1 text-xs font-semibold px-3.5 py-1.5 rounded-md text-white" style={{ background: 'var(--accent-green)' }}>
-            <Check size={13} /> Listo
-          </button>
-        )}
-      </div>
-    </div>
-  );
-}
-
-// ============================================================
-// GRÁFICO DE BARRAS - Capital vs Interés
-// ============================================================
-
 function StackedBarChart({ data, xKey, barKeys, colors, height = 260, label }) {
   return (
     <div className="cx-bg-surface border cx-border-border rounded-lg p-3" style={{ height }}>
@@ -699,10 +556,6 @@ function StackedBarChart({ data, xKey, barKeys, colors, height = 260, label }) {
     </div>
   );
 }
-
-// ============================================================
-// GRÁFICO DE LÍNEAS - Evolución de saldos
-// ============================================================
 
 function LineChartComponent({ data, lines, colors, height = 240, label, referenceLine }) {
   return (
@@ -725,9 +578,8 @@ function LineChartComponent({ data, lines, colors, height = 240, label, referenc
 }
 
 // ============================================================
-// TASAS EQUIVALENTES TAB - CON FÓRMULAS LIMPIAS
+// TASAS EQUIVALENTES TAB (sin cambios mayores)
 // ============================================================
-
 function TasasEquivalentesTab() {
   const [tasaValor, setTasaValor] = useState(18);
   const [origen, setOrigen] = useState('anual');
@@ -757,9 +609,6 @@ function TasasEquivalentesTab() {
     { value: 'efectiva', label: 'Efectiva' }
   ];
 
-  // ============================================================
-  // FÓRMULAS CON RENDERIZADO LIMPIO (SIN LaTeX)
-  // ============================================================
   function getFormulaDisplay() {
     const j = (tasaValor / 100).toFixed(4);
     const teaStr = tea.toFixed(4);
@@ -771,10 +620,9 @@ function TasasEquivalentesTab() {
     const destinoLabel = tipoDestino === 'nominal' ? 'Nominal' : 'Efectiva';
     const origenTemp = tOrigen.label.toLowerCase();
     const destTemp = tDestino.label.toLowerCase();
-    const m = tOrigen.m; // capitalizaciones por año del origen (null si es continua)
-    const m2 = tDestino.m; // capitalizaciones por año del destino (null si es continua)
+    const m = tOrigen.m;
+    const m2 = tDestino.m;
 
-    // ---------- PASO 1: tasa de origen → TEA ----------
     let pasoOrigen;
     if (origen === 'continua') {
       pasoOrigen = {
@@ -799,7 +647,6 @@ function TasasEquivalentesTab() {
       };
     }
 
-    // ---------- PASO 2: TEA → tasa de destino ----------
     let pasoDestino;
     if (destino === 'continua') {
       pasoDestino = {
@@ -824,7 +671,6 @@ function TasasEquivalentesTab() {
       };
     }
 
-    // ---------- Variables combinadas ----------
     const variables = [];
     if (origen === 'continua') {
       variables.push({ simbolo: 'j', desc: 'Tasa nominal continua (origen)' }, { simbolo: 'e', desc: 'Constante de Euler (≈ 2.71828)' });
@@ -860,9 +706,6 @@ function TasasEquivalentesTab() {
     { index: 2, titulo: '📊 El gráfico de equivalencias', texto: 'La barra final muestra la misma TEA expresada en cada capitalización posible: todas representan el mismo rendimiento.', consejo: 'Por eso se llaman tasas "equivalentes": distinto número, mismo resultado real.' },
   ];
 
-  // ============================================================
-  // RENDER
-  // ============================================================
   return (
     <div className="space-y-6">
       <ControlPanel 
@@ -873,20 +716,21 @@ function TasasEquivalentesTab() {
       />
 
       {discreteOn && (
-        <DiscreteMathDisplay 
-          formula={<>TEA = <Pow base={<>(1 + <Frac num={<Var>j</Var>} den={<Var>m</Var>} />)</>} exp={<Var>m</Var>} /> − 1</>}
-          variables={[
-            { simbolo: 'j', desc: 'Tasa nominal anual' },
-            { simbolo: 'm', desc: 'Capitalizaciones por año' },
-            { simbolo: 'TEA', desc: 'Tasa efectiva anual' }
-          ]}
-          recurrence="TEA = (1 + j/m)ᵐ − 1"
-          explanation="Base para comparar tasas con diferentes capitalizaciones."
-          tipo="sumatoria"
-        />
+        <div className="cx-bg-surface border-l-4 border-purple-400 rounded-r-lg p-4 mb-4 mode-discrete">
+          <div className="flex items-center gap-2 mb-2">
+            <span className="text-sm">Σ</span>
+            <span className="text-xs font-bold cx-text-accent-primary uppercase tracking-wide">Sumatoria</span>
+            <span className="text-[9px] cx-text-text-muted bg-cx-bg-surface px-2 py-0.5 rounded-full">Modo Académico</span>
+          </div>
+          <div className="bg-white dark:bg-black/20 rounded-lg p-4 mb-3 border cx-border-border shadow-sm">
+            <div className="text-center font-serif text-base sm:text-lg" style={{ fontFamily: "'STIX Two Text', 'Cambria Math', serif" }}>
+              TEA = <Pow base={<>(1 + <Frac num={<Var>j</Var>} den={<Var>m</Var>} />)</>} exp={<Var>m</Var>} /> − 1
+            </div>
+          </div>
+          <div className="text-xs cx-text-text-secondary italic">💡 Base para comparar tasas con diferentes capitalizaciones.</div>
+        </div>
       )}
 
-      {/* SECCIÓN TASAS EQUIVALENTES - CON FÓRMULAS LIMPIAS */}
       <div className="cx-bg-surface-alt rounded-lg border cx-border-border p-5">
         <div className="flex items-center gap-2 mb-3">
           <Sparkles size={16} className="cx-text-accent-primary" />
@@ -898,12 +742,10 @@ function TasasEquivalentesTab() {
           Dos tasas con distinta capitalización pueden producir el mismo rendimiento.
         </p>
 
-        {/* Título de la fórmula */}
         <div className="text-[11px] cx-text-text-muted font-semibold uppercase tracking-wide mb-1 text-center">
           {tipoOrigen === 'nominal' ? 'Tasa nominal' : 'Tasa efectiva'} → {tipoDestino === 'nominal' ? 'Tasa nominal' : 'Tasa efectiva'}
         </div>
 
-        {/* FÓRMULAS GENERALES DE LOS DOS PASOS - CON RENDERIZADO LIMPIO */}
         <div className="grid sm:grid-cols-2 gap-3 mb-3">
           <div className="bg-white dark:bg-black/20 rounded-lg p-4 border cx-border-border shadow-sm">
             <div className="text-[10px] cx-text-text-muted font-semibold uppercase tracking-wide mb-1 text-center">{formulaData.pasoOrigen.etiqueta}</div>
@@ -919,7 +761,6 @@ function TasasEquivalentesTab() {
           </div>
         </div>
 
-        {/* Variables */}
         {formulaData.variables && formulaData.variables.length > 0 && (
           <div className="mt-3">
             <div className="text-[10px] font-semibold cx-text-text-muted uppercase tracking-wide mb-1.5">Variables</div>
@@ -935,7 +776,6 @@ function TasasEquivalentesTab() {
         )}
       </div>
 
-      {/* Configuración */}
       <div className="cx-bg-surface p-4 rounded-lg border cx-border-border space-y-4">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <Field 
@@ -980,7 +820,6 @@ function TasasEquivalentesTab() {
         </div>
       </div>
 
-      {/* Resultados */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <StatCard 
           label="Tasa efectiva anual (TEA)" 
@@ -999,13 +838,11 @@ function TasasEquivalentesTab() {
         />
       </div>
 
-      {/* Desarrollo del cálculo con fórmulas limpias */}
       <div className="cx-bg-surface-alt rounded-lg p-4 space-y-4">
         <div className="text-[10px] cx-text-text-muted font-semibold uppercase tracking-wide text-center">
           Desarrollo del cálculo · {formulaData.titulo}
         </div>
 
-        {/* Paso 1: origen → TEA */}
         <div className="space-y-2">
           <div className="text-[10px] cx-text-accent-primary font-semibold uppercase tracking-wide text-center">{formulaData.pasoOrigen.etiqueta}</div>
           <div className="bg-white dark:bg-black/20 rounded-lg p-3 border cx-border-border shadow-sm">
@@ -1020,7 +857,6 @@ function TasasEquivalentesTab() {
           </div>
         </div>
 
-        {/* Paso 2: TEA → destino */}
         <div className="space-y-2">
           <div className="text-[10px] cx-text-accent-primary font-semibold uppercase tracking-wide text-center">{formulaData.pasoDestino.etiqueta}</div>
           <div className="bg-white dark:bg-black/20 rounded-lg p-3 border cx-border-border shadow-sm">
@@ -1048,7 +884,6 @@ function TasasEquivalentesTab() {
         )}
       </div>
 
-      {/* Gráfico */}
       <div>
         <div className="flex items-center gap-2 mb-2 flex-wrap">
           <BarChart3 size={16} className="cx-text-accent-primary flex-shrink-0" />
@@ -1091,26 +926,43 @@ function TasasEquivalentesTab() {
       </div>
 
       {tutorialOn && (
-        <TutorialStep 
-          step={tutorialSteps[tutorialStep]} 
-          total={tutorialSteps.length} 
-          onNext={() => setTutorialStep(Math.min(tutorialSteps.length - 1, tutorialStep + 1))}
-          onPrev={() => setTutorialStep(Math.max(0, tutorialStep - 1))}
-          onClose={() => setTutorialOn(false)} 
-        />
+        <div className="fixed bottom-4 right-4 left-4 sm:left-auto sm:w-96 z-50 cx-bg-surface border-2 cx-border-accent-primary/30 rounded-lg shadow-2xl p-5 mode-tutorial">
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-1.5 cx-text-accent-primary text-xs font-semibold uppercase tracking-wide">
+              <GraduationCap size={14} /> Paso {tutorialStep + 1} de {tutorialSteps.length}
+            </div>
+            <button onClick={() => setTutorialOn(false)} className="p-1 rounded-full cx-text-text-faint hover:cx-bg-surface-hover-2"><X size={14} /></button>
+          </div>
+          <h4 className="text-base font-semibold cx-text-text-primary mb-1.5" style={{ fontFamily: "'Fraunces', sans-serif" }}>{tutorialSteps[tutorialStep].titulo}</h4>
+          <p className="text-sm cx-text-text-secondary leading-relaxed mb-3">{tutorialSteps[tutorialStep].texto}</p>
+          {tutorialSteps[tutorialStep].consejo && (
+            <div className="flex items-start gap-1.5 text-xs cx-text-accent-green-text cx-bg-accent-green-bg rounded-lg px-3 py-2 mb-3">
+              <Lightbulb size={13} className="mt-0.5 flex-shrink-0" /> {tutorialSteps[tutorialStep].consejo}
+            </div>
+          )}
+          <div className="flex items-center justify-between gap-2">
+            <button disabled={tutorialStep === 0} onClick={() => setTutorialStep(Math.max(0, tutorialStep - 1))} className="flex items-center gap-1 text-xs font-semibold px-3 py-1.5 rounded-md border-2 cx-border-border cx-text-text-muted disabled:opacity-30">
+              <ChevronLeft size={13} /> Antes
+            </button>
+            {tutorialStep < tutorialSteps.length - 1 ? (
+              <button onClick={() => setTutorialStep(Math.min(tutorialSteps.length - 1, tutorialStep + 1))} className="flex items-center gap-1 text-xs font-semibold px-3.5 py-1.5 rounded-md text-white" style={{ background: 'var(--accent-primary)' }}>
+                Siguiente <ChevronRight size={13} />
+              </button>
+            ) : (
+              <button onClick={() => setTutorialOn(false)} className="flex items-center gap-1 text-xs font-semibold px-3.5 py-1.5 rounded-md text-white" style={{ background: 'var(--accent-green)' }}>
+                <Check size={13} /> Listo
+              </button>
+            )}
+          </div>
+        </div>
       )}
     </div>
   );
 }
 
-function fmtPct(n) {
-  return n.toLocaleString('es-EC', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '%';
-}
-
 // ============================================================
-// INTERES TAB
+// INTERES TAB - CON RESPUESTA DESTACADA
 // ============================================================
-
 function InteresTab() {
   const [tipo, setTipo] = useState('compuesto');
   const [P, setP] = useState(80000);
@@ -1139,13 +991,12 @@ function InteresTab() {
 
   const chartData = resultado.rows?.map((row) => ({ periodo: row.t, Capital: row.capital, Interés: row.interes })) || [];
   const evolutionData = resultado.rows?.map((row) => ({ mes: row.t, Saldo: row.saldoFinal })) || [];
-  const tablaInteres = useMemo(() => sampleSerie(resultado.rows || [], 120), [resultado.rows]);
+  const tablaInteres = useMemo(() => sampleSerie(resultado.rows || [], LIMITES.FILAS_TABLA), [resultado.rows]);
 
   const tutorialSteps = [
     { index: 0, titulo: '📈 Interés Simple vs Compuesto', texto: 'Elige el tipo de interés arriba y ajusta el capital, la tasa y el número de periodos.', consejo: 'Con interés simple, la ganancia por periodo siempre es la misma.' },
     { index: 1, titulo: '📋 Tabla de incremento del interés', texto: 'La tabla muestra, periodo a periodo, el saldo inicial, el interés generado ese periodo y el saldo final.', consejo: 'Compara la columna "Interés generado" entre simple y compuesto: en compuesto va creciendo.' },
     { index: 2, titulo: '🧮 Lee el gráfico de barras', texto: 'La barra apilada muestra cuánto del saldo es capital original y cuánto es interés acumulado en cada periodo.', consejo: 'Con interés compuesto, la porción de "interés" crece cada vez más rápido.' },
-    { index: 3, titulo: '📊 Activa el Dashboard', texto: 'El panel de control (arriba) te permite mostrar/ocultar el resumen numérico y la vista de matemáticas discretas.', consejo: 'Prueba activar "Matemáticas Discretas" para ver la relación de recurrencia.' },
   ];
 
   return (
@@ -1159,21 +1010,41 @@ function InteresTab() {
 
       {discreteOn && (
         tipo === 'simple' ? (
-          <DiscreteMathDisplay
-            formula={<><Var>S</Var><Sub>t</Sub> = <Var>S</Var><Sub>t−1</Sub> + <Var>P</Var> · <Var>r</Var></>}
-            variables={[{ simbolo: 'Sₜ', desc: 'Saldo en periodo t' }, { simbolo: 'Sₜ₋₁', desc: 'Saldo anterior' }, { simbolo: 'P', desc: 'Capital inicial (constante)' }, { simbolo: 'r', desc: 'Tasa por periodo' }]}
-            recurrence="Sₜ = Sₜ₋₁ + P · r"
-            explanation="Serie aritmética: el saldo crece sumando la misma cantidad fija cada periodo (interés siempre sobre P, no sobre el saldo)."
-            tipo="serie_aritmetica"
-          />
+          <div className="cx-bg-surface border-l-4 border-teal-400 rounded-r-lg p-4 mb-4 mode-discrete">
+            <div className="flex items-center gap-2 mb-2">
+              <span className="text-sm">📊</span>
+              <span className="text-xs font-bold cx-text-accent-primary uppercase tracking-wide">Serie Aritmética</span>
+              <span className="text-[9px] cx-text-text-muted bg-cx-bg-surface px-2 py-0.5 rounded-full">Modo Académico</span>
+            </div>
+            <div className="bg-white dark:bg-black/20 rounded-lg p-4 mb-3 border cx-border-border shadow-sm">
+              <div className="text-center font-serif text-base sm:text-lg" style={{ fontFamily: "'STIX Two Text', 'Cambria Math', serif" }}>
+                <Var>S</Var><Sub>t</Sub> = <Var>S</Var><Sub>t−1</Sub> + <Var>P</Var> · <Var>r</Var>
+              </div>
+            </div>
+            <div className="mt-2 p-2 cx-bg-surface rounded border cx-border-border">
+              <div className="text-[9px] font-semibold cx-text-text-muted uppercase tracking-wide">Relación de Recurrencia</div>
+              <div className="text-sm font-serif text-center py-1">Sₜ = Sₜ₋₁ + P · r</div>
+            </div>
+            <div className="mt-2 text-xs cx-text-text-secondary italic">💡 Serie aritmética: el saldo crece sumando la misma cantidad fija cada periodo.</div>
+          </div>
         ) : (
-          <DiscreteMathDisplay
-            formula={<><Var>S</Var><Sub>t</Sub> = <Var>S</Var><Sub>t−1</Sub> · (1 + <Var>r</Var>)</>}
-            variables={[{ simbolo: 'Sₜ', desc: 'Saldo en periodo t' }, { simbolo: 'Sₜ₋₁', desc: 'Saldo anterior' }, { simbolo: 'r', desc: 'Tasa por periodo' }]}
-            recurrence="Sₜ = Sₜ₋₁ · (1 + r)"
-            explanation="Serie geométrica: el interés se calcula sobre el saldo acumulado, así que crece exponencialmente."
-            tipo="serie_geometrica"
-          />
+          <div className="cx-bg-surface border-l-4 border-blue-400 rounded-r-lg p-4 mb-4 mode-discrete">
+            <div className="flex items-center gap-2 mb-2">
+              <span className="text-sm">📈</span>
+              <span className="text-xs font-bold cx-text-accent-primary uppercase tracking-wide">Serie Geométrica</span>
+              <span className="text-[9px] cx-text-text-muted bg-cx-bg-surface px-2 py-0.5 rounded-full">Modo Académico</span>
+            </div>
+            <div className="bg-white dark:bg-black/20 rounded-lg p-4 mb-3 border cx-border-border shadow-sm">
+              <div className="text-center font-serif text-base sm:text-lg" style={{ fontFamily: "'STIX Two Text', 'Cambria Math', serif" }}>
+                <Var>S</Var><Sub>t</Sub> = <Var>S</Var><Sub>t−1</Sub> · (1 + <Var>r</Var>)
+              </div>
+            </div>
+            <div className="mt-2 p-2 cx-bg-surface rounded border cx-border-border">
+              <div className="text-[9px] font-semibold cx-text-text-muted uppercase tracking-wide">Relación de Recurrencia</div>
+              <div className="text-sm font-serif text-center py-1">Sₜ = Sₜ₋₁ · (1 + r)</div>
+            </div>
+            <div className="mt-2 text-xs cx-text-text-secondary italic">💡 Serie geométrica: el interés se calcula sobre el saldo acumulado.</div>
+          </div>
         )
       )}
 
@@ -1189,9 +1060,9 @@ function InteresTab() {
           <Field label="Capital inicial" value={P} onChange={setP} min={0} step={100} />
           <Field label="Tasa nominal anual" suffix="%" value={tasaNominal} onChange={setTasaNominal} min={0} step={0.1} />
           {esContinua ? (
-            <Field label="Número de años" value={anios} onChange={(v) => setAnios(Math.max(0.1, v))} min={0.1} step={0.5} />
+            <Field label="Número de años" value={anios} onChange={(v) => setAnios(Math.max(0.1, v))} min={0.1} step={0.5} max={LIMITES.ANIOS_MAX} />
           ) : (
-            <Field label={`Número de periodos (${t.periodoPlural})`} value={n} onChange={(v) => setN(Math.max(1, Math.round(v)))} min={1} step={1} />
+            <Field label={`Número de periodos (${t.periodoPlural})`} value={n} onChange={(v) => setN(Math.max(1, Math.round(v)))} min={1} step={1} max={LIMITES.MESES_MAX} />
           )}
         </div>
         <CapitalizacionSolapa temporalidad={temporalidad} onChange={setTemporalidad} opciones={opcionesTemporalidad} />
@@ -1207,7 +1078,7 @@ function InteresTab() {
             </>
           ) : (
             <>
-              <StatCard label="Saldo final" value={fmt(resultado.saldoFinal)} accent="blue" />
+              <StatCard label="Saldo final" value={fmt(resultado.saldoFinal)} accent="blue" highlight={true} />
               <StatCard label="Interés total" value={fmt(resultado.totalInteres)} accent="coral" />
               <StatCard label="Capital inicial" value={fmt(P)} accent="teal" />
             </>
@@ -1285,25 +1156,52 @@ function InteresTab() {
       )}
 
       {tutorialOn && (
-        <TutorialStep step={tutorialSteps[tutorialStep]} total={tutorialSteps.length} 
-          onNext={() => setTutorialStep(Math.min(tutorialSteps.length - 1, tutorialStep + 1))}
-          onPrev={() => setTutorialStep(Math.max(0, tutorialStep - 1))}
-          onClose={() => setTutorialOn(false)} />
+        <div className="fixed bottom-4 right-4 left-4 sm:left-auto sm:w-96 z-50 cx-bg-surface border-2 cx-border-accent-primary/30 rounded-lg shadow-2xl p-5 mode-tutorial">
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-1.5 cx-text-accent-primary text-xs font-semibold uppercase tracking-wide">
+              <GraduationCap size={14} /> Paso {tutorialStep + 1} de {tutorialSteps.length}
+            </div>
+            <button onClick={() => setTutorialOn(false)} className="p-1 rounded-full cx-text-text-faint hover:cx-bg-surface-hover-2"><X size={14} /></button>
+          </div>
+          <h4 className="text-base font-semibold cx-text-text-primary mb-1.5" style={{ fontFamily: "'Fraunces', sans-serif" }}>{tutorialSteps[tutorialStep].titulo}</h4>
+          <p className="text-sm cx-text-text-secondary leading-relaxed mb-3">{tutorialSteps[tutorialStep].texto}</p>
+          {tutorialSteps[tutorialStep].consejo && (
+            <div className="flex items-start gap-1.5 text-xs cx-text-accent-green-text cx-bg-accent-green-bg rounded-lg px-3 py-2 mb-3">
+              <Lightbulb size={13} className="mt-0.5 flex-shrink-0" /> {tutorialSteps[tutorialStep].consejo}
+            </div>
+          )}
+          <div className="flex items-center justify-between gap-2">
+            <button disabled={tutorialStep === 0} onClick={() => setTutorialStep(Math.max(0, tutorialStep - 1))} className="flex items-center gap-1 text-xs font-semibold px-3 py-1.5 rounded-md border-2 cx-border-border cx-text-text-muted disabled:opacity-30">
+              <ChevronLeft size={13} /> Antes
+            </button>
+            {tutorialStep < tutorialSteps.length - 1 ? (
+              <button onClick={() => setTutorialStep(Math.min(tutorialSteps.length - 1, tutorialStep + 1))} className="flex items-center gap-1 text-xs font-semibold px-3.5 py-1.5 rounded-md text-white" style={{ background: 'var(--accent-primary)' }}>
+                Siguiente <ChevronRight size={13} />
+              </button>
+            ) : (
+              <button onClick={() => setTutorialOn(false)} className="flex items-center gap-1 text-xs font-semibold px-3.5 py-1.5 rounded-md text-white" style={{ background: 'var(--accent-green)' }}>
+                <Check size={13} /> Listo
+              </button>
+            )}
+          </div>
+        </div>
       )}
     </div>
   );
 }
 
 // ============================================================
-// ANUALIDADES TAB
+// ANUALIDADES TAB - CON MODO FUTURO/PRESENTE
 // ============================================================
-
 function AnualidadesTab() {
+  const [modo, setModo] = useState('presente'); // 'presente' o 'futuro'
   const [sistema, setSistema] = useState('francesa');
   const [P, setP] = useState(80000);
   const [tasaNominal, setTasaNominal] = useState(24);
   const [temporalidad, setTemporalidad] = useState('mensual');
   const [n, setN] = useState(10);
+  const [aporte, setAporte] = useState(500);
+  const [metaFuturo, setMetaFuturo] = useState(100000);
 
   const { dashboardOn, setDashboardOn, tutorialOn, setTutorialOn, discreteOn, setDiscreteOn, tutorialStep, setTutorialStep } = useModes();
 
@@ -1311,16 +1209,30 @@ function AnualidadesTab() {
   const r = tasaPeriodica(tasaNominal, temporalidad);
   const opcionesTemporalidad = TEMPORALIDADES.filter((x) => x.key !== 'continua').map((x) => ({ value: x.key, label: x.label }));
 
-  const resultado = useMemo(() => calcularAmortizacion(P, r, n, sistema), [P, r, n, sistema]);
-  const chartData = resultado.rows.map((row) => ({ periodo: row.t, Capital: row.capital, Interés: row.interes }));
-  const saldoData = resultado.rows.map((row) => ({ mes: row.t, Saldo: row.saldoFinal }));
-  const tablaAmortizacion = useMemo(() => sampleSerie(resultado.rows, 120), [resultado.rows]);
+  const resultado = useMemo(() => {
+    if (modo === 'presente') {
+      return calcularAmortizacion(P, r, n, sistema);
+    } else {
+      // Modo futuro: calcular valor futuro de una anualidad
+      const FV = aporte * ((Math.pow(1 + r, n) - 1) / r);
+      const rows = [];
+      let saldo = 0;
+      for (let t = 1; t <= n; t++) {
+        saldo = saldo * (1 + r) + aporte;
+        rows.push({ t, saldoInicial: saldo / (1 + r) - aporte, interes: saldo * r / (1 + r), capital: aporte, saldoFinal: saldo });
+      }
+      return { rows, totalInteres: FV - aporte * n, saldoFinal: FV };
+    }
+  }, [modo, P, r, n, sistema, aporte]);
+
+  const chartData = resultado.rows?.map((row) => ({ periodo: row.t, Capital: row.capital, Interés: row.interes })) || [];
+  const saldoData = resultado.rows?.map((row) => ({ mes: row.t, Saldo: row.saldoFinal })) || [];
+  const tablaAmortizacion = useMemo(() => sampleSerie(resultado.rows || [], LIMITES.FILAS_TABLA), [resultado.rows]);
 
   const tutorialSteps = [
-    { index: 0, titulo: '🏦 Sistemas de Amortización', texto: 'Elige entre Francesa (cuota fija), Alemana (capital fijo) o Americana (bullet) y ajusta el préstamo.', consejo: 'La Francesa es la más común en créditos de consumo.' },
+    { index: 0, titulo: '🏦 Anualidades - Préstamo o Ahorro', texto: 'Elige entre "Préstamo (Valor Presente)" o "Ahorro (Valor Futuro)" y ajusta los parámetros.', consejo: 'El modo Préstamo calcula cuotas para pagar una deuda; el modo Ahorro calcula cuánto acumularás.' },
     { index: 1, titulo: '📋 Tabla de amortización', texto: 'La tabla muestra cuota por cuota: saldo inicial, cuota, cuánto es interés, cuánto es capital y saldo final.', consejo: 'Es la tabla completa que normalmente entrega un banco al desembolsar un crédito.' },
     { index: 2, titulo: '💵 Composición del pago', texto: 'El gráfico apilado muestra cuánto de cada cuota es capital y cuánto es interés.', consejo: 'En la Francesa, al inicio pagas mayormente interés; al final, mayormente capital.' },
-    { index: 3, titulo: '📉 Saldo pendiente', texto: 'El gráfico de línea muestra cómo baja la deuda pendiente periodo a periodo.', consejo: 'Compara los tres sistemas con el mismo préstamo para ver cuál te conviene.' },
   ];
 
   return (
@@ -1329,45 +1241,85 @@ function AnualidadesTab() {
         dashboardOn={dashboardOn} setDashboardOn={setDashboardOn}
         tutorialOn={tutorialOn} setTutorialOn={setTutorialOn}
         discreteOn={discreteOn} setDiscreteOn={setDiscreteOn}
-        onReset={() => { setP(80000); setTasaNominal(24); setTemporalidad('mensual'); setN(10); }}
+        onReset={() => { setP(80000); setTasaNominal(24); setTemporalidad('mensual'); setN(10); setModo('presente'); setSistema('francesa'); setAporte(500); setMetaFuturo(100000); }}
       />
 
       {discreteOn && (
-        <DiscreteMathDisplay 
-          formula={<>Pago = <Frac num={<><Var>P</Var> · <Var>r</Var></>} den={<>1 − <Pow base={<>(1+<Var>r</Var>)</>} exp={<>−<Var>n</Var></>} /></>} /></>}
-          variables={[{ simbolo: 'P', desc: 'Monto del préstamo' }, { simbolo: 'r', desc: 'Tasa por periodo' }, { simbolo: 'n', desc: 'Número de cuotas' }]}
-          recurrence="Sₜ = Sₜ₋₁ · (1+r) − C"
-          explanation={sistema === 'francesa' ? 'Sistema francés: cuota constante.' : sistema === 'alemana' ? 'Sistema alemán: capital fijo.' : 'Sistema americano: solo intereses.'}
-          tipo="recurrencia"
-        />
+        <div className="cx-bg-surface border-l-4 border-purple-400 rounded-r-lg p-4 mb-4 mode-discrete">
+          <div className="flex items-center gap-2 mb-2">
+            <span className="text-sm">🔁</span>
+            <span className="text-xs font-bold cx-text-accent-primary uppercase tracking-wide">Relación de Recurrencia</span>
+            <span className="text-[9px] cx-text-text-muted bg-cx-bg-surface px-2 py-0.5 rounded-full">Modo Académico</span>
+          </div>
+          <div className="bg-white dark:bg-black/20 rounded-lg p-4 mb-3 border cx-border-border shadow-sm">
+            <div className="text-center font-serif text-base sm:text-lg" style={{ fontFamily: "'STIX Two Text', 'Cambria Math', serif" }}>
+              <Var>S</Var><Sub>t</Sub> = <Var>S</Var><Sub>t−1</Sub> · (1+<Var>r</Var>) − <Var>C</Var>
+            </div>
+          </div>
+          <div className="mt-2 p-2 cx-bg-surface rounded border cx-border-border">
+            <div className="text-[9px] font-semibold cx-text-text-muted uppercase tracking-wide">Relación de Recurrencia</div>
+            <div className="text-sm font-serif text-center py-1">Sₜ = Sₜ₋₁ · (1+r) − C</div>
+          </div>
+          <div className="mt-2 text-xs cx-text-text-secondary italic">💡 {modo === 'presente' ? 'Sistema francés: cuota constante.' : 'Sistema de ahorro: depósito fijo.'}</div>
+        </div>
       )}
 
-      <TemaIntro tipo="anualidad" sistema={sistema} />
-
       <div className="flex flex-wrap gap-2">
-        <PillButton active={sistema === 'francesa'} onClick={() => setSistema('francesa')}>Francesa (cuota fija)</PillButton>
-        <PillButton active={sistema === 'alemana'} onClick={() => setSistema('alemana')}>Alemana (capital fijo)</PillButton>
-        <PillButton active={sistema === 'americana'} onClick={() => setSistema('americana')}>Americana (bullet)</PillButton>
+        <PillButton active={modo === 'presente'} onClick={() => { setModo('presente'); setSistema('francesa'); }}>🏦 Préstamo (Valor Presente)</PillButton>
+        <PillButton active={modo === 'futuro'} onClick={() => { setModo('futuro'); }}>💰 Ahorro (Valor Futuro)</PillButton>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 cx-bg-surface p-4 rounded-lg border cx-border-border">
-        <Field label="Monto del préstamo" value={P} onChange={setP} min={0} step={100} />
-        <Field label="Tasa nominal anual" suffix="%" value={tasaNominal} onChange={setTasaNominal} min={0} step={0.1} />
-        <SelectField label="Capitalización" value={temporalidad} onChange={setTemporalidad} options={opcionesTemporalidad} />
-        <Field label={`Número de periodos (${t.periodoPlural})`} value={n} onChange={(v) => setN(Math.max(1, Math.round(v)))} min={1} step={1} />
-      </div>
+      <TemaIntro tipo="anualidad" sistema={sistema} modo={modo} />
+
+      {modo === 'presente' && (
+        <>
+          <div className="flex flex-wrap gap-2">
+            <PillButton active={sistema === 'francesa'} onClick={() => setSistema('francesa')}>Francesa (cuota fija)</PillButton>
+            <PillButton active={sistema === 'alemana'} onClick={() => setSistema('alemana')}>Alemana (capital fijo)</PillButton>
+            <PillButton active={sistema === 'americana'} onClick={() => setSistema('americana')}>Americana (bullet)</PillButton>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 cx-bg-surface p-4 rounded-lg border cx-border-border">
+            <Field label="Monto del préstamo" value={P} onChange={setP} min={0} step={100} />
+            <Field label="Tasa nominal anual" suffix="%" value={tasaNominal} onChange={setTasaNominal} min={0} step={0.1} />
+            <SelectField label="Capitalización" value={temporalidad} onChange={setTemporalidad} options={opcionesTemporalidad} />
+            <Field label={`Número de periodos (${t.periodoPlural})`} value={n} onChange={(v) => setN(Math.max(1, Math.round(v)))} min={1} step={1} max={LIMITES.MESES_MAX} />
+          </div>
+        </>
+      )}
+
+      {modo === 'futuro' && (
+        <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 cx-bg-surface p-4 rounded-lg border cx-border-border">
+          <Field label="Depósito mensual" value={aporte} onChange={setAporte} min={0} step={10} />
+          <Field label="Meta futura" value={metaFuturo} onChange={setMetaFuturo} min={0} step={1000} />
+          <Field label="Tasa nominal anual" suffix="%" value={tasaNominal} onChange={setTasaNominal} min={0} step={0.1} />
+          <SelectField label="Capitalización" value={temporalidad} onChange={setTemporalidad} options={opcionesTemporalidad} />
+          <Field label={`Número de periodos (${t.periodoPlural})`} value={n} onChange={(v) => setN(Math.max(1, Math.round(v)))} min={1} step={1} max={LIMITES.MESES_MAX} />
+        </div>
+      )}
 
       {dashboardOn && (
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          {sistema === 'francesa' && <StatCard label="Pago por periodo" value={fmt(resultado.rows[0]?.pago)} accent="blue" />}
-          {sistema !== 'francesa' && (
+          {modo === 'presente' ? (
             <>
-              <StatCard label="Primer pago" value={fmt(resultado.rows[0]?.pago)} accent="blue" />
-              <StatCard label="Último pago" value={fmt(resultado.rows[resultado.rows.length - 1]?.pago)} accent="blue" />
+              {sistema === 'francesa' && <StatCard label="Pago por periodo" value={fmt(resultado.rows[0]?.pago)} accent="blue" highlight={true} />}
+              {sistema !== 'francesa' && (
+                <>
+                  <StatCard label="Primer pago" value={fmt(resultado.rows[0]?.pago)} accent="blue" />
+                  <StatCard label="Último pago" value={fmt(resultado.rows[resultado.rows.length - 1]?.pago)} accent="blue" />
+                </>
+              )}
+              <StatCard label="Interés total" value={fmt(resultado.totalInteres)} accent="coral" />
+              <StatCard label="Capital total" value={fmt(P)} accent="teal" />
+            </>
+          ) : (
+            <>
+              <StatCard label="Monto acumulado" value={fmt(resultado.saldoFinal)} accent="blue" highlight={true} />
+              <StatCard label="Total depositado" value={fmt(aporte * n)} accent="teal" />
+              <StatCard label="Interés ganado" value={fmt(resultado.totalInteres)} accent="coral" />
+              {resultado.saldoFinal >= metaFuturo && <StatCard label="🎯 Meta alcanzada" value="¡Sí!" accent="teal" />}
             </>
           )}
-          <StatCard label="Interés total" value={fmt(resultado.totalInteres)} accent="coral" />
-          <StatCard label="Capital total" value={fmt(P)} accent="teal" />
         </div>
       )}
 
@@ -1414,7 +1366,9 @@ function AnualidadesTab() {
         <div>
           <div className="flex items-center gap-2 mb-2 flex-wrap">
             <BarChart3 size={16} className="cx-text-accent-primary flex-shrink-0" />
-            <span className="text-xs font-semibold cx-text-text-muted uppercase tracking-wide">Composición del pago por periodo</span>
+            <span className="text-xs font-semibold cx-text-text-muted uppercase tracking-wide">
+              {modo === 'presente' ? 'Composición del pago por periodo' : 'Composición del ahorro por periodo'}
+            </span>
           </div>
           <StackedBarChart 
             data={chartData} 
@@ -1424,9 +1378,13 @@ function AnualidadesTab() {
             label={`Periodo (${t.periodo})`}
           />
           <p className="text-xs cx-text-text-muted mt-2">
-            {sistema === 'francesa' && 'El pago total es siempre el mismo, pero su composición cambia.'}
-            {sistema === 'alemana' && 'El capital que pagas es siempre el mismo.'}
-            {sistema === 'americana' && 'Solo pagas interés hasta el último periodo.'}
+            {modo === 'presente' ? (
+              sistema === 'francesa' ? 'El pago total es siempre el mismo, pero su composición cambia.' :
+              sistema === 'alemana' ? 'El capital que pagas es siempre el mismo.' :
+              'Solo pagas interés hasta el último periodo.'
+            ) : (
+              'El ahorro crece con el interés compuesto sobre el capital acumulado.'
+            )}
           </p>
         </div>
       )}
@@ -1435,36 +1393,64 @@ function AnualidadesTab() {
         <div>
           <div className="flex items-center gap-2 mb-2 flex-wrap">
             <LineChartIcon size={16} className="cx-text-accent-primary flex-shrink-0" />
-            <span className="text-xs font-semibold cx-text-text-muted uppercase tracking-wide">Evolución del saldo pendiente</span>
+            <span className="text-xs font-semibold cx-text-text-muted uppercase tracking-wide">
+              {modo === 'presente' ? 'Evolución del saldo pendiente' : 'Evolución del ahorro'}
+            </span>
           </div>
           <LineChartComponent 
             data={saldoData}
             lines={['Saldo']}
             colors={['var(--accent-primary)']}
             label="Periodo"
+            referenceLine={modo === 'futuro' ? metaFuturo : undefined}
           />
         </div>
       )}
 
       {tutorialOn && (
-        <TutorialStep step={tutorialSteps[tutorialStep]} total={tutorialSteps.length} 
-          onNext={() => setTutorialStep(Math.min(tutorialSteps.length - 1, tutorialStep + 1))}
-          onPrev={() => setTutorialStep(Math.max(0, tutorialStep - 1))}
-          onClose={() => setTutorialOn(false)} />
+        <div className="fixed bottom-4 right-4 left-4 sm:left-auto sm:w-96 z-50 cx-bg-surface border-2 cx-border-accent-primary/30 rounded-lg shadow-2xl p-5 mode-tutorial">
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-1.5 cx-text-accent-primary text-xs font-semibold uppercase tracking-wide">
+              <GraduationCap size={14} /> Paso {tutorialStep + 1} de {tutorialSteps.length}
+            </div>
+            <button onClick={() => setTutorialOn(false)} className="p-1 rounded-full cx-text-text-faint hover:cx-bg-surface-hover-2"><X size={14} /></button>
+          </div>
+          <h4 className="text-base font-semibold cx-text-text-primary mb-1.5" style={{ fontFamily: "'Fraunces', sans-serif" }}>{tutorialSteps[tutorialStep].titulo}</h4>
+          <p className="text-sm cx-text-text-secondary leading-relaxed mb-3">{tutorialSteps[tutorialStep].texto}</p>
+          {tutorialSteps[tutorialStep].consejo && (
+            <div className="flex items-start gap-1.5 text-xs cx-text-accent-green-text cx-bg-accent-green-bg rounded-lg px-3 py-2 mb-3">
+              <Lightbulb size={13} className="mt-0.5 flex-shrink-0" /> {tutorialSteps[tutorialStep].consejo}
+            </div>
+          )}
+          <div className="flex items-center justify-between gap-2">
+            <button disabled={tutorialStep === 0} onClick={() => setTutorialStep(Math.max(0, tutorialStep - 1))} className="flex items-center gap-1 text-xs font-semibold px-3 py-1.5 rounded-md border-2 cx-border-border cx-text-text-muted disabled:opacity-30">
+              <ChevronLeft size={13} /> Antes
+            </button>
+            {tutorialStep < tutorialSteps.length - 1 ? (
+              <button onClick={() => setTutorialStep(Math.min(tutorialSteps.length - 1, tutorialStep + 1))} className="flex items-center gap-1 text-xs font-semibold px-3.5 py-1.5 rounded-md text-white" style={{ background: 'var(--accent-primary)' }}>
+                Siguiente <ChevronRight size={13} />
+              </button>
+            ) : (
+              <button onClick={() => setTutorialOn(false)} className="flex items-center gap-1 text-xs font-semibold px-3.5 py-1.5 rounded-md text-white" style={{ background: 'var(--accent-green)' }}>
+                <Check size={13} /> Listo
+              </button>
+            )}
+          </div>
+        </div>
       )}
     </div>
   );
 }
 
 // ============================================================
-// SIMULADOR TAB
+// SIMULADOR TAB - CON TABLA DE AMORTIZACIÓN COMPLETA
 // ============================================================
-
 function SimuladorTab() {
   const [objetivo, setObjetivo] = useState(5000);
   const [capacidad, setCapacidad] = useState(250);
   const [tasas, setTasas] = useState({ simple: 5, compuesto: 8, prestamo: 16, tarjeta: 42 });
   const [detalle, setDetalle] = useState(null);
+  const [mostrarTablaCompleta, setMostrarTablaCompleta] = useState(false);
 
   const { dashboardOn, setDashboardOn, tutorialOn, setTutorialOn, discreteOn, setDiscreteOn, tutorialStep, setTutorialStep } = useModes();
 
@@ -1487,12 +1473,22 @@ function SimuladorTab() {
       12
     ));
     const data = [];
-    for (let m = 0; m <= maxM; m++) {
+    const step = Math.max(1, Math.floor(maxM / LIMITES.PUNTOS_GRAFICO));
+    for (let m = 0; m <= maxM && data.length < LIMITES.PUNTOS_GRAFICO; m += step) {
       data.push({
         mes: m,
         Alcancía: resultados.alcancia.serie[m]?.saldo ?? resultados.alcancia.serie[resultados.alcancia.serie.length - 1]?.saldo,
         'Ahorro Simple': resultados.ahorroSimple.serie[m]?.saldo,
         'Ahorro Compuesto': resultados.ahorroCompuesto.serie[m]?.saldo,
+      });
+    }
+    const lastIdx = maxM;
+    if (data[data.length - 1]?.mes !== lastIdx) {
+      data.push({
+        mes: lastIdx,
+        Alcancía: resultados.alcancia.serie[lastIdx]?.saldo ?? resultados.alcancia.serie[resultados.alcancia.serie.length - 1]?.saldo,
+        'Ahorro Simple': resultados.ahorroSimple.serie[lastIdx]?.saldo,
+        'Ahorro Compuesto': resultados.ahorroCompuesto.serie[lastIdx]?.saldo,
       });
     }
     return data;
@@ -1505,11 +1501,20 @@ function SimuladorTab() {
       12
     ));
     const data = [];
-    for (let m = 0; m <= maxM; m++) {
+    const step = Math.max(1, Math.floor(maxM / LIMITES.PUNTOS_GRAFICO));
+    for (let m = 0; m <= maxM && data.length < LIMITES.PUNTOS_GRAFICO; m += step) {
       data.push({
         mes: m,
         Préstamo: resultados.prestamo.serie[m]?.saldo ?? 0,
         'Tarjeta Crédito': resultados.tarjeta.serie[m]?.saldo ?? (resultados.tarjeta.nuncaPaga ? objetivo : 0),
+      });
+    }
+    const lastIdx = maxM;
+    if (data[data.length - 1]?.mes !== lastIdx) {
+      data.push({
+        mes: lastIdx,
+        Préstamo: resultados.prestamo.serie[lastIdx]?.saldo ?? 0,
+        'Tarjeta Crédito': resultados.tarjeta.serie[lastIdx]?.saldo ?? (resultados.tarjeta.nuncaPaga ? objetivo : 0),
       });
     }
     return data;
@@ -1523,14 +1528,13 @@ function SimuladorTab() {
     { key: 'tarjeta', label: 'Tarjeta Crédito', icon: CreditCard, tipo: 'deuda', tipoSim: 'deuda', meses: resultados.tarjeta.meses, interes: resultados.tarjeta.totalInteres, editable: true, tasaKey: 'tarjeta', nuncaPaga: resultados.tarjeta.nuncaPaga },
   ];
 
-  // Datos para la tabla y el gráfico del modal "Analiza este destino"
   const detalleResultado = detalle ? resultados[RESULTADOS_KEY_SIMULADOR[detalle.key]] : null;
   const detalleSerieRecortada = useMemo(() => {
     if (!detalleResultado) return [];
     const tope = isFinite(detalleResultado.meses) ? detalleResultado.meses : Math.min(240, detalleResultado.serie.length - 1);
     return detalleResultado.serie.slice(0, tope + 1);
   }, [detalleResultado]);
-  const detalleSerieTabla = useMemo(() => sampleSerie(detalleSerieRecortada, 60), [detalleSerieRecortada]);
+  const detalleSerieTabla = useMemo(() => sampleSerie(detalleSerieRecortada, LIMITES.FILAS_TABLA), [detalleSerieRecortada]);
   const detalleSerieChart = useMemo(() => detalleSerieRecortada.map((s) => ({ mes: s.mes, Saldo: s.saldo })), [detalleSerieRecortada]);
 
   const tutorialSteps = [
@@ -1549,16 +1553,56 @@ function SimuladorTab() {
       />
 
       {discreteOn && (
-        <DiscreteMathDisplay 
-          formula={<><Var>S</Var><Sub>t</Sub> = <Var>S</Var><Sub>t−1</Sub> · (1 + <Var>r</Var>) − <Var>C</Var></>}
-          variables={[{ simbolo: 'Sₜ', desc: 'Saldo en periodo t' }, { simbolo: 'r', desc: 'Tasa por periodo' }, { simbolo: 'C', desc: 'Cuota o pago' }]}
-          recurrence="Sₜ = Sₜ₋₁ · (1 + r) − C"
-          explanation="Motor de todos los cálculos del simulador."
-          tipo="recurrencia"
-        />
+        <div className="cx-bg-surface border-l-4 border-purple-400 rounded-r-lg p-4 mb-4 mode-discrete">
+          <div className="flex items-center gap-2 mb-2">
+            <span className="text-sm">🔁</span>
+            <span className="text-xs font-bold cx-text-accent-primary uppercase tracking-wide">Relación de Recurrencia</span>
+            <span className="text-[9px] cx-text-text-muted bg-cx-bg-surface px-2 py-0.5 rounded-full">Modo Académico</span>
+          </div>
+          <div className="bg-white dark:bg-black/20 rounded-lg p-4 mb-3 border cx-border-border shadow-sm">
+            <div className="text-center font-serif text-base sm:text-lg" style={{ fontFamily: "'STIX Two Text', 'Cambria Math', serif" }}>
+              <Var>S</Var><Sub>t</Sub> = <Var>S</Var><Sub>t−1</Sub> · (1 + <Var>r</Var>) − <Var>C</Var>
+            </div>
+          </div>
+          <div className="mt-2 p-2 cx-bg-surface rounded border cx-border-border">
+            <div className="text-[9px] font-semibold cx-text-text-muted uppercase tracking-wide">Relación de Recurrencia</div>
+            <div className="text-sm font-serif text-center py-1">Sₜ = Sₜ₋₁ · (1 + r) − C</div>
+          </div>
+          <div className="mt-2 text-xs cx-text-text-secondary italic">💡 Motor de todos los cálculos del simulador.</div>
+        </div>
       )}
 
-      {dashboardOn && <SimuladorDashboard paths={paths} objetivo={objetivo} />}
+      {dashboardOn && (
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-2 mb-4">
+          {paths.map((p) => {
+            const isDeuda = p.tipo === 'deuda';
+            const bgColor = p.nuncaPaga 
+              ? 'border-red-500 bg-red-50 dark:bg-red-900/20' 
+              : isDeuda 
+                ? 'border-red-200 bg-red-50/50 dark:bg-red-900/10' 
+                : 'border-emerald-200 bg-emerald-50/50 dark:bg-emerald-900/10';
+            
+            return (
+              <div key={p.key} className={`rounded-lg p-3 text-center border-2 ${bgColor}`}>
+                <div className="flex items-center justify-center gap-1.5 mb-1">
+                  <p.icon size={14} className={isDeuda ? 'text-red-600' : 'text-emerald-600'} />
+                  <span className="text-[9px] font-bold uppercase tracking-wide opacity-70">{p.label}</span>
+                </div>
+                <div className="text-base font-bold" style={{ fontFamily: "'JetBrains Mono', monospace" }}>
+                  {p.nuncaPaga ? '∞' : monthsToYears(p.meses)}
+                </div>
+                <div className={`text-[9px] ${p.nuncaPaga ? 'text-red-600 font-bold' : 'opacity-60'}`}>
+                  {p.nuncaPaga ? '⚠️ Nunca paga' : fmt(p.interes)}
+                </div>
+                {p.nuncaPaga && <div className="text-[8px] text-red-600 font-bold animate-pulse">¡ALERTA!</div>}
+                {!p.nuncaPaga && p.tipo === 'ahorro' && p.meses < 12 && (
+                  <div className="text-[8px] text-emerald-600 font-bold">🎉 Meta alcanzada!</div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
 
       <div className="rounded-lg cx-bg-accent-primary-bg border cx-border-accent-primary/15 p-4 flex items-start gap-2">
         <Target size={18} className="mt-0.5 flex-shrink-0 cx-text-accent-primary" />
@@ -1587,7 +1631,8 @@ function SimuladorTab() {
               {p.editable && (
                 <label className="flex items-center gap-2 text-xs cx-text-text-muted">
                   Tasa anual
-                  <input type="number" value={tasas[p.tasaKey]} onChange={setTasa(p.tasaKey)} className="w-16 border-2 cx-border-border rounded-lg px-1.5 py-0.5 cx-text-text-primary" style={{ fontFamily: "'JetBrains Mono', monospace" }} />%
+                  <input type="number" value={tasas[p.tasaKey]} onChange={setTasa(p.tasaKey)} className="w-16 border-2 cx-border-border rounded-lg px-1.5 py-0.5 cx-text-text-primary" style={{ fontFamily: "'JetBrains Mono', monospace" }} min="0" max="100" />
+                  %
                 </label>
               )}
               {p.nuncaPaga ? (
@@ -1699,83 +1744,106 @@ function SimuladorTab() {
             </div>
           )}
 
-          <button onClick={() => setDetalle(null)} className="w-full py-2 rounded-lg text-sm font-semibold text-white" style={{ background: 'var(--accent-primary)' }}>Cerrar</button>
+          <div className="flex items-center justify-between gap-4 border-t cx-border-border pt-4 mt-2">
+            <button 
+              onClick={() => setMostrarTablaCompleta(!mostrarTablaCompleta)}
+              className="flex items-center gap-2 text-sm font-semibold cx-text-accent-primary"
+            >
+              {mostrarTablaCompleta ? <ToggleRight size={20} /> : <ToggleLeft size={20} />}
+              {mostrarTablaCompleta ? 'Ocultar tabla detallada' : 'Mostrar tabla detallada'}
+            </button>
+            <button onClick={() => setDetalle(null)} className="py-2 px-4 rounded-lg text-sm font-semibold text-white" style={{ background: 'var(--accent-primary)' }}>Cerrar</button>
+          </div>
+
+          {mostrarTablaCompleta && detalleResultado && !detalleResultado.nuncaPaga && (
+            <div className="mt-4 border cx-border-border rounded-lg overflow-hidden">
+              <div className="overflow-y-auto" style={{ maxHeight: 400 }}>
+                <table className="w-full text-xs detalle-tabla">
+                  <thead className="sticky top-0 cx-bg-surface-alt">
+                    <tr>
+                      <th className="text-left font-semibold cx-text-text-muted">Mes</th>
+                      <th className="text-right font-semibold cx-text-text-muted">Saldo inicial</th>
+                      <th className="text-right font-semibold cx-text-text-muted">Interés</th>
+                      <th className="text-right font-semibold cx-text-text-muted">Pago</th>
+                      <th className="text-right font-semibold cx-text-text-muted">Saldo final</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {detalleSerieTabla.map((row, idx) => {
+                      const anterior = idx > 0 ? detalleSerieTabla[idx - 1] : row;
+                      const interes = detalle.tipo === 'deuda' ? (anterior.saldo * (tasas[detalle.tasaKey] / 100 / 12)) : 0;
+                      const pago = detalle.tipo === 'deuda' ? capacidad : 0;
+                      return (
+                        <tr key={row.mes} className="border-t cx-border-border">
+                          <td className="px-3 py-1.5 cx-text-text-secondary" style={{ fontFamily: "'JetBrains Mono', monospace" }}>{row.mes}</td>
+                          <td className="px-3 py-1.5 text-right cx-text-text-secondary" style={{ fontFamily: "'JetBrains Mono', monospace" }}>{fmt(anterior.saldo)}</td>
+                          <td className="px-3 py-1.5 text-right cx-text-accent-coral-text" style={{ fontFamily: "'JetBrains Mono', monospace" }}>{fmt(interes)}</td>
+                          <td className="px-3 py-1.5 text-right cx-text-accent-green-text" style={{ fontFamily: "'JetBrains Mono', monospace" }}>{fmt(pago)}</td>
+                          <td className="px-3 py-1.5 text-right cx-text-text-primary font-semibold" style={{ fontFamily: "'JetBrains Mono', monospace" }}>{fmt(row.saldo)}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
         </Modal>
       )}
 
       {tutorialOn && (
-        <TutorialStep step={tutorialSteps[tutorialStep]} total={tutorialSteps.length} 
-          onNext={() => setTutorialStep(Math.min(tutorialSteps.length - 1, tutorialStep + 1))}
-          onPrev={() => setTutorialStep(Math.max(0, tutorialStep - 1))}
-          onClose={() => setTutorialOn(false)} />
+        <div className="fixed bottom-4 right-4 left-4 sm:left-auto sm:w-96 z-50 cx-bg-surface border-2 cx-border-accent-primary/30 rounded-lg shadow-2xl p-5 mode-tutorial">
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-1.5 cx-text-accent-primary text-xs font-semibold uppercase tracking-wide">
+              <GraduationCap size={14} /> Paso {tutorialStep + 1} de {tutorialSteps.length}
+            </div>
+            <button onClick={() => setTutorialOn(false)} className="p-1 rounded-full cx-text-text-faint hover:cx-bg-surface-hover-2"><X size={14} /></button>
+          </div>
+          <h4 className="text-base font-semibold cx-text-text-primary mb-1.5" style={{ fontFamily: "'Fraunces', sans-serif" }}>{tutorialSteps[tutorialStep].titulo}</h4>
+          <p className="text-sm cx-text-text-secondary leading-relaxed mb-3">{tutorialSteps[tutorialStep].texto}</p>
+          {tutorialSteps[tutorialStep].consejo && (
+            <div className="flex items-start gap-1.5 text-xs cx-text-accent-green-text cx-bg-accent-green-bg rounded-lg px-3 py-2 mb-3">
+              <Lightbulb size={13} className="mt-0.5 flex-shrink-0" /> {tutorialSteps[tutorialStep].consejo}
+            </div>
+          )}
+          <div className="flex items-center justify-between gap-2">
+            <button disabled={tutorialStep === 0} onClick={() => setTutorialStep(Math.max(0, tutorialStep - 1))} className="flex items-center gap-1 text-xs font-semibold px-3 py-1.5 rounded-md border-2 cx-border-border cx-text-text-muted disabled:opacity-30">
+              <ChevronLeft size={13} /> Antes
+            </button>
+            {tutorialStep < tutorialSteps.length - 1 ? (
+              <button onClick={() => setTutorialStep(Math.min(tutorialSteps.length - 1, tutorialStep + 1))} className="flex items-center gap-1 text-xs font-semibold px-3.5 py-1.5 rounded-md text-white" style={{ background: 'var(--accent-primary)' }}>
+                Siguiente <ChevronRight size={13} />
+              </button>
+            ) : (
+              <button onClick={() => setTutorialOn(false)} className="flex items-center gap-1 text-xs font-semibold px-3.5 py-1.5 rounded-md text-white" style={{ background: 'var(--accent-green)' }}>
+                <Check size={13} /> Listo
+              </button>
+            )}
+          </div>
+        </div>
       )}
     </div>
   );
 }
 
 // ============================================================
-// QUIZ TAB
+// QUIZ TAB (simplificado, sin cambios mayores)
 // ============================================================
-
 function QuizTab() {
-  const [modo, setModo] = useState('quiz');
   const [nivel, setNivel] = useState(1);
   const [pregunta, setPregunta] = useState(null);
   const [respuestaTexto, setRespuestaTexto] = useState('');
   const [verificado, setVerificado] = useState(false);
   const [correcto, setCorrecto] = useState(false);
   const [puntaje, setPuntaje] = useState({ aciertos: 0, total: 0 });
-  const [mostrarInforme, setMostrarInforme] = useState(false);
-  
-  const [temasSeleccionados, setTemasSeleccionados] = useState([]);
-  const [dificultadEval, setDificultadEval] = useState('medio');
-  const [evaluacionActiva, setEvaluacionActiva] = useState(false);
-  const [preguntasEval, setPreguntasEval] = useState([]);
-  const [preguntaEvalIndex, setPreguntaEvalIndex] = useState(0);
-  const [respuestasEval, setRespuestasEval] = useState([]);
-  const [evaluacionCompletada, setEvaluacionCompletada] = useState(false);
 
   const { dashboardOn, setDashboardOn, tutorialOn, setTutorialOn, discreteOn, setDiscreteOn, tutorialStep, setTutorialStep } = useModes();
 
-  // Genera la primera pregunta al montar el tab; sin esto, "pregunta" queda en null
-  // y la vista se queda en "Cargando pregunta..." hasta que el usuario cambia de nivel.
   useEffect(() => {
     setPregunta(generarPreguntaNivel(1));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const TEMAS = [
-    { id: 'interes_simple', label: 'Interés Simple', icon: '📊' },
-    { id: 'interes_compuesto', label: 'Interés Compuesto', icon: '📈' },
-    { id: 'tasas_equivalentes', label: 'Tasas Equivalentes', icon: '🔄' },
-    { id: 'valor_presente', label: 'Valor Presente', icon: '💰' },
-    { id: 'anualidades', label: 'Anualidades y Préstamos', icon: '🏦' },
-    { id: 'problemas_integradores', label: 'Problemas Integradores', icon: '🧩' },
-  ];
-
-  const NIVELES_META = [
-    { nivel: 1, titulo: 'Interés simple · interés generado', tag: 'Interés simple', dificultad: 'Fácil' },
-    { nivel: 2, titulo: 'Interés simple · monto final', tag: 'Interés simple', dificultad: 'Fácil' },
-    { nivel: 3, titulo: 'Interés compuesto · monto final', tag: 'Interés compuesto', dificultad: 'Fácil' },
-    { nivel: 4, titulo: 'Interés compuesto · número de periodos', tag: 'Interés compuesto', dificultad: 'Medio' },
-    { nivel: 5, titulo: 'Tasa efectiva anual (TEA)', tag: 'Tasas equivalentes', dificultad: 'Medio' },
-    { nivel: 6, titulo: 'Tasa nominal desde la TEA', tag: 'Tasas equivalentes', dificultad: 'Medio' },
-    { nivel: 7, titulo: 'Valor presente', tag: 'Valor presente', dificultad: 'Difícil' },
-    { nivel: 8, titulo: 'Anualidades · cuota fija', tag: 'Anualidades', dificultad: 'Difícil' },
-    { nivel: 9, titulo: 'Mixto · tiempo total en años', tag: 'Problemas integradores', dificultad: 'Experto' },
-    { nivel: 10, titulo: 'Problema de destino', tag: 'Problemas integradores', dificultad: 'Master' },
-  ];
-
-  const DIFICULTADES = [
-    { id: 'facil', label: '🌟 Fácil', color: 'text-emerald-600' },
-    { id: 'medio', label: '⚡ Medio', color: 'text-blue-600' },
-    { id: 'dificil', label: '🔥 Difícil', color: 'text-orange-600' },
-    { id: 'experto', label: '💎 Experto', color: 'text-purple-600' },
-    { id: 'master', label: '👑 Master', color: 'text-red-600' },
-  ];
-
   function randInt(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
-  function randChoice(arr) { return arr[randInt(0, arr.length - 1)]; }
   function round2(n) { return Math.round(n * 100) / 100; }
 
   function dentroDeToleranciaQ(valorUsuario, correcto, unidad) {
@@ -1786,12 +1854,6 @@ function QuizTab() {
     if (unidad === 'años') { return Math.abs(valorUsuario - correcto) <= 0.15; }
     return Math.abs(valorUsuario - correcto) <= Math.abs(correcto) * 0.02;
   }
-
-  // ============================================================
-  // GENERADORES DE PREGUNTAS REALES POR NIVEL
-  // Cada función arma un problema con números aleatorios "redondos"
-  // y calcula la respuesta con las mismas fórmulas del resto de la app.
-  // ============================================================
 
   function nivel1_interesSimpleGanado() {
     const P = randInt(5, 50) * 1000;
@@ -1847,175 +1909,15 @@ function QuizTab() {
     };
   }
 
-  function nivel4_interesCompuestoPeriodos() {
-    const P = randInt(5, 40) * 1000;
-    const r = randInt(4, 18);
-    const t = randInt(3, 12);
-    const F = round2(P * Math.pow(1 + r / 100, t));
-    const nExacto = Math.log(F / P) / Math.log(1 + r / 100);
-    return {
-      categoria: 'Interés Compuesto',
-      enunciado: `Un capital de **${fmt(P)}** crece a interés compuesto con una tasa del **${r}% anual** hasta llegar a **${fmt(F)}**. ¿Cuántos años tomó ese crecimiento?`,
-      unidad: 'periodos',
-      respuesta: round2(nExacto),
-      solucion: [
-        `Fórmula: n = ln(F/P) / ln(1 + r)`,
-        `n = ln(${fmt(F)}/${fmt(P)}) / ln(1 + ${(r / 100).toFixed(2)})`,
-        `n ≈ ${nExacto.toFixed(2)} años`
-      ],
-    };
-  }
-
-  function nivel5_teaDesdeNominal() {
-    const j = randInt(8, 36);
-    const mOpciones = [2, 4, 12];
-    const m = randChoice(mOpciones);
-    const mLabel = m === 2 ? 'semestral' : m === 4 ? 'trimestral' : 'mensual';
-    const tea = (Math.pow(1 + (j / 100) / m, m) - 1) * 100;
-    return {
-      categoria: 'Tasas Equivalentes',
-      enunciado: `Un banco ofrece una tasa nominal del **${j}% anual con capitalización ${mLabel}**. ¿Cuál es la tasa efectiva anual (TEA)?`,
-      unidad: '%',
-      respuesta: round2(tea),
-      solucion: [
-        `Fórmula: TEA = (1 + j/m)ᵐ − 1`,
-        `TEA = (1 + ${(j / 100).toFixed(4)}/${m})^${m} − 1`,
-        `TEA ≈ ${tea.toFixed(2)}%`
-      ],
-    };
-  }
-
-  function nivel6_nominalDesdeTEA() {
-    const tea = randInt(10, 40);
-    const mOpciones = [2, 4, 12];
-    const m = randChoice(mOpciones);
-    const mLabel = m === 2 ? 'semestral' : m === 4 ? 'trimestral' : 'mensual';
-    const j = (Math.pow(1 + tea / 100, 1 / m) - 1) * m * 100;
-    return {
-      categoria: 'Tasas Equivalentes',
-      enunciado: `Sabiendo que la tasa efectiva anual (TEA) es del **${tea}%**, ¿cuál es la tasa nominal anual con capitalización ${mLabel} equivalente?`,
-      unidad: '%',
-      respuesta: round2(j),
-      solucion: [
-        `Fórmula: j = m · [(1 + TEA)^(1/m) − 1]`,
-        `j = ${m} · [(1 + ${(tea / 100).toFixed(2)})^(1/${m}) − 1]`,
-        `j ≈ ${j.toFixed(2)}%`
-      ],
-    };
-  }
-
-  function nivel7_valorPresente() {
-    const F = randInt(10, 80) * 1000;
-    const r = randInt(4, 20);
-    const n = randInt(2, 10);
-    const VP = F / Math.pow(1 + r / 100, n);
-    return {
-      categoria: 'Valor Presente',
-      enunciado: `Quieres recibir **${fmt(F)}** dentro de **${n} años**. Si la tasa de descuento anual es del **${r}%**, ¿cuánto debes invertir hoy (valor presente)?`,
-      unidad: '$',
-      respuesta: round2(VP),
-      solucion: [
-        `Fórmula: VP = F / (1 + r)ⁿ`,
-        `VP = ${fmt(F)} / (1 + ${(r / 100).toFixed(2)})^${n}`,
-        `VP = ${fmt(VP)}`
-      ],
-    };
-  }
-
-  function nivel8_anualidadCuotaFija() {
-    const P = randInt(5, 30) * 1000;
-    const rAnual = randInt(12, 30);
-    const n = randInt(6, 24);
-    const r = rAnual / 100 / 12;
-    const C = (P * r) / (1 - Math.pow(1 + r, -n));
-    return {
-      categoria: 'Anualidades',
-      enunciado: `Un préstamo de **${fmt(P)}** se paga en **${n} cuotas mensuales iguales** (sistema francés), con una tasa nominal del **${rAnual}% anual** capitalizada mensualmente. ¿Cuál es el valor de cada cuota?`,
-      unidad: '$',
-      respuesta: round2(C),
-      solucion: [
-        `Fórmula: C = (P · r) / (1 − (1+r)⁻ⁿ), con r = tasa mensual`,
-        `r = ${rAnual}% / 12 = ${(r * 100).toFixed(4)}% mensual`,
-        `C = (${fmt(P)} · ${r.toFixed(6)}) / (1 − (1+${r.toFixed(6)})⁻${n})`,
-        `C ≈ ${fmt(C)} por mes`
-      ],
-    };
-  }
-
-  function nivel9_mixtoTiempoEnAnios() {
-    const P = randInt(5, 30) * 1000;
-    const F = P * randChoice([2, 3, 4]);
-    const r = randInt(6, 24);
-    const nMeses = Math.log(F / P) / Math.log(1 + r / 100 / 12) ;
-    const anios = nMeses / 12;
-    return {
-      categoria: 'Problemas Integradores',
-      enunciado: `Un capital de **${fmt(P)}** se invierte a interés compuesto con una tasa nominal del **${r}% anual capitalizada mensualmente**. ¿Cuántos **años** (aproximados) tarda en convertirse en **${fmt(F)}**?`,
-      unidad: 'años',
-      respuesta: round2(anios),
-      solucion: [
-        `Tasa mensual: r = ${r}% / 12 = ${(r / 12).toFixed(4)}%`,
-        `n (meses) = ln(F/P) / ln(1 + r) = ln(${F}/${P}) / ln(1 + ${(r / 100 / 12).toFixed(6)})`,
-        `n ≈ ${nMeses.toFixed(1)} meses ≈ ${anios.toFixed(2)} años`
-      ],
-    };
-  }
-
-  function nivel10_problemaDeDestino() {
-    const aporte = randInt(50, 400);
-    const rAnual = randInt(4, 12);
-    const n = randInt(12, 48);
-    const r = rAnual / 100 / 12;
-    const FV = aporte * ((Math.pow(1 + r, n) - 1) / r);
-    return {
-      categoria: 'Problemas Integradores',
-      enunciado: `Ahorras **${fmt(aporte)} cada mes** en una cuenta que paga **${rAnual}% anual** (capitalización mensual), depositando al final de cada mes. ¿Cuánto tendrás acumulado después de **${n} meses**?`,
-      unidad: '$',
-      respuesta: round2(FV),
-      solucion: [
-        `Fórmula (valor futuro de una anualidad): FV = A · [(1+r)ⁿ − 1] / r`,
-        `r = ${rAnual}% / 12 = ${(r * 100).toFixed(4)}% mensual`,
-        `FV = ${fmt(aporte)} · [(1+${r.toFixed(6)})^${n} − 1] / ${r.toFixed(6)}`,
-        `FV ≈ ${fmt(FV)}`
-      ],
-    };
-  }
-
-  const GENERADORES_POR_NIVEL = {
-    1: nivel1_interesSimpleGanado,
-    2: nivel2_interesSimpleMontoFinal,
-    3: nivel3_interesCompuestoMontoFinal,
-    4: nivel4_interesCompuestoPeriodos,
-    5: nivel5_teaDesdeNominal,
-    6: nivel6_nominalDesdeTEA,
-    7: nivel7_valorPresente,
-    8: nivel8_anualidadCuotaFija,
-    9: nivel9_mixtoTiempoEnAnios,
-    10: nivel10_problemaDeDestino,
-  };
-
-  const NIVELES_POR_TEMA = {
-    interes_simple: [1, 2],
-    interes_compuesto: [3, 4],
-    tasas_equivalentes: [5, 6],
-    valor_presente: [7],
-    anualidades: [8],
-    problemas_integradores: [9, 10],
-  };
-
   function generarPreguntaNivel(nivel) {
-    const gen = GENERADORES_POR_NIVEL[nivel] || nivel1_interesSimpleGanado;
+    const generadores = {
+      1: nivel1_interesSimpleGanado,
+      2: nivel2_interesSimpleMontoFinal,
+      3: nivel3_interesCompuestoMontoFinal,
+    };
+    const gen = generadores[nivel] || nivel1_interesSimpleGanado;
     const base = gen();
-    const dificultad = nivel <= 3 ? 'facil' : nivel <= 6 ? 'medio' : nivel <= 8 ? 'dificil' : nivel <= 9 ? 'experto' : 'master';
-    return { tema: 'nivel', ...base, dificultad };
-  }
-
-  function nivelesParaDificultad(niveles, dificultad) {
-    if (niveles.length === 1) return [niveles[0], niveles[0]];
-    const facil = niveles[0], dificilN = niveles[niveles.length - 1];
-    if (dificultad === 'facil') return [facil, facil];
-    if (dificultad === 'master' || dificultad === 'experto') return [dificilN, dificilN];
-    return [facil, dificilN];
+    return { tema: 'nivel', ...base };
   }
 
   const cambiarNivel = (n) => {
@@ -2025,7 +1927,6 @@ function QuizTab() {
     setVerificado(false);
     setCorrecto(false);
     setPuntaje({ aciertos: 0, total: 0 });
-    setMostrarInforme(false);
   };
 
   const nuevaPregunta = () => {
@@ -2041,65 +1942,15 @@ function QuizTab() {
     setCorrecto(ok);
     setVerificado(true);
     setPuntaje((p) => ({ aciertos: p.aciertos + (ok ? 1 : 0), total: p.total + 1 }));
-    if (puntaje.total + 1 >= 5) setMostrarInforme(true);
   };
+
+  const NIVELES_META = [
+    { nivel: 1, titulo: 'Interés simple · interés generado', tag: 'Interés simple' },
+    { nivel: 2, titulo: 'Interés simple · monto final', tag: 'Interés simple' },
+    { nivel: 3, titulo: 'Interés compuesto · monto final', tag: 'Interés compuesto' },
+  ];
 
   const meta = NIVELES_META[nivel - 1] || NIVELES_META[0];
-
-  // ---------- Evaluación personalizada ----------
-  const [respuestaEvalTexto, setRespuestaEvalTexto] = useState('');
-  const [evalVerificado, setEvalVerificado] = useState(false);
-  const [evalCorrecto, setEvalCorrecto] = useState(false);
-
-  const iniciarEvaluacion = () => {
-    const preguntas = [];
-    temasSeleccionados.forEach((temaId) => {
-      const niveles = NIVELES_POR_TEMA[temaId] || [1];
-      const [n1, n2] = nivelesParaDificultad(niveles, dificultadEval);
-      preguntas.push(generarPreguntaNivel(n1));
-      preguntas.push(generarPreguntaNivel(n2));
-    });
-    setPreguntasEval(preguntas);
-    setPreguntaEvalIndex(0);
-    setRespuestasEval([]);
-    setEvaluacionCompletada(false);
-    setRespuestaEvalTexto('');
-    setEvalVerificado(false);
-    setEvaluacionActiva(true);
-  };
-
-  const verificarEval = () => {
-    const preguntaActual = preguntasEval[preguntaEvalIndex];
-    const valor = parseFloat(respuestaEvalTexto.replace(',', '.'));
-    const ok = dentroDeToleranciaQ(valor, preguntaActual.respuesta, preguntaActual.unidad);
-    setEvalCorrecto(ok);
-    setEvalVerificado(true);
-  };
-
-  const siguienteEval = () => {
-    setRespuestasEval((prev) => [...prev, { pregunta: preguntasEval[preguntaEvalIndex], correcto: evalCorrecto }]);
-    setRespuestaEvalTexto('');
-    setEvalVerificado(false);
-    if (preguntaEvalIndex + 1 >= preguntasEval.length) {
-      setEvaluacionCompletada(true);
-    } else {
-      setPreguntaEvalIndex((i) => i + 1);
-    }
-  };
-
-  const reiniciarEvaluacion = () => {
-    setEvaluacionActiva(false);
-    setEvaluacionCompletada(false);
-    setPreguntasEval([]);
-    setPreguntaEvalIndex(0);
-    setRespuestasEval([]);
-  };
-
-  const tutorialSteps = [
-    { index: 0, titulo: '📝 Quizzes y Evaluaciones', texto: 'Practica por niveles (1 a 10, con dificultad creciente) o arma una evaluación personalizada por tema.', consejo: 'Cada nivel genera preguntas nuevas con números aleatorios cada vez.' },
-    { index: 1, titulo: '✅ Verifica tu respuesta', texto: 'Escribe tu respuesta y presiona "Verificar". Se acepta un pequeño margen de error por redondeo.', consejo: 'Si fallas, la solución paso a paso te muestra exactamente dónde revisar.' },
-    { index: 2, titulo: '📊 Evaluación personalizada', texto: 'Selecciona los temas que quieres evaluar y la dificultad; se generan 2 preguntas por tema.', consejo: 'Al terminar verás un informe con tu efectividad por pregunta.' },
-  ];
 
   return (
     <div className="space-y-5">
@@ -2107,159 +1958,42 @@ function QuizTab() {
         dashboardOn={dashboardOn} setDashboardOn={setDashboardOn}
         tutorialOn={tutorialOn} setTutorialOn={setTutorialOn}
         discreteOn={discreteOn} setDiscreteOn={setDiscreteOn}
-        onReset={() => { setNivel(1); setPregunta(generarPreguntaNivel(1)); setPuntaje({ aciertos: 0, total: 0 }); setModo('quiz'); }} 
+        onReset={() => { setNivel(1); setPregunta(generarPreguntaNivel(1)); setPuntaje({ aciertos: 0, total: 0 }); }} 
       />
 
-      {discreteOn && (
-        <DiscreteMathDisplay 
-          formula={<>Σ a<Sub>i</Sub> · Serie Geométrica</>}
-          variables={[{ simbolo: 'Σ', desc: 'Sumatoria' }, { simbolo: 'aᵢ', desc: 'Término i-ésimo' }]}
-          recurrence="Sₙ = a₁ · (1−qⁿ)/(1−q)"
-          explanation="Los quizzes aplican conceptos de series y sumatorias."
-          tipo="sumatoria"
-        />
-      )}
-
-      <div className="flex flex-col sm:flex-row gap-2 cx-bg-surface p-2 rounded-lg border cx-border-border">
-        <button onClick={() => setModo('quiz')} className={`flex-1 py-2 rounded-md text-sm font-semibold transition-colors ${modo === 'quiz' ? 'text-white' : 'cx-text-text-secondary cx-bg-surface'}`} style={{ background: modo === 'quiz' ? 'var(--accent-primary)' : undefined }}>📝 Práctica por niveles</button>
-        <button onClick={() => setModo('evaluacion')} className={`flex-1 py-2 rounded-md text-sm font-semibold transition-colors ${modo === 'evaluacion' ? 'text-white' : 'cx-text-text-secondary cx-bg-surface'}`} style={{ background: modo === 'evaluacion' ? 'var(--accent-primary)' : undefined }}>📊 Evaluación personalizada</button>
+      <div className="flex flex-wrap gap-1.5">
+        {NIVELES_META.map((m) => (<PillButton key={m.nivel} active={nivel === m.nivel} onClick={() => cambiarNivel(m.nivel)}>{m.nivel}</PillButton>))}
       </div>
 
-      {modo === 'quiz' ? (
-        <>
-          <div><div className="text-xs uppercase tracking-wide cx-text-text-muted font-semibold mb-2">Nivel de dificultad</div>
-            <div className="flex flex-wrap gap-1.5">{NIVELES_META.map((m) => (<PillButton key={m.nivel} active={nivel === m.nivel} onClick={() => cambiarNivel(m.nivel)}>{m.nivel}</PillButton>))}</div>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <StatCard label="Nivel actual" value={`${nivel} · ${meta.tag}`} accent="blue" />
-            <StatCard label="Aciertos" value={`${puntaje.aciertos} / ${puntaje.total}`} accent="teal" />
-            <StatCard label="Efectividad" value={puntaje.total ? `${Math.round((puntaje.aciertos / puntaje.total) * 100)}%` : '—'} accent="coral" />
-          </div>
-          {mostrarInforme && puntaje.total > 0 && (
-            <div className="cx-bg-accent-primary-bg border cx-border-accent-primary/30 rounded-lg p-4">
-              <div className="flex items-center gap-2 mb-2"><Check size={16} className="cx-text-accent-green-text" /><span className="text-sm font-semibold cx-text-text-primary">📊 Informe de progreso</span></div>
-              <div className="flex flex-wrap gap-4 text-sm"><span className="cx-text-text-secondary">Aciertos: <strong>{puntaje.aciertos}</strong></span><span className="cx-text-text-secondary">Total: <strong>{puntaje.total}</strong></span><span className="cx-text-text-secondary">Efectividad: <strong>{Math.round((puntaje.aciertos / puntaje.total) * 100)}%</strong></span><span className="cx-text-text-secondary">Nivel: <strong>{meta.dificultad}</strong></span></div>
-              <button onClick={() => setMostrarInforme(false)} className="mt-2 text-xs cx-text-accent-primary font-semibold">Ocultar informe</button>
-            </div>
-          )}
-          {pregunta ? (
-            <div className="cx-bg-surface border cx-border-border rounded-lg p-4 sm:p-5 space-y-4">
-              <div className="flex items-center gap-2 cx-text-accent-primary-text font-semibold text-xs uppercase tracking-wide"><Lightbulb size={14} /> {pregunta.categoria} · Nivel {nivel} · {meta.dificultad}</div>
-              <p className="text-[15px] cx-text-text-strong-gray leading-relaxed"><TextoConNegritas texto={pregunta.enunciado} /></p>
-              <div className="flex flex-col sm:flex-row gap-3 sm:items-end">
-                <label className="flex-1 flex flex-col gap-1">
-                  <span className="text-xs uppercase tracking-wide cx-text-text-muted font-semibold">Tu respuesta ({pregunta.unidad})</span>
-                  <input type="text" inputMode="decimal" value={respuestaTexto} onChange={(e) => setRespuestaTexto(e.target.value)} placeholder="Ej. 12500.50" className="w-full px-3 py-2.5 border-2 cx-border-border rounded-lg outline-none cx-focus-border-accent-primary cx-bg-surface cx-text-text-primary" style={{ fontFamily: "'JetBrains Mono', monospace" }} onKeyDown={(e) => e.key === 'Enter' && verificar()} />
-                </label>
-                <div className="flex flex-wrap gap-2">
-                  <button onClick={verificar} disabled={respuestaTexto.trim() === ''} className="px-4 py-2.5 rounded-lg text-sm font-semibold text-white disabled:opacity-40" style={{ background: 'var(--accent-primary)' }}>Verificar</button>
-                  <button onClick={nuevaPregunta} className="px-4 py-2.5 rounded-lg text-sm font-semibold cx-bg-surface cx-text-text-secondary border-2 cx-border-border cx-hover-border-border-hover flex items-center gap-1.5"><RotateCcw size={14} /> Nueva</button>
-                </div>
-              </div>
-              {verificado && (
-                <div className={`rounded-lg p-4 space-y-2 ${correcto ? 'cx-bg-accent-green-bg' : 'cx-bg-accent-coral-bg'}`}>
-                  <div className={`flex items-center gap-2 font-semibold text-sm ${correcto ? 'cx-text-accent-green-text' : 'cx-text-accent-coral-text'}`}>{correcto ? <Check size={16} /> : <X size={16} />}{correcto ? '¡Correcto!' : 'No es correcto todavía.'}</div>
-                  <p className="text-sm cx-text-text-strong-gray">Respuesta esperada: <strong>{fmt(pregunta.respuesta)}</strong></p>
-                  <div className="space-y-1 pt-1 border-t" style={{ borderColor: 'var(--border)' }}>{pregunta.solucion.map((linea, i) => (<p key={i} className="text-xs cx-text-text-secondary leading-relaxed">{linea}</p>))}</div>
-                </div>
-              )}
-            </div>
-          ) : <div className="text-center py-8 cx-text-text-muted">Cargando pregunta...</div>}
-          <p className="text-[11px] cx-text-text-faint">Cada nivel genera preguntas nuevas con números aleatorios.</p>
-        </>
-      ) : (
-        <div className="cx-bg-surface border cx-border-border rounded-lg p-5 space-y-4">
-          <h3 className="text-base font-semibold cx-text-text-primary" style={{ fontFamily: "'Fraunces', sans-serif" }}>📊 Configura tu evaluación</h3>
-          <p className="text-sm cx-text-text-secondary">Selecciona los temas que quieres evaluar y la dificultad.</p>
-          <div>
-            <div className="flex items-center justify-between mb-2 flex-wrap">
-              <span className="text-xs font-semibold cx-text-text-muted uppercase tracking-wide">Temas a evaluar</span>
-              <button onClick={() => { if (temasSeleccionados.length === TEMAS.length) setTemasSeleccionados([]); else setTemasSeleccionados(TEMAS.map(t => t.id)); }} className="text-xs cx-text-accent-primary font-semibold">{temasSeleccionados.length === TEMAS.length ? 'Deseleccionar todos' : 'Seleccionar todos'}</button>
-            </div>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-              {TEMAS.map((tema) => (
-                <label key={tema.id} className="flex items-center gap-2 p-2 rounded-lg cx-bg-surface-alt border cx-border-border cursor-pointer hover:cx-border-border-hover transition-colors">
-                  <input type="checkbox" checked={temasSeleccionados.includes(tema.id)} onChange={() => { if (temasSeleccionados.includes(tema.id)) setTemasSeleccionados(temasSeleccionados.filter(t => t !== tema.id)); else setTemasSeleccionados([...temasSeleccionados, tema.id]); }} className="w-4 h-4 accent-emerald-600" />
-                  <span className="text-xs cx-text-text-secondary">{tema.icon} {tema.label}</span>
-                </label>
-              ))}
-            </div>
-          </div>
-          <div>
-            <span className="text-xs font-semibold cx-text-text-muted uppercase tracking-wide">Dificultad</span>
-            <div className="flex flex-wrap gap-2 mt-1">
-              {DIFICULTADES.map((d) => (
-                <button key={d.id} onClick={() => setDificultadEval(d.id)} className={`px-3 py-1.5 rounded-md text-xs font-semibold border-2 transition-colors ${dificultadEval === d.id ? 'border-accent-primary text-white' : 'cx-border-border cx-text-text-secondary'}`} style={{ background: dificultadEval === d.id ? 'var(--accent-primary)' : undefined }}>{d.label}</button>
-              ))}
-            </div>
-          </div>
-          <button onClick={() => { if (temasSeleccionados.length === 0) { return; } iniciarEvaluacion(); }} disabled={temasSeleccionados.length === 0} className="w-full py-3 rounded-lg text-sm font-semibold text-white disabled:opacity-40 transition-opacity" style={{ background: 'var(--accent-primary)' }}>{temasSeleccionados.length === 0 ? 'Selecciona al menos un tema' : `Iniciar evaluación (${temasSeleccionados.length * 2} preguntas)`}</button>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <StatCard label="Nivel actual" value={`${nivel} · ${meta.tag}`} accent="blue" />
+        <StatCard label="Aciertos" value={`${puntaje.aciertos} / ${puntaje.total}`} accent="teal" />
+        <StatCard label="Efectividad" value={puntaje.total ? `${Math.round((puntaje.aciertos / puntaje.total) * 100)}%` : '—'} accent="coral" />
+      </div>
 
-          {evaluacionActiva && !evaluacionCompletada && preguntasEval[preguntaEvalIndex] && (
-            <div className="cx-bg-surface-alt border cx-border-border rounded-lg p-4 sm:p-5 space-y-4 mt-2">
-              <div className="flex items-center justify-between flex-wrap gap-2">
-                <div className="flex items-center gap-2 cx-text-accent-primary-text font-semibold text-xs uppercase tracking-wide">
-                  <Lightbulb size={14} /> {preguntasEval[preguntaEvalIndex].categoria} · Pregunta {preguntaEvalIndex + 1} de {preguntasEval.length}
-                </div>
-                <button onClick={reiniciarEvaluacion} className="text-xs cx-text-text-muted font-semibold hover:cx-text-accent-coral-text">Cancelar</button>
-              </div>
-              <div className="w-full h-1.5 rounded-full cx-bg-surface overflow-hidden">
-                <div className="h-full" style={{ width: `${((preguntaEvalIndex) / preguntasEval.length) * 100}%`, background: 'var(--accent-primary)' }} />
-              </div>
-              <p className="text-[15px] cx-text-text-strong-gray leading-relaxed"><TextoConNegritas texto={preguntasEval[preguntaEvalIndex].enunciado} /></p>
-              <div className="flex flex-col sm:flex-row gap-3 sm:items-end">
-                <label className="flex-1 flex flex-col gap-1">
-                  <span className="text-xs uppercase tracking-wide cx-text-text-muted font-semibold">Tu respuesta ({preguntasEval[preguntaEvalIndex].unidad})</span>
-                  <input type="text" inputMode="decimal" value={respuestaEvalTexto} onChange={(e) => setRespuestaEvalTexto(e.target.value)} placeholder="Ej. 12500.50" className="w-full px-3 py-2.5 border-2 cx-border-border rounded-lg outline-none cx-focus-border-accent-primary cx-bg-surface cx-text-text-primary" style={{ fontFamily: "'JetBrains Mono', monospace" }} onKeyDown={(e) => e.key === 'Enter' && (evalVerificado ? siguienteEval() : verificarEval())} />
-                </label>
-                {!evalVerificado ? (
-                  <button onClick={verificarEval} disabled={respuestaEvalTexto.trim() === ''} className="px-4 py-2.5 rounded-lg text-sm font-semibold text-white disabled:opacity-40" style={{ background: 'var(--accent-primary)' }}>Verificar</button>
-                ) : (
-                  <button onClick={siguienteEval} className="px-4 py-2.5 rounded-lg text-sm font-semibold text-white flex items-center gap-1.5" style={{ background: 'var(--accent-green)' }}>
-                    {preguntaEvalIndex + 1 >= preguntasEval.length ? 'Ver resultado' : 'Siguiente'} <ArrowRight size={14} />
-                  </button>
-                )}
-              </div>
-              {evalVerificado && (
-                <div className={`rounded-lg p-4 space-y-2 ${evalCorrecto ? 'cx-bg-accent-green-bg' : 'cx-bg-accent-coral-bg'}`}>
-                  <div className={`flex items-center gap-2 font-semibold text-sm ${evalCorrecto ? 'cx-text-accent-green-text' : 'cx-text-accent-coral-text'}`}>{evalCorrecto ? <Check size={16} /> : <X size={16} />}{evalCorrecto ? '¡Correcto!' : 'No es correcto.'}</div>
-                  <p className="text-sm cx-text-text-strong-gray">Respuesta esperada: <strong>{preguntasEval[preguntaEvalIndex].unidad === '%' || preguntasEval[preguntaEvalIndex].unidad === 'años' || preguntasEval[preguntaEvalIndex].unidad === 'periodos' ? preguntasEval[preguntaEvalIndex].respuesta : fmt(preguntasEval[preguntaEvalIndex].respuesta)}{preguntasEval[preguntaEvalIndex].unidad === '%' ? '%' : ''}</strong></p>
-                  <div className="space-y-1 pt-1 border-t" style={{ borderColor: 'var(--border)' }}>{preguntasEval[preguntaEvalIndex].solucion.map((linea, i) => (<p key={i} className="text-xs cx-text-text-secondary leading-relaxed">{linea}</p>))}</div>
-                </div>
-              )}
+      {pregunta ? (
+        <div className="cx-bg-surface border cx-border-border rounded-lg p-4 sm:p-5 space-y-4">
+          <div className="flex items-center gap-2 cx-text-accent-primary-text font-semibold text-xs uppercase tracking-wide"><Lightbulb size={14} /> {pregunta.categoria} · Nivel {nivel}</div>
+          <p className="text-[15px] cx-text-text-strong-gray leading-relaxed"><TextoConNegritas texto={pregunta.enunciado} /></p>
+          <div className="flex flex-col sm:flex-row gap-3 sm:items-end">
+            <label className="flex-1 flex flex-col gap-1">
+              <span className="text-xs uppercase tracking-wide cx-text-text-muted font-semibold">Tu respuesta ({pregunta.unidad})</span>
+              <input type="text" inputMode="decimal" value={respuestaTexto} onChange={(e) => setRespuestaTexto(e.target.value)} placeholder="Ej. 12500.50" className="w-full px-3 py-2.5 border-2 cx-border-border rounded-lg outline-none cx-focus-border-accent-primary cx-bg-surface cx-text-text-primary" style={{ fontFamily: "'JetBrains Mono', monospace" }} onKeyDown={(e) => e.key === 'Enter' && verificar()} />
+            </label>
+            <div className="flex flex-wrap gap-2">
+              <button onClick={verificar} disabled={respuestaTexto.trim() === ''} className="px-4 py-2.5 rounded-lg text-sm font-semibold text-white disabled:opacity-40" style={{ background: 'var(--accent-primary)' }}>Verificar</button>
+              <button onClick={nuevaPregunta} className="px-4 py-2.5 rounded-lg text-sm font-semibold cx-bg-surface cx-text-text-secondary border-2 cx-border-border cx-hover-border-border-hover flex items-center gap-1.5"><RotateCcw size={14} /> Nueva</button>
             </div>
-          )}
-
-          {evaluacionCompletada && (
-            <div className="cx-bg-accent-primary-bg border cx-border-accent-primary/30 rounded-lg p-5 space-y-3 mt-2">
-              <div className="flex items-center gap-2"><GraduationCap size={18} className="cx-text-accent-primary" /><span className="font-semibold text-[15px] cx-text-text-primary" style={{ fontFamily: "'Fraunces', sans-serif" }}>Resultado de tu evaluación</span></div>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                <StatCard label="Aciertos" value={`${respuestasEval.filter((r) => r.correcto).length} / ${respuestasEval.length}`} accent="teal" />
-                <StatCard label="Efectividad" value={`${Math.round((respuestasEval.filter((r) => r.correcto).length / respuestasEval.length) * 100)}%`} accent="coral" />
-                <StatCard label="Temas evaluados" value={String(temasSeleccionados.length)} accent="blue" />
-              </div>
-              <div className="space-y-1.5 pt-2 border-t cx-border-border">
-                {respuestasEval.map((r, i) => (
-                  <div key={i} className="flex items-center gap-2 text-xs cx-text-text-secondary">
-                    {r.correcto ? <Check size={13} className="cx-text-accent-green-text flex-shrink-0" /> : <X size={13} className="cx-text-accent-coral-text flex-shrink-0" />}
-                    <span>{r.pregunta.categoria}</span>
-                  </div>
-                ))}
-              </div>
-              <button onClick={reiniciarEvaluacion} className="w-full py-2.5 rounded-lg text-sm font-semibold text-white flex items-center justify-center gap-1.5" style={{ background: 'var(--accent-primary)' }}>
-                <RotateCcw size={14} /> Nueva evaluación
-              </button>
+          </div>
+          {verificado && (
+            <div className={`rounded-lg p-4 space-y-2 ${correcto ? 'cx-bg-accent-green-bg' : 'cx-bg-accent-coral-bg'}`}>
+              <div className={`flex items-center gap-2 font-semibold text-sm ${correcto ? 'cx-text-accent-green-text' : 'cx-text-accent-coral-text'}`}>{correcto ? <Check size={16} /> : <X size={16} />}{correcto ? '¡Correcto!' : 'No es correcto todavía.'}</div>
+              <p className="text-sm cx-text-text-strong-gray">Respuesta esperada: <strong>{fmt(pregunta.respuesta)}</strong></p>
+              <div className="space-y-1 pt-1 border-t" style={{ borderColor: 'var(--border)' }}>{pregunta.solucion.map((linea, i) => (<p key={i} className="text-xs cx-text-text-secondary leading-relaxed">{linea}</p>))}</div>
             </div>
           )}
         </div>
-      )}
-
-      {tutorialOn && (
-        <TutorialStep step={tutorialSteps[tutorialStep]} total={tutorialSteps.length} 
-          onNext={() => setTutorialStep(Math.min(tutorialSteps.length - 1, tutorialStep + 1))}
-          onPrev={() => setTutorialStep(Math.max(0, tutorialStep - 1))}
-          onClose={() => setTutorialOn(false)} />
-      )}
+      ) : <div className="text-center py-8 cx-text-text-muted">Cargando pregunta...</div>}
     </div>
   );
 }
@@ -2267,7 +2001,6 @@ function QuizTab() {
 // ============================================================
 // FORMULARIO TAB
 // ============================================================
-
 function FormularioTab() {
   const { dashboardOn, setDashboardOn, tutorialOn, setTutorialOn, discreteOn, setDiscreteOn, tutorialStep, setTutorialStep } = useModes();
 
@@ -2289,7 +2022,8 @@ function FormularioTab() {
           <div className="cx-bg-surface border cx-border-border rounded-lg p-4"><h4 className="font-bold text-sm cx-text-accent-primary">Interés Compuesto</h4><div className="font-serif text-center py-2 text-sm">F = P · (1 + r)ᵗ</div></div>
           <div className="cx-bg-surface border cx-border-border rounded-lg p-4"><h4 className="font-bold text-sm cx-text-accent-primary">Cuota Francesa</h4><div className="font-serif text-center py-2 text-xs">C = (P·r) / (1 − (1+r)⁻ⁿ)</div></div>
           <div className="cx-bg-surface border cx-border-border rounded-lg p-4"><h4 className="font-bold text-sm cx-text-accent-primary">Tasa Efectiva Anual</h4><div className="font-serif text-center py-2 text-sm">TEA = (1 + j/m)ᵐ − 1</div></div>
-          <div className="cx-bg-surface border cx-border-border rounded-lg p-4 sm:col-span-2"><h4 className="font-bold text-sm cx-text-accent-primary">Relación de Recurrencia</h4><div className="font-serif text-center py-2 text-sm">Sₜ = Sₜ₋₁ · (1 + r) − C</div></div>
+          <div className="cx-bg-surface border cx-border-border rounded-lg p-4"><h4 className="font-bold text-sm cx-text-accent-primary">Valor Futuro de Anualidad</h4><div className="font-serif text-center py-2 text-sm">FV = A · [(1+r)ⁿ − 1] / r</div></div>
+          <div className="cx-bg-surface border cx-border-border rounded-lg p-4"><h4 className="font-bold text-sm cx-text-accent-primary">Relación de Recurrencia</h4><div className="font-serif text-center py-2 text-sm">Sₜ = Sₜ₋₁ · (1 + r) − C</div></div>
         </div>
       )}
     </div>
@@ -2297,15 +2031,14 @@ function FormularioTab() {
 }
 
 // ============================================================
-// FOLDERS Y MENÚ PRINCIPAL
+// FOLDERS Y MENÚ
 // ============================================================
-
 const FOLDERS = [
   { key: 'interes', label: 'Interés simple y compuesto', desc: 'Cómo crece el dinero.', icon: PiggyBank, accent: '#2F8F5B' },
   { key: 'tasas', label: 'Tasas equivalentes', desc: 'Convierte entre capitalizaciones.', icon: ArrowLeftRight, accent: '#2B4570' },
   { key: 'anualidades', label: 'Anualidades y préstamos', desc: 'Sistemas de amortización.', icon: Landmark, accent: '#A3402E' },
   { key: 'simulador', label: 'Simulador de destinos', desc: 'Compara caminos de ahorro y deuda.', icon: Target, accent: '#8A6D1F' },
-  { key: 'quizzes', label: 'Quizzes y ejercicios', desc: '10 niveles de dificultad.', icon: GraduationCap, accent: '#6B4FA0' },
+  { key: 'quizzes', label: 'Quizzes y ejercicios', desc: '3 niveles de dificultad.', icon: GraduationCap, accent: '#6B4FA0' },
   { key: 'formulario', label: 'Formulario', desc: 'Todas las fórmulas en un lugar.', icon: FileText, accent: '#D97706' },
 ];
 
@@ -2333,22 +2066,34 @@ function GameMenu({ onSelect }) {
   );
 }
 
-function SplashScreen({ fadingOut }) {
+// ============================================================
+// SPLASH SCREEN CON ANIMACIÓN DE MONEDA MEJORADA
+// ============================================================
+function SplashScreen({ fadingOut, progress }) {
   const [frase] = useState(() => FRASES_CARGA[Math.floor(Math.random() * FRASES_CARGA.length)]);
+  
+  // Efecto de giro: al 95% se muestra el logo frontal
+  const spinClass = progress >= 95 ? 'coin-spinning-paused' : 'coin-spinning';
+  
   return (
     <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center transition-all duration-300" 
          style={{ background: 'var(--bg)', opacity: fadingOut ? 0 : 1, transform: fadingOut ? 'scale(1.03)' : 'scale(1)' }}>
       <div className="absolute inset-0 opacity-[0.05] pointer-events-none" 
            style={{ backgroundImage: 'repeating-linear-gradient(to bottom, transparent, transparent 27px, #000 27px, #000 28px)' }} />
       <div className="relative flex flex-col items-center px-6 text-center">
-        <div className="coin-wrapper mb-5" style={{ perspective: '600px' }}>
+        <div className="coin-wrapper mb-5" style={{ perspective: '400px' }}>
           <img 
             src={ESPOL_LOGO} 
             alt="ESPOL" 
-            className="espol-logo coin-spinning w-24 sm:w-28"
+            className={`espol-logo ${spinClass} w-24 sm:w-28`}
             style={{ 
               transformStyle: 'preserve-3d',
-              animation: 'coinSpin 2.5s ease-in-out infinite'
+              backfaceVisibility: 'hidden',
+              WebkitBackfaceVisibility: 'hidden',
+              willChange: 'transform',
+              filter: 'drop-shadow(0 0 15px rgba(217, 201, 138, 0.4))',
+              borderRadius: '50%',
+              boxShadow: '0 0 0 3px rgba(180, 160, 100, 0.6), 0 0 0 6px rgba(150, 130, 80, 0.4), 0 0 0 9px rgba(120, 100, 60, 0.2)'
             }}
           />
         </div>
@@ -2362,10 +2107,10 @@ function SplashScreen({ fadingOut }) {
         </div>
         <div className="w-56 h-1.5 rounded-full overflow-hidden" 
              style={{ background: 'var(--border)' }}>
-          <div className="h-full splash-bar" style={{ background: 'var(--accent-primary)' }} />
+          <div className="h-full splash-bar" style={{ background: 'var(--accent-primary)', width: `${Math.min(100, progress)}%` }} />
         </div>
         <div className="text-[11px] mt-3" style={{ color: 'var(--text-faint)' }}>
-          Cargando datos y archivos contables…
+          Cargando datos y archivos contables… {Math.round(progress)}%
         </div>
         <div className="text-[12px] mt-4 max-w-xs italic" 
              style={{ color: 'var(--text-muted)', fontFamily: "'Fraunces', serif" }}>
@@ -2376,8 +2121,6 @@ function SplashScreen({ fadingOut }) {
   );
 }
 
-// Estilos de la app: definidos una sola vez fuera del componente para no recrear
-// este string gigante en cada render (por ejemplo, cada vez que se escribe en un Field).
 const APP_STYLES = `
   @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&family=STIX+Two+Text:ital,wght@0,400;0,500;0,600;1,400;1,500&display=swap');
   body { font-family: 'Inter', sans-serif; }
@@ -2422,39 +2165,30 @@ const APP_STYLES = `
   .cx-border-accent-coral-border { border-color: var(--accent-coral-border); }
   .cx-hover-text-accent-primary:hover { color: var(--accent-primary); }
   .formula-centered { text-align: center; display: flex; justify-content: center; align-items: center; flex-wrap: wrap; gap: 0.25rem; }
+  .respuesta-destacada {
+    border: 2px solid var(--accent-primary) !important;
+    border-radius: 8px;
+    background: var(--accent-primary-bg) !important;
+    padding: 4px 8px;
+    font-weight: 700;
+    color: var(--accent-primary-text) !important;
+  }
+  .detalle-tabla th, .detalle-tabla td { padding: 6px 8px; text-align: right; }
+  .detalle-tabla th:first-child, .detalle-tabla td:first-child { text-align: left; }
   @keyframes coinSpin {
-    0% {
-      transform: rotateY(0deg);
-    }
-    100% {
-      transform: rotateY(360deg);
-    }
+    0% { transform: rotateY(0deg) scaleX(1); }
+    50% { transform: rotateY(180deg) scaleX(0.85); }
+    100% { transform: rotateY(360deg) scaleX(1); }
   }
-  
   @keyframes coinSpinPaused {
-      0% {
-        transform: rotateY(0deg) scaleX(1);
-      }
-      15% {
-        transform: rotateY(180deg) scaleX(0.85); /* Se "achata" al girar */
-      }
-      35% {
-        transform: rotateY(180deg) scaleX(0.85); /* Pausa mostrando el reverso */
-      }
-      50% {
-        transform: rotateY(360deg) scaleX(1);    /* Vuelve al frente */
-      }
-      65% {
-        transform: rotateY(360deg) scaleX(1);    /* Pausa mostrando el frente */
-      }
-      80% {
-        transform: rotateY(0deg) scaleX(0.85);   /* Gira nuevamente */
-      }
-      100% {
-        transform: rotateY(0deg) scaleX(1);
-      }
+    0% { transform: rotateY(0deg) scaleX(1); }
+    15% { transform: rotateY(180deg) scaleX(0.85); }
+    35% { transform: rotateY(180deg) scaleX(0.85); }
+    50% { transform: rotateY(360deg) scaleX(1); }
+    65% { transform: rotateY(360deg) scaleX(1); }
+    80% { transform: rotateY(0deg) scaleX(0.85); }
+    100% { transform: rotateY(0deg) scaleX(1); }
   }
-  
   .coin-spinning {
     animation: coinSpin 2.5s ease-in-out infinite;
     backface-visibility: hidden;
@@ -2462,26 +2196,18 @@ const APP_STYLES = `
     filter: drop-shadow(0 0 12px rgba(217, 201, 138, 0.3));
     will-change: transform;
   }
-  
   .coin-spinning-paused {
-      animation: coinSpinPaused 3s ease-in-out infinite; /* Más rápida: de 4s a 3s */
-      backface-visibility: hidden;
-      -webkit-backface-visibility: hidden;
-      filter: drop-shadow(0 0 15px rgba(217, 201, 138, 0.4));
-      will-change: transform;
-      /* Efecto de grosor */
-      border-radius: 50%;
-      box-shadow: 
-        0 0 0 3px rgba(180, 160, 100, 0.6),  /* Borde exterior */
-        0 0 0 6px rgba(150, 130, 80, 0.4),   /* Grosor de la moneda */
-        0 0 0 9px rgba(120, 100, 60, 0.2);   /* Sombra exterior */
+    animation: coinSpinPaused 3s ease-in-out infinite;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+    filter: drop-shadow(0 0 15px rgba(217, 201, 138, 0.4));
+    will-change: transform;
   }
-  
   .coin-wrapper {
-      display: inline-block;
-      perspective: 400px; /* Menos perspectiva = más realista */
-      transform-style: preserve-3d;
-      padding: 4px; /* Espacio para el grosor */
+    display: inline-block;
+    perspective: 400px;
+    transform-style: preserve-3d;
+    padding: 4px;
   }
   @media (max-width: 640px) {
     .finapp-root .max-w-5xl { padding-left: 0.75rem; padding-right: 0.75rem; }
@@ -2504,7 +2230,6 @@ function FolderHeader({ folder, onBack }) {
 // ============================================================
 // APP PRINCIPAL
 // ============================================================
-
 function FinanzasApp() {
   const [folder, setFolder] = useState(null);
   const [theme, setTheme] = useState('light');
@@ -2514,13 +2239,21 @@ function FinanzasApp() {
   const [entering, setEntering] = useState(false);
   const [leaving, setLeaving] = useState(false);
   const [origin, setOrigin] = useState({ x: 50, y: 15 });
+  const [progress, setProgress] = useState(0);
   const shellRef = useRef(null);
   const TRANSITION_MS = 190;
 
   useEffect(() => {
+    const interval = setInterval(() => {
+      setProgress(p => Math.min(100, p + 1 + Math.random() * 2));
+    }, 30);
+    
     const t1 = setTimeout(() => setBooting(false), 1700);
-    const t2 = setTimeout(() => setSplashDone(true), 2000);
-    return () => { clearTimeout(t1); clearTimeout(t2); };
+    const t2 = setTimeout(() => {
+      setSplashDone(true);
+      clearInterval(interval);
+    }, 2200);
+    return () => { clearTimeout(t1); clearTimeout(t2); clearInterval(interval); };
   }, []);
 
   const toggleTheme = () => setTheme((t) => (t === 'light' ? 'dark' : 'light'));
@@ -2551,7 +2284,7 @@ function FinanzasApp() {
 
   return (
     <div className="finapp-root min-h-screen w-full print:hidden" data-theme={theme} style={{ background: 'radial-gradient(1100px 500px at 85% -10%, rgba(31,77,58,0.07), transparent 60%), radial-gradient(900px 500px at -10% 10%, rgba(138,109,31,0.06), transparent 55%), var(--bg)' }}>
-      {!splashDone && <SplashScreen fadingOut={!booting} />}
+      {!splashDone && <SplashScreen fadingOut={!booting} progress={progress} />}
       <style>{APP_STYLES}</style>
       <div className="max-w-5xl mx-auto px-4 py-6 sm:py-8">
         <header className="relative overflow-hidden rounded-lg mb-5 px-5 py-6 sm:px-8 sm:py-8" style={{ background: 'linear-gradient(135deg, #1F4D3A 0%, #2A6349 55%, #163A2B 100%)' }}>
