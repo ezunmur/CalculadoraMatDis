@@ -87,6 +87,16 @@
           transform-style: preserve-3d;
           padding: 4px;
         }
+        /* Estilos para checkboxes personalizados */
+        .tema-checkbox:checked {
+          accent-color: var(--accent-primary);
+        }
+        .tema-checkbox {
+          width: 1.1rem;
+          height: 1.1rem;
+          cursor: pointer;
+          flex-shrink: 0;
+        }
     </style>
 </head>
 <body class="m-0 p-0">
@@ -104,7 +114,7 @@ import {
   GraduationCap, ChevronLeft, ChevronRight, Lightbulb, Home,
   Settings2, Check, ArrowLeftRight, Sun, Moon, Info, FileText,
   BarChart3, LineChart as LineChartIcon, ToggleLeft, ToggleRight,
-  Clock, Calendar, DollarSign, Trash2
+  Clock, Calendar, DollarSign, Trash2, Shuffle
 } from 'lucide-react';
 
 const ESPOL_LOGO = 'logo.svg';
@@ -1921,9 +1931,10 @@ function SimuladorTab() {
 }
 
 // ============================================================
-// QUIZ TAB - 10 NIVELES COMPLETOS
+// QUIZ TAB - 10 NIVELES COMPLETOS CON CHECKLIST Y DIFICULTAD
 // ============================================================
 function QuizTab() {
+  const [modo, setModo] = useState('quiz'); // 'quiz' o 'evaluacion'
   const [nivel, setNivel] = useState(1);
   const [pregunta, setPregunta] = useState(null);
   const [respuestaTexto, setRespuestaTexto] = useState('');
@@ -1932,12 +1943,49 @@ function QuizTab() {
   const [puntaje, setPuntaje] = useState({ aciertos: 0, total: 0 });
   const [mostrarInforme, setMostrarInforme] = useState(false);
 
+  // Evaluación personalizada
+  const [temasSeleccionados, setTemasSeleccionados] = useState([]);
+  const [dificultadEval, setDificultadEval] = useState('medio');
+  const [evaluacionActiva, setEvaluacionActiva] = useState(false);
+  const [preguntasEval, setPreguntasEval] = useState([]);
+  const [preguntaEvalIndex, setPreguntaEvalIndex] = useState(0);
+  const [respuestasEval, setRespuestasEval] = useState([]);
+  const [evaluacionCompletada, setEvaluacionCompletada] = useState(false);
+  const [respuestaEvalTexto, setRespuestaEvalTexto] = useState('');
+  const [evalVerificado, setEvalVerificado] = useState(false);
+  const [evalCorrecto, setEvalCorrecto] = useState(false);
+
   const { dashboardOn, setDashboardOn, tutorialOn, setTutorialOn, discreteOn, setDiscreteOn, tutorialStep, setTutorialStep } = useModes();
 
-  useEffect(() => {
-    setPregunta(generarPreguntaNivel(1));
-  }, []);
+  // Definición de temas
+  const TEMAS = [
+    { id: 'interes_simple', label: 'Interés Simple', icon: '📊' },
+    { id: 'interes_compuesto', label: 'Interés Compuesto', icon: '📈' },
+    { id: 'tasas_equivalentes', label: 'Tasas Equivalentes', icon: '🔄' },
+    { id: 'valor_presente', label: 'Valor Presente', icon: '💰' },
+    { id: 'anualidades', label: 'Anualidades y Préstamos', icon: '🏦' },
+    { id: 'problemas_integradores', label: 'Problemas Integradores', icon: '🧩' },
+  ];
 
+  const DIFICULTADES = [
+    { id: 'facil', label: '🌟 Fácil', color: 'text-emerald-600' },
+    { id: 'medio', label: '⚡ Medio', color: 'text-blue-600' },
+    { id: 'dificil', label: '🔥 Difícil', color: 'text-orange-600' },
+    { id: 'experto', label: '💎 Experto', color: 'text-purple-600' },
+    { id: 'master', label: '👑 Master', color: 'text-red-600' },
+  ];
+
+  // Mapas de niveles por tema
+  const NIVELES_POR_TEMA = {
+    interes_simple: [1, 2],
+    interes_compuesto: [3, 4],
+    tasas_equivalentes: [5, 6],
+    valor_presente: [7],
+    anualidades: [8],
+    problemas_integradores: [9, 10],
+  };
+
+  // Generadores de preguntas por nivel
   function randInt(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
   function randChoice(arr) { return arr[randInt(0, arr.length - 1)]; }
   function round2(n) { return Math.round(n * 100) / 100; }
@@ -1951,7 +1999,7 @@ function QuizTab() {
     return Math.abs(valorUsuario - correcto) <= Math.abs(correcto) * 0.02;
   }
 
-  // 10 generadores de preguntas
+  // Generadores de preguntas por nivel
   function nivel1_interesSimpleGanado() {
     const P = randInt(5, 50) * 1000;
     const r = randInt(4, 24);
@@ -2153,13 +2201,6 @@ function QuizTab() {
     10: nivel10_problemaDeDestino,
   };
 
-  function generarPreguntaNivel(nivel) {
-    const gen = GENERADORES_POR_NIVEL[nivel] || nivel1_interesSimpleGanado;
-    const base = gen();
-    const dificultad = nivel <= 3 ? 'facil' : nivel <= 6 ? 'medio' : nivel <= 8 ? 'dificil' : nivel <= 9 ? 'experto' : 'master';
-    return { tema: 'nivel', ...base, dificultad };
-  }
-
   const NIVELES_META = [
     { nivel: 1, titulo: 'Interés simple · interés generado', tag: 'Interés simple', dificultad: 'Fácil' },
     { nivel: 2, titulo: 'Interés simple · monto final', tag: 'Interés simple', dificultad: 'Fácil' },
@@ -2172,6 +2213,30 @@ function QuizTab() {
     { nivel: 9, titulo: 'Mixto · tiempo total en años', tag: 'Problemas integradores', dificultad: 'Experto' },
     { nivel: 10, titulo: 'Problema de destino', tag: 'Problemas integradores', dificultad: 'Master' },
   ];
+
+  function generarPreguntaNivel(nivel) {
+    const gen = GENERADORES_POR_NIVEL[nivel] || nivel1_interesSimpleGanado;
+    const base = gen();
+    return { tema: 'nivel', ...base };
+  }
+
+  function nivelesParaDificultad(niveles, dificultad) {
+    if (!niveles || niveles.length === 0) return [1, 1];
+    if (niveles.length === 1) return [niveles[0], niveles[0]];
+    const facil = niveles[0], dificilN = niveles[niveles.length - 1];
+    const rango = dificilN - facil;
+    if (dificultad === 'facil') return [facil, Math.min(facil + 1, dificilN)];
+    if (dificultad === 'medio') return [facil + Math.floor(rango * 0.2), Math.min(facil + Math.floor(rango * 0.6), dificilN)];
+    if (dificultad === 'dificil') return [facil + Math.floor(rango * 0.4), Math.min(facil + Math.floor(rango * 0.8), dificilN)];
+    if (dificultad === 'experto') return [Math.max(facil, dificilN - 2), dificilN];
+    if (dificultad === 'master') return [dificilN, dificilN];
+    return [facil, dificilN];
+  }
+
+  // Funciones para modo quiz
+  useEffect(() => {
+    setPregunta(generarPreguntaNivel(1));
+  }, []);
 
   const cambiarNivel = (n) => {
     setNivel(n);
@@ -2201,56 +2266,340 @@ function QuizTab() {
 
   const meta = NIVELES_META[nivel - 1] || NIVELES_META[0];
 
+  // Funciones para modo evaluación
+  const seleccionarTodos = () => {
+    if (temasSeleccionados.length === TEMAS.length) {
+      setTemasSeleccionados([]);
+    } else {
+      setTemasSeleccionados(TEMAS.map(t => t.id));
+    }
+  };
+
+  const seleccionarAleatorios = () => {
+    const shuffled = [...TEMAS].sort(() => Math.random() - 0.5);
+    const seleccionados = shuffled.slice(0, Math.min(3, shuffled.length)).map(t => t.id);
+    setTemasSeleccionados(seleccionados);
+  };
+
+  const iniciarEvaluacion = () => {
+    if (temasSeleccionados.length === 0) return;
+    const preguntas = [];
+    temasSeleccionados.forEach((temaId) => {
+      const niveles = NIVELES_POR_TEMA[temaId] || [1];
+      const [n1, n2] = nivelesParaDificultad(niveles, dificultadEval);
+      preguntas.push(generarPreguntaNivel(n1));
+      if (n1 !== n2) preguntas.push(generarPreguntaNivel(n2));
+      else preguntas.push(generarPreguntaNivel(n1));
+    });
+    setPreguntasEval(preguntas);
+    setPreguntaEvalIndex(0);
+    setRespuestasEval([]);
+    setEvaluacionCompletada(false);
+    setRespuestaEvalTexto('');
+    setEvalVerificado(false);
+    setEvaluacionActiva(true);
+  };
+
+  const verificarEval = () => {
+    const preguntaActual = preguntasEval[preguntaEvalIndex];
+    const valor = parseFloat(respuestaEvalTexto.replace(',', '.'));
+    const ok = dentroDeToleranciaQ(valor, preguntaActual.respuesta, preguntaActual.unidad);
+    setEvalCorrecto(ok);
+    setEvalVerificado(true);
+  };
+
+  const siguienteEval = () => {
+    setRespuestasEval((prev) => [...prev, { pregunta: preguntasEval[preguntaEvalIndex], correcto: evalCorrecto }]);
+    setRespuestaEvalTexto('');
+    setEvalVerificado(false);
+    if (preguntaEvalIndex + 1 >= preguntasEval.length) {
+      setEvaluacionCompletada(true);
+      setEvaluacionActiva(false);
+    } else {
+      setPreguntaEvalIndex((i) => i + 1);
+    }
+  };
+
+  const reiniciarEvaluacion = () => {
+    setEvaluacionActiva(false);
+    setEvaluacionCompletada(false);
+    setPreguntasEval([]);
+    setPreguntaEvalIndex(0);
+    setRespuestasEval([]);
+  };
+
+  const tutorialSteps = [
+    { index: 0, titulo: '📝 Práctica por Niveles', texto: 'Selecciona un nivel del 1 al 10 y resuelve la pregunta. Cada nivel genera números aleatorios.', consejo: 'Comienza por los niveles más bajos para practicar los conceptos básicos.' },
+    { index: 1, titulo: '📊 Evaluación Personalizada', texto: 'Selecciona los temas que quieres evaluar, elige la dificultad y genera una evaluación con 2 preguntas por tema.', consejo: 'La dificultad determina qué tan complejas serán las preguntas.' },
+    { index: 2, titulo: '✅ Verifica tus respuestas', texto: 'Escribe tu respuesta y presiona "Verificar". Se acepta un pequeño margen de error por redondeo.', consejo: 'Si fallas, la solución paso a paso te muestra dónde te equivocaste.' },
+  ];
+
   return (
     <div className="space-y-5">
       <ControlPanel 
         dashboardOn={dashboardOn} setDashboardOn={setDashboardOn}
         tutorialOn={tutorialOn} setTutorialOn={setTutorialOn}
         discreteOn={discreteOn} setDiscreteOn={setDiscreteOn}
-        onReset={() => { setNivel(1); setPregunta(generarPreguntaNivel(1)); setPuntaje({ aciertos: 0, total: 0 }); }} 
+        onReset={() => { setNivel(1); setPregunta(generarPreguntaNivel(1)); setPuntaje({ aciertos: 0, total: 0 }); setModo('quiz'); setTemasSeleccionados([]); }} 
       />
 
-      <div className="flex flex-wrap gap-1.5">
-        {NIVELES_META.map((m) => (<PillButton key={m.nivel} active={nivel === m.nivel} onClick={() => cambiarNivel(m.nivel)}>{m.nivel}</PillButton>))}
-      </div>
-
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <StatCard label="Nivel actual" value={`${nivel} · ${meta.tag}`} accent="blue" />
-        <StatCard label="Aciertos" value={`${puntaje.aciertos} / ${puntaje.total}`} accent="teal" />
-        <StatCard label="Efectividad" value={puntaje.total ? `${Math.round((puntaje.aciertos / puntaje.total) * 100)}%` : '—'} accent="coral" />
-      </div>
-
-      {mostrarInforme && puntaje.total > 0 && (
-        <div className="cx-bg-accent-primary-bg border cx-border-accent-primary/30 rounded-lg p-4">
-          <div className="flex items-center gap-2 mb-2"><Check size={16} className="cx-text-accent-green-text" /><span className="text-sm font-semibold cx-text-text-primary">📊 Informe de progreso</span></div>
-          <div className="flex flex-wrap gap-4 text-sm"><span className="cx-text-text-secondary">Aciertos: <strong>{puntaje.aciertos}</strong></span><span className="cx-text-text-secondary">Total: <strong>{puntaje.total}</strong></span><span className="cx-text-text-secondary">Efectividad: <strong>{Math.round((puntaje.aciertos / puntaje.total) * 100)}%</strong></span><span className="cx-text-text-secondary">Nivel: <strong>{meta.dificultad}</strong></span></div>
-          <button onClick={() => setMostrarInforme(false)} className="mt-2 text-xs cx-text-accent-primary font-semibold">Ocultar informe</button>
+      {discreteOn && (
+        <div className="cx-bg-surface border-l-4 border-purple-400 rounded-r-lg p-4 mb-4 mode-discrete">
+          <div className="flex items-center gap-2 mb-2">
+            <span className="text-sm">Σ</span>
+            <span className="text-xs font-bold cx-text-accent-primary uppercase tracking-wide">Sumatoria</span>
+            <span className="text-[9px] cx-text-text-muted bg-cx-bg-surface px-2 py-0.5 rounded-full">Modo Académico</span>
+          </div>
+          <div className="bg-white dark:bg-black/20 rounded-lg p-4 mb-3 border cx-border-border shadow-sm">
+            <div className="text-center font-serif text-base sm:text-lg" style={{ fontFamily: "'STIX Two Text', 'Cambria Math', serif" }}>
+              Σ a<Sub>i</Sub> · Serie Geométrica
+            </div>
+          </div>
+          <div className="text-xs cx-text-text-secondary italic">💡 Los quizzes aplican conceptos de series y sumatorias.</div>
         </div>
       )}
 
-      {pregunta ? (
-        <div className="cx-bg-surface border cx-border-border rounded-lg p-4 sm:p-5 space-y-4">
-          <div className="flex items-center gap-2 cx-text-accent-primary-text font-semibold text-xs uppercase tracking-wide"><Lightbulb size={14} /> {pregunta.categoria} · Nivel {nivel} · {meta.dificultad}</div>
-          <p className="text-[15px] cx-text-text-strong-gray leading-relaxed"><TextoConNegritas texto={pregunta.enunciado} /></p>
-          <div className="flex flex-col sm:flex-row gap-3 sm:items-end">
-            <label className="flex-1 flex flex-col gap-1">
-              <span className="text-xs uppercase tracking-wide cx-text-text-muted font-semibold">Tu respuesta ({pregunta.unidad})</span>
-              <input type="text" inputMode="decimal" value={respuestaTexto} onChange={(e) => setRespuestaTexto(e.target.value)} placeholder="Ej. 12500.50" className="w-full px-3 py-2.5 border-2 cx-border-border rounded-lg outline-none cx-focus-border-accent-primary cx-bg-surface cx-text-text-primary" style={{ fontFamily: "'JetBrains Mono', monospace" }} onKeyDown={(e) => e.key === 'Enter' && verificar()} />
-            </label>
-            <div className="flex flex-wrap gap-2">
-              <button onClick={verificar} disabled={respuestaTexto.trim() === ''} className="px-4 py-2.5 rounded-lg text-sm font-semibold text-white disabled:opacity-40" style={{ background: 'var(--accent-primary)' }}>Verificar</button>
-              <button onClick={nuevaPregunta} className="px-4 py-2.5 rounded-lg text-sm font-semibold cx-bg-surface cx-text-text-secondary border-2 cx-border-border cx-hover-border-border-hover flex items-center gap-1.5"><RotateCcw size={14} /> Nueva</button>
+      <div className="flex flex-col sm:flex-row gap-2 cx-bg-surface p-2 rounded-lg border cx-border-border">
+        <button onClick={() => { setModo('quiz'); setEvaluacionActiva(false); setEvaluacionCompletada(false); }} className={`flex-1 py-2 rounded-md text-sm font-semibold transition-colors ${modo === 'quiz' ? 'text-white' : 'cx-text-text-secondary cx-bg-surface'}`} style={{ background: modo === 'quiz' ? 'var(--accent-primary)' : undefined }}>
+          📝 Práctica por niveles
+        </button>
+        <button onClick={() => { setModo('evaluacion'); setEvaluacionActiva(false); setEvaluacionCompletada(false); }} className={`flex-1 py-2 rounded-md text-sm font-semibold transition-colors ${modo === 'evaluacion' ? 'text-white' : 'cx-text-text-secondary cx-bg-surface'}`} style={{ background: modo === 'evaluacion' ? 'var(--accent-primary)' : undefined }}>
+          📊 Evaluación personalizada
+        </button>
+      </div>
+
+      {modo === 'quiz' ? (
+        // Modo Práctica por niveles
+        <>
+          <div>
+            <div className="text-xs uppercase tracking-wide cx-text-text-muted font-semibold mb-2">Nivel de dificultad</div>
+            <div className="flex flex-wrap gap-1.5">
+              {NIVELES_META.map((m) => (
+                <PillButton key={m.nivel} active={nivel === m.nivel} onClick={() => cambiarNivel(m.nivel)}>
+                  {m.nivel}
+                </PillButton>
+              ))}
             </div>
           </div>
-          {verificado && (
-            <div className={`rounded-lg p-4 space-y-2 ${correcto ? 'cx-bg-accent-green-bg' : 'cx-bg-accent-coral-bg'}`}>
-              <div className={`flex items-center gap-2 font-semibold text-sm ${correcto ? 'cx-text-accent-green-text' : 'cx-text-accent-coral-text'}`}>{correcto ? <Check size={16} /> : <X size={16} />}{correcto ? '¡Correcto!' : 'No es correcto todavía.'}</div>
-              <p className="text-sm cx-text-text-strong-gray">Respuesta esperada: <strong>{fmt(pregunta.respuesta)}</strong></p>
-              <div className="space-y-1 pt-1 border-t" style={{ borderColor: 'var(--border)' }}>{pregunta.solucion.map((linea, i) => (<p key={i} className="text-xs cx-text-text-secondary leading-relaxed">{linea}</p>))}</div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <StatCard label="Nivel actual" value={`${nivel} · ${meta.tag}`} accent="blue" />
+            <StatCard label="Aciertos" value={`${puntaje.aciertos} / ${puntaje.total}`} accent="teal" />
+            <StatCard label="Efectividad" value={puntaje.total ? `${Math.round((puntaje.aciertos / puntaje.total) * 100)}%` : '—'} accent="coral" />
+          </div>
+          {mostrarInforme && puntaje.total > 0 && (
+            <div className="cx-bg-accent-primary-bg border cx-border-accent-primary/30 rounded-lg p-4">
+              <div className="flex items-center gap-2 mb-2"><Check size={16} className="cx-text-accent-green-text" /><span className="text-sm font-semibold cx-text-text-primary">📊 Informe de progreso</span></div>
+              <div className="flex flex-wrap gap-4 text-sm">
+                <span className="cx-text-text-secondary">Aciertos: <strong>{puntaje.aciertos}</strong></span>
+                <span className="cx-text-text-secondary">Total: <strong>{puntaje.total}</strong></span>
+                <span className="cx-text-text-secondary">Efectividad: <strong>{Math.round((puntaje.aciertos / puntaje.total) * 100)}%</strong></span>
+                <span className="cx-text-text-secondary">Nivel: <strong>{meta.dificultad}</strong></span>
+              </div>
+              <button onClick={() => setMostrarInforme(false)} className="mt-2 text-xs cx-text-accent-primary font-semibold">Ocultar informe</button>
+            </div>
+          )}
+          {pregunta ? (
+            <div className="cx-bg-surface border cx-border-border rounded-lg p-4 sm:p-5 space-y-4">
+              <div className="flex items-center gap-2 cx-text-accent-primary-text font-semibold text-xs uppercase tracking-wide">
+                <Lightbulb size={14} /> {pregunta.categoria} · Nivel {nivel} · {meta.dificultad}
+              </div>
+              <p className="text-[15px] cx-text-text-strong-gray leading-relaxed"><TextoConNegritas texto={pregunta.enunciado} /></p>
+              <div className="flex flex-col sm:flex-row gap-3 sm:items-end">
+                <label className="flex-1 flex flex-col gap-1">
+                  <span className="text-xs uppercase tracking-wide cx-text-text-muted font-semibold">Tu respuesta ({pregunta.unidad})</span>
+                  <input type="text" inputMode="decimal" value={respuestaTexto} onChange={(e) => setRespuestaTexto(e.target.value)} placeholder="Ej. 12500.50" className="w-full px-3 py-2.5 border-2 cx-border-border rounded-lg outline-none cx-focus-border-accent-primary cx-bg-surface cx-text-text-primary" style={{ fontFamily: "'JetBrains Mono', monospace" }} onKeyDown={(e) => e.key === 'Enter' && verificar()} />
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  <button onClick={verificar} disabled={respuestaTexto.trim() === ''} className="px-4 py-2.5 rounded-lg text-sm font-semibold text-white disabled:opacity-40" style={{ background: 'var(--accent-primary)' }}>Verificar</button>
+                  <button onClick={nuevaPregunta} className="px-4 py-2.5 rounded-lg text-sm font-semibold cx-bg-surface cx-text-text-secondary border-2 cx-border-border cx-hover-border-border-hover flex items-center gap-1.5"><RotateCcw size={14} /> Nueva</button>
+                </div>
+              </div>
+              {verificado && (
+                <div className={`rounded-lg p-4 space-y-2 ${correcto ? 'cx-bg-accent-green-bg' : 'cx-bg-accent-coral-bg'}`}>
+                  <div className={`flex items-center gap-2 font-semibold text-sm ${correcto ? 'cx-text-accent-green-text' : 'cx-text-accent-coral-text'}`}>
+                    {correcto ? <Check size={16} /> : <X size={16} />}
+                    {correcto ? '¡Correcto!' : 'No es correcto todavía.'}
+                  </div>
+                  <p className="text-sm cx-text-text-strong-gray">Respuesta esperada: <strong>{fmt(pregunta.respuesta)}</strong></p>
+                  <div className="space-y-1 pt-1 border-t" style={{ borderColor: 'var(--border)' }}>
+                    {pregunta.solucion.map((linea, i) => (<p key={i} className="text-xs cx-text-text-secondary leading-relaxed">{linea}</p>))}
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : <div className="text-center py-8 cx-text-text-muted">Cargando pregunta...</div>}
+          <p className="text-[11px] cx-text-text-faint">Cada nivel genera preguntas nuevas con números aleatorios.</p>
+        </>
+      ) : (
+        // Modo Evaluación personalizada
+        <div className="cx-bg-surface border cx-border-border rounded-lg p-5 space-y-4">
+          <h3 className="text-base font-semibold cx-text-text-primary" style={{ fontFamily: "'Fraunces', sans-serif" }}>📊 Configura tu evaluación</h3>
+          <p className="text-sm cx-text-text-secondary">Selecciona los temas que quieres evaluar y la dificultad.</p>
+
+          {/* Checklist de temas */}
+          <div>
+            <div className="flex items-center justify-between mb-2 flex-wrap">
+              <span className="text-xs font-semibold cx-text-text-muted uppercase tracking-wide">Temas a evaluar</span>
+              <div className="flex gap-2">
+                <button onClick={seleccionarTodos} className="text-xs cx-text-accent-primary font-semibold hover:underline">
+                  {temasSeleccionados.length === TEMAS.length ? 'Deseleccionar todos' : 'Seleccionar todos'}
+                </button>
+                <button onClick={seleccionarAleatorios} className="text-xs cx-text-accent-primary font-semibold hover:underline flex items-center gap-1">
+                  <Shuffle size={12} /> Aleatorios
+                </button>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+              {TEMAS.map((tema) => (
+                <label key={tema.id} className="flex items-center gap-2 p-2 rounded-lg cx-bg-surface-alt border cx-border-border cursor-pointer hover:cx-border-border-hover transition-colors">
+                  <input 
+                    type="checkbox" 
+                    checked={temasSeleccionados.includes(tema.id)} 
+                    onChange={() => {
+                      if (temasSeleccionados.includes(tema.id)) {
+                        setTemasSeleccionados(temasSeleccionados.filter(t => t !== tema.id));
+                      } else {
+                        setTemasSeleccionados([...temasSeleccionados, tema.id]);
+                      }
+                    }} 
+                    className="tema-checkbox"
+                  />
+                  <span className="text-xs cx-text-text-secondary">{tema.icon} {tema.label}</span>
+                </label>
+              ))}
+            </div>
+            <div className="text-xs cx-text-text-muted mt-2">
+              {temasSeleccionados.length} tema{temasSeleccionados.length !== 1 ? 's' : ''} seleccionado{temasSeleccionados.length !== 1 ? 's' : ''}
+              {temasSeleccionados.length > 0 && ` · ${temasSeleccionados.length * 2} preguntas`}
+            </div>
+          </div>
+
+          {/* Selector de dificultad */}
+          <div>
+            <span className="text-xs font-semibold cx-text-text-muted uppercase tracking-wide">Dificultad</span>
+            <div className="flex flex-wrap gap-2 mt-1">
+              {DIFICULTADES.map((d) => (
+                <button 
+                  key={d.id} 
+                  onClick={() => setDificultadEval(d.id)} 
+                  className={`px-3 py-1.5 rounded-md text-xs font-semibold border-2 transition-colors ${dificultadEval === d.id ? 'border-accent-primary text-white' : 'cx-border-border cx-text-text-secondary'}`} 
+                  style={{ background: dificultadEval === d.id ? 'var(--accent-primary)' : undefined }}
+                >
+                  {d.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <button 
+            onClick={() => { if (temasSeleccionados.length === 0) return; iniciarEvaluacion(); }} 
+            disabled={temasSeleccionados.length === 0} 
+            className="w-full py-3 rounded-lg text-sm font-semibold text-white disabled:opacity-40 transition-opacity" 
+            style={{ background: 'var(--accent-primary)' }}
+          >
+            {temasSeleccionados.length === 0 ? 'Selecciona al menos un tema' : `Iniciar evaluación (${temasSeleccionados.length * 2} preguntas)`}
+          </button>
+
+          {/* Evaluación activa */}
+          {evaluacionActiva && preguntasEval.length > 0 && preguntaEvalIndex < preguntasEval.length && (
+            <div className="cx-bg-surface-alt border cx-border-border rounded-lg p-4 sm:p-5 space-y-4 mt-2">
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <div className="flex items-center gap-2 cx-text-accent-primary-text font-semibold text-xs uppercase tracking-wide">
+                  <Lightbulb size={14} /> {preguntasEval[preguntaEvalIndex].categoria} · Pregunta {preguntaEvalIndex + 1} de {preguntasEval.length}
+                </div>
+                <button onClick={reiniciarEvaluacion} className="text-xs cx-text-text-muted font-semibold hover:cx-text-accent-coral-text">Cancelar</button>
+              </div>
+              <div className="w-full h-1.5 rounded-full cx-bg-surface overflow-hidden">
+                <div className="h-full" style={{ width: `${((preguntaEvalIndex) / preguntasEval.length) * 100}%`, background: 'var(--accent-primary)' }} />
+              </div>
+              <p className="text-[15px] cx-text-text-strong-gray leading-relaxed"><TextoConNegritas texto={preguntasEval[preguntaEvalIndex].enunciado} /></p>
+              <div className="flex flex-col sm:flex-row gap-3 sm:items-end">
+                <label className="flex-1 flex flex-col gap-1">
+                  <span className="text-xs uppercase tracking-wide cx-text-text-muted font-semibold">Tu respuesta ({preguntasEval[preguntaEvalIndex].unidad})</span>
+                  <input type="text" inputMode="decimal" value={respuestaEvalTexto} onChange={(e) => setRespuestaEvalTexto(e.target.value)} placeholder="Ej. 12500.50" className="w-full px-3 py-2.5 border-2 cx-border-border rounded-lg outline-none cx-focus-border-accent-primary cx-bg-surface cx-text-text-primary" style={{ fontFamily: "'JetBrains Mono', monospace" }} onKeyDown={(e) => e.key === 'Enter' && (evalVerificado ? siguienteEval() : verificarEval())} />
+                </label>
+                {!evalVerificado ? (
+                  <button onClick={verificarEval} disabled={respuestaEvalTexto.trim() === ''} className="px-4 py-2.5 rounded-lg text-sm font-semibold text-white disabled:opacity-40" style={{ background: 'var(--accent-primary)' }}>Verificar</button>
+                ) : (
+                  <button onClick={siguienteEval} className="px-4 py-2.5 rounded-lg text-sm font-semibold text-white flex items-center gap-1.5" style={{ background: 'var(--accent-green)' }}>
+                    {preguntaEvalIndex + 1 >= preguntasEval.length ? 'Ver resultado' : 'Siguiente'} <ArrowRight size={14} />
+                  </button>
+                )}
+              </div>
+              {evalVerificado && (
+                <div className={`rounded-lg p-4 space-y-2 ${evalCorrecto ? 'cx-bg-accent-green-bg' : 'cx-bg-accent-coral-bg'}`}>
+                  <div className={`flex items-center gap-2 font-semibold text-sm ${evalCorrecto ? 'cx-text-accent-green-text' : 'cx-text-accent-coral-text'}`}>
+                    {evalCorrecto ? <Check size={16} /> : <X size={16} />}
+                    {evalCorrecto ? '¡Correcto!' : 'No es correcto.'}
+                  </div>
+                  <p className="text-sm cx-text-text-strong-gray">Respuesta esperada: <strong>{preguntasEval[preguntaEvalIndex].unidad === '%' || preguntasEval[preguntaEvalIndex].unidad === 'años' || preguntasEval[preguntaEvalIndex].unidad === 'periodos' ? preguntasEval[preguntaEvalIndex].respuesta : fmt(preguntasEval[preguntaEvalIndex].respuesta)}{preguntasEval[preguntaEvalIndex].unidad === '%' ? '%' : ''}</strong></p>
+                  <div className="space-y-1 pt-1 border-t" style={{ borderColor: 'var(--border)' }}>
+                    {preguntasEval[preguntaEvalIndex].solucion.map((linea, i) => (<p key={i} className="text-xs cx-text-text-secondary leading-relaxed">{linea}</p>))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Resultado de evaluación */}
+          {evaluacionCompletada && (
+            <div className="cx-bg-accent-primary-bg border cx-border-accent-primary/30 rounded-lg p-5 space-y-3 mt-2">
+              <div className="flex items-center gap-2">
+                <GraduationCap size={18} className="cx-text-accent-primary" />
+                <span className="font-semibold text-[15px] cx-text-text-primary" style={{ fontFamily: "'Fraunces', sans-serif" }}>Resultado de tu evaluación</span>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                <StatCard label="Aciertos" value={`${respuestasEval.filter((r) => r.correcto).length} / ${respuestasEval.length}`} accent="teal" />
+                <StatCard label="Efectividad" value={`${Math.round((respuestasEval.filter((r) => r.correcto).length / respuestasEval.length) * 100)}%`} accent="coral" />
+                <StatCard label="Temas evaluados" value={String(temasSeleccionados.length)} accent="blue" />
+              </div>
+              <div className="space-y-1.5 pt-2 border-t cx-border-border">
+                {respuestasEval.map((r, i) => (
+                  <div key={i} className="flex items-center gap-2 text-xs cx-text-text-secondary">
+                    {r.correcto ? <Check size={13} className="cx-text-accent-green-text flex-shrink-0" /> : <X size={13} className="cx-text-accent-coral-text flex-shrink-0" />}
+                    <span>{r.pregunta.categoria}</span>
+                  </div>
+                ))}
+              </div>
+              <button onClick={reiniciarEvaluacion} className="w-full py-2.5 rounded-lg text-sm font-semibold text-white flex items-center justify-center gap-1.5" style={{ background: 'var(--accent-primary)' }}>
+                <RotateCcw size={14} /> Nueva evaluación
+              </button>
             </div>
           )}
         </div>
-      ) : <div className="text-center py-8 cx-text-text-muted">Cargando pregunta...</div>}
+      )}
+
+      {tutorialOn && (
+        <div className="fixed bottom-4 right-4 left-4 sm:left-auto sm:w-96 z-50 cx-bg-surface border-2 cx-border-accent-primary/30 rounded-lg shadow-2xl p-5 mode-tutorial">
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-1.5 cx-text-accent-primary text-xs font-semibold uppercase tracking-wide">
+              <GraduationCap size={14} /> Paso {tutorialStep + 1} de {tutorialSteps.length}
+            </div>
+            <button onClick={() => setTutorialOn(false)} className="p-1 rounded-full cx-text-text-faint hover:cx-bg-surface-hover-2"><X size={14} /></button>
+          </div>
+          <h4 className="text-base font-semibold cx-text-text-primary mb-1.5" style={{ fontFamily: "'Fraunces', sans-serif" }}>{tutorialSteps[tutorialStep].titulo}</h4>
+          <p className="text-sm cx-text-text-secondary leading-relaxed mb-3">{tutorialSteps[tutorialStep].texto}</p>
+          {tutorialSteps[tutorialStep].consejo && (
+            <div className="flex items-start gap-1.5 text-xs cx-text-accent-green-text cx-bg-accent-green-bg rounded-lg px-3 py-2 mb-3">
+              <Lightbulb size={13} className="mt-0.5 flex-shrink-0" /> {tutorialSteps[tutorialStep].consejo}
+            </div>
+          )}
+          <div className="flex items-center justify-between gap-2">
+            <button disabled={tutorialStep === 0} onClick={() => setTutorialStep(Math.max(0, tutorialStep - 1))} className="flex items-center gap-1 text-xs font-semibold px-3 py-1.5 rounded-md border-2 cx-border-border cx-text-text-muted disabled:opacity-30">
+              <ChevronLeft size={13} /> Antes
+            </button>
+            {tutorialStep < tutorialSteps.length - 1 ? (
+              <button onClick={() => setTutorialStep(Math.min(tutorialSteps.length - 1, tutorialStep + 1))} className="flex items-center gap-1 text-xs font-semibold px-3.5 py-1.5 rounded-md text-white" style={{ background: 'var(--accent-primary)' }}>
+                Siguiente <ChevronRight size={13} />
+              </button>
+            ) : (
+              <button onClick={() => setTutorialOn(false)} className="flex items-center gap-1 text-xs font-semibold px-3.5 py-1.5 rounded-md text-white" style={{ background: 'var(--accent-green)' }}>
+                <Check size={13} /> Listo
+              </button>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -2295,7 +2644,7 @@ const FOLDERS = [
   { key: 'tasas', label: 'Tasas equivalentes', desc: 'Convierte entre capitalizaciones.', icon: ArrowLeftRight, accent: '#2B4570' },
   { key: 'anualidades', label: 'Anualidades y préstamos', desc: 'Sistemas de amortización.', icon: Landmark, accent: '#A3402E' },
   { key: 'simulador', label: 'Simulador de destinos', desc: 'Compara caminos de ahorro y deuda.', icon: Target, accent: '#8A6D1F' },
-  { key: 'quizzes', label: 'Quizzes y ejercicios', desc: '10 niveles de dificultad.', icon: GraduationCap, accent: '#6B4FA0' },
+  { key: 'quizzes', label: 'Quizzes y ejercicios', desc: '10 niveles + evaluación personalizada.', icon: GraduationCap, accent: '#6B4FA0' },
   { key: 'formulario', label: 'Formulario', desc: 'Todas las fórmulas en un lugar.', icon: FileText, accent: '#D97706' },
 ];
 
@@ -2329,7 +2678,6 @@ function GameMenu({ onSelect }) {
 function SplashScreen({ fadingOut, progress }) {
   const [frase] = useState(() => FRASES_CARGA[Math.floor(Math.random() * FRASES_CARGA.length)]);
   
-  // Al 95% se activa la pausa (una vuelta completa)
   const spinClass = progress >= 95 ? 'coin-spinning-paused' : 'coin-spinning';
   
   return (
@@ -2477,6 +2825,15 @@ const APP_STYLES = `
     perspective: 400px;
     transform-style: preserve-3d;
     padding: 4px;
+  }
+  .tema-checkbox:checked {
+    accent-color: var(--accent-primary);
+  }
+  .tema-checkbox {
+    width: 1.1rem;
+    height: 1.1rem;
+    cursor: pointer;
+    flex-shrink: 0;
   }
   @media (max-width: 640px) {
     .finapp-root .max-w-5xl { padding-left: 0.75rem; padding-right: 0.75rem; }
