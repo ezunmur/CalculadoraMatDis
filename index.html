@@ -24,6 +24,209 @@
         .mode-discrete { border-left: 3px solid #8B5CF6; }
         .mode-tutorial { border-left: 3px solid #3B82F6; }
         .mode-dashboard { border-left: 3px solid #10B981; }
+
+        /* ============================================================
+           MONEDA 3D CON EFECTO DE GIRO REAL Y GROSOR
+           ============================================================ */
+        .coin-wrapper {
+          display: inline-block;
+          perspective: 600px;
+          transform-style: preserve-3d;
+          padding: 8px;
+        }
+
+        .coin-3d {
+          border-radius: 50%;
+          box-shadow: 
+            0 0 0 3px var(--accent-primary),
+            0 0 0 7px color-mix(in srgb, var(--accent-primary) 50%, transparent),
+            0 0 0 11px color-mix(in srgb, var(--accent-primary) 25%, transparent),
+            0 8px 25px rgba(0,0,0,0.3);
+          background: radial-gradient(circle at 35% 30%, #f5edd5, #c8b898);
+          padding: 8px;
+          transition: transform 0.1s ease;
+          display: inline-block;
+          width: 120px;
+          height: 120px;
+        }
+
+        .coin-3d img {
+          border-radius: 50%;
+          display: block;
+          background: #f5edd5;
+          width: 100%;
+          height: 100%;
+          object-fit: contain;
+          backface-visibility: visible;
+          -webkit-backface-visibility: visible;
+        }
+
+        .finapp-root[data-theme='dark'] .coin-3d {
+          box-shadow: 
+            0 0 0 3px var(--accent-primary),
+            0 0 0 7px color-mix(in srgb, var(--accent-primary) 40%, transparent),
+            0 0 0 11px color-mix(in srgb, var(--accent-primary) 20%, transparent),
+            0 8px 25px rgba(0,0,0,0.5);
+          background: radial-gradient(circle at 35% 30%, #3a3528, #1a1610);
+        }
+
+        .finapp-root[data-theme='dark'] .coin-3d img {
+          background: #2a2518;
+        }
+
+        /* ANIMACIÓN CON GIRO 3D REAL Y EFECTO DE GROSOR */
+        @keyframes coinSpin3D {
+          0% {
+            transform: rotateY(0deg) scaleX(1);
+          }
+          15% {
+            transform: rotateY(60deg) scaleX(0.7);
+          }
+          30% {
+            transform: rotateY(120deg) scaleX(0.5);
+          }
+          45% {
+            transform: rotateY(180deg) scaleX(0.7);
+            filter: brightness(0.3);
+          }
+          55% {
+            transform: rotateY(180deg) scaleX(0.7);
+            filter: brightness(0.3);
+          }
+          70% {
+            transform: rotateY(240deg) scaleX(0.5);
+            filter: brightness(1);
+          }
+          85% {
+            transform: rotateY(300deg) scaleX(0.7);
+          }
+          100% {
+            transform: rotateY(360deg) scaleX(1);
+          }
+        }
+
+        .coin-spinning {
+          animation: coinSpin3D 3.5s ease-in-out infinite;
+          backface-visibility: visible;
+          -webkit-backface-visibility: visible;
+          will-change: transform, filter;
+        }
+
+        .coin-spinning-paused {
+          animation: coinSpin3D 1.8s ease-in-out 1 forwards;
+          backface-visibility: visible;
+          -webkit-backface-visibility: visible;
+          will-change: transform, filter;
+        }
+
+        @keyframes spinnerRotate { to { transform: rotate(360deg); } }
+        .splash-spinner {
+          width: 44px;
+          height: 44px;
+          border-radius: 50%;
+          border: 3.5px solid color-mix(in srgb, var(--accent-primary) 18%, transparent);
+          border-top-color: var(--accent-primary);
+          animation: spinnerRotate 0.85s linear infinite;
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .splash-spinner, .coin-spinning, .coin-spinning-paused { animation: none; }
+        }
+
+        /* Estilos para checkboxes personalizados */
+        .tema-checkbox:checked {
+          accent-color: var(--accent-primary);
+        }
+        .tema-checkbox {
+          width: 1.1rem;
+          height: 1.1rem;
+          cursor: pointer;
+          flex-shrink: 0;
+        }
+
+        /* Tooltips */
+        .tooltip-trigger {
+          position: relative;
+          cursor: help;
+        }
+        .tooltip-trigger .tooltip-text {
+          visibility: hidden;
+          width: 220px;
+          background-color: var(--surface);
+          color: var(--text-primary);
+          text-align: left;
+          border-radius: 8px;
+          padding: 8px 12px;
+          position: absolute;
+          z-index: 100;
+          bottom: 125%;
+          left: 50%;
+          transform: translateX(-50%);
+          opacity: 0;
+          transition: opacity 0.3s;
+          font-size: 11px;
+          font-weight: 400;
+          border: 1px solid var(--border);
+          box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+          line-height: 1.4;
+        }
+        .tooltip-trigger .tooltip-text::after {
+          content: "";
+          position: absolute;
+          top: 100%;
+          left: 50%;
+          margin-left: -5px;
+          border-width: 5px;
+          border-style: solid;
+          border-color: var(--border) transparent transparent transparent;
+        }
+        .tooltip-trigger:hover .tooltip-text {
+          visibility: visible;
+          opacity: 1;
+        }
+
+        /* Tabla comparativa */
+        .comparador-tabla th, .comparador-tabla td {
+          padding: 8px 10px;
+          text-align: center;
+          font-size: 12px;
+        }
+        .comparador-tabla th {
+          font-weight: 600;
+          background: var(--accent-primary-bg);
+        }
+        .comparador-tabla tr:nth-child(even) {
+          background: var(--surface-alt);
+        }
+        .comparador-tabla .destacado {
+          font-weight: 700;
+          color: var(--accent-primary-text);
+        }
+
+        .respuesta-destacada {
+          border: 2px solid var(--accent-primary) !important;
+          border-radius: 8px;
+          background: var(--accent-primary-bg) !important;
+          padding: 4px 8px;
+          font-weight: 700;
+          color: var(--accent-primary-text) !important;
+        }
+        .detalle-tabla th, .detalle-tabla td { padding: 6px 8px; text-align: right; }
+        .detalle-tabla th:first-child, .detalle-tabla td:first-child { text-align: left; }
+
+        @media (max-width: 640px) {
+          .finapp-root .max-w-5xl { padding-left: 0.75rem; padding-right: 0.75rem; }
+          .finapp-root .cx-bg-surface { padding: 0.75rem; }
+          .tooltip-trigger .tooltip-text {
+            width: 180px;
+            left: 0;
+            transform: none;
+            bottom: 100%;
+          }
+          .coin-3d {
+            width: 90px;
+            height: 90px;
+          }
+        }
     </style>
 </head>
 <body class="m-0 p-0">
@@ -640,7 +843,6 @@ function ComparadorAmortizacion({ mostrar, onClose, P, tasaNominal, temporalidad
     americana: calcularAmortizacion(P, r, n, 'americana')
   };
 
-  // Datos para gráfico comparativo
   const chartData = resultados.francesa.rows.map((row, idx) => ({
     periodo: row.t,
     Francesa: row.pago,
@@ -661,7 +863,6 @@ function ComparadorAmortizacion({ mostrar, onClose, P, tasaNominal, temporalidad
     americana: resultados.americana.totalInteres
   };
 
-  // Encontrar el mejor sistema (menor interés total)
   const mejorSistema = Object.keys(totalInteres).reduce((a, b) => totalInteres[a] < totalInteres[b] ? a : b);
   const labels = { francesa: 'Francesa', alemana: 'Alemana', americana: 'Americana' };
 
@@ -677,7 +878,6 @@ function ComparadorAmortizacion({ mostrar, onClose, P, tasaNominal, temporalidad
         Préstamo de {fmt(P)} a {n} {t.periodoPlural} con tasa {tasaNominal}% {temporalidad}.
       </p>
 
-      {/* Resumen comparativo */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
         {['francesa', 'alemana', 'americana'].map((sistema) => (
           <div key={sistema} className={`cx-bg-surface border-2 rounded-lg p-3 text-center ${sistema === mejorSistema ? 'border-accent-primary bg-accent-primary-bg' : 'cx-border-border'}`}>
@@ -692,7 +892,6 @@ function ComparadorAmortizacion({ mostrar, onClose, P, tasaNominal, temporalidad
         ))}
       </div>
 
-      {/* Gráfico de cuotas */}
       <div className="mb-4">
         <div className="flex items-center gap-2 mb-2 flex-wrap">
           <BarChart3 size={16} className="cx-text-accent-primary flex-shrink-0" />
@@ -714,7 +913,6 @@ function ComparadorAmortizacion({ mostrar, onClose, P, tasaNominal, temporalidad
         </div>
       </div>
 
-      {/* Gráfico de saldos */}
       <div className="mb-4">
         <div className="flex items-center gap-2 mb-2 flex-wrap">
           <LineChartIcon size={16} className="cx-text-accent-primary flex-shrink-0" />
@@ -736,7 +934,6 @@ function ComparadorAmortizacion({ mostrar, onClose, P, tasaNominal, temporalidad
         </div>
       </div>
 
-      {/* Tabla comparativa */}
       <div className="overflow-x-auto">
         <div className="text-[11px] cx-text-text-muted font-semibold uppercase tracking-wide mb-1.5">Comparativa periodo a periodo</div>
         <div className="border cx-border-border rounded-lg overflow-hidden">
@@ -1374,7 +1571,6 @@ function AnualidadesTab() {
   const [metaFuturo, setMetaFuturo] = useState(100000);
   const [mostrarComparador, setMostrarComparador] = useState(false);
 
-  // Pagos extras para anualidades
   const [extras, setExtras] = useState([]);
   const [nuevoExtraTipo, setNuevoExtraTipo] = useState('individual');
   const [nuevoExtraMes, setNuevoExtraMes] = useState(1);
@@ -1387,12 +1583,10 @@ function AnualidadesTab() {
   const r = tasaPeriodica(tasaNominal, temporalidad);
   const opcionesTemporalidad = TEMPORALIDADES.filter((x) => x.key !== 'continua').map((x) => ({ value: x.key, label: x.label }));
 
-  // Función para calcular amortización con pagos extras
   function calcularAmortizacionConExtras(P, r, n, sistema, extras) {
     const rows = [];
     let saldo = P;
 
-    // Construir mapa de pagos extras por mes
     const extrasMap = {};
     extras.forEach(e => {
       if (e.tipo === 'individual') {
@@ -1412,7 +1606,6 @@ function AnualidadesTab() {
         const interes = saldo * r;
         let capital = pago - interes;
         let saldoFinal = saldo - capital;
-        // Aplicar pago extra
         const extra = extrasMap[t] || 0;
         if (extra > 0) {
           saldoFinal = Math.max(0, saldoFinal - extra);
@@ -1461,7 +1654,6 @@ function AnualidadesTab() {
     if (modo === 'presente') {
       return calcularAmortizacionConExtras(P, r, n, sistema, extras);
     } else {
-      // Modo futuro: calcular valor futuro de una anualidad con pagos extras
       let saldo = 0;
       const rows = [];
       const extrasMap = {};
@@ -1514,9 +1706,7 @@ function AnualidadesTab() {
     { index: 2, titulo: '💵 Composición del pago', texto: 'El gráfico apilado muestra cuánto de cada cuota es capital y cuánto es interés.', consejo: 'En la Francesa, al inicio pagas mayormente interés; al final, mayormente capital.' },
   ];
 
-  // Función para exportar PDF
   const exportPDF = () => {
-    // Implementación simplificada - en producción usar html2canvas
     alert('Funcionalidad de exportación a PDF (usar html2canvas + jsPDF)');
   };
 
@@ -1579,7 +1769,6 @@ function AnualidadesTab() {
             <Field label={`Número de periodos (${t.periodoPlural})`} value={n} onChange={(v) => setN(Math.max(1, Math.round(v)))} min={1} step={1} max={LIMITES.MESES_MAX} tooltip="Total de periodos para pagar el préstamo" />
           </div>
 
-          {/* Pagos Extras en Anualidades */}
           <div className="cx-bg-surface p-4 rounded-lg border cx-border-border">
             <div className="flex items-center gap-2 mb-3">
               <Plus size={16} className="cx-text-accent-primary" />
@@ -1751,7 +1940,6 @@ function AnualidadesTab() {
         </div>
       )}
 
-      {/* Comparador de sistemas de amortización */}
       {mostrarComparador && (
         <ComparadorAmortizacion 
           mostrar={mostrarComparador}
@@ -2894,46 +3082,45 @@ function GameMenu({ onSelect }) {
 }
 
 // ============================================================
-// SPLASH SCREEN
+// SPLASH SCREEN - CON MONEDA 3D MEJORADA
 // ============================================================
-function SplashScreen({ fadingOut }) {
+function SplashScreen({ fadingOut, progress }) {
   const [frase] = useState(() => FRASES_CARGA[Math.floor(Math.random() * FRASES_CARGA.length)]);
-
+  
+  // Cambiar a 'coin-spinning-paused' cuando se completa la carga
+  const spinClass = progress >= 95 ? 'coin-spinning-paused' : 'coin-spinning';
+  
   return (
-    <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center transition-all duration-300"
-         style={{ background: 'var(--bg)', opacity: fadingOut ? 0 : 1, transform: fadingOut ? 'scale(1.03)' : 'scale(1)' }}>
-      <div className="absolute inset-0 opacity-[0.05] pointer-events-none"
+    <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center transition-all duration-500" 
+         style={{ background: 'var(--bg)', opacity: fadingOut ? 0 : 1, transform: fadingOut ? 'scale(1.04)' : 'scale(1)' }}>
+      <div className="absolute inset-0 opacity-[0.04] pointer-events-none" 
            style={{ backgroundImage: 'repeating-linear-gradient(to bottom, transparent, transparent 27px, #000 27px, #000 28px)' }} />
       <div className="relative flex flex-col items-center px-6 text-center">
-        <div className="coin-wrapper mb-5">
-          <div className={`coin-3d ${fadingOut ? 'coin-spinning-paused' : 'coin-spinning'}`} style={{ display: 'inline-block' }}>
-            <img
-              src={ESPOL_LOGO}
-              alt="ESPOL"
-              className="w-24 sm:w-28"
-              style={{
-                backfaceVisibility: 'hidden',
-                WebkitBackfaceVisibility: 'hidden',
-                willChange: 'transform',
-                display: 'block',
-                borderRadius: '50%',
-              }}
+        {/* MONEDA CON EFECTO 3D REAL */}
+        <div className="coin-wrapper mb-6">
+          <div className={`coin-3d ${spinClass}`}>
+            <img 
+              src={ESPOL_LOGO} 
+              alt="ESPOL" 
             />
           </div>
         </div>
-        <div className="text-2xl sm:text-3xl mb-1"
+        <div className="text-2xl sm:text-3xl mb-1" 
              style={{ fontFamily: "'Fraunces', serif", fontWeight: 600, color: 'var(--text-primary)' }}>
           Proyecto de Matemáticas Discretas
         </div>
-        <div className="text-xs uppercase tracking-[0.2em] font-semibold mb-8"
+        <div className="text-xs uppercase tracking-[0.2em] font-semibold mb-8" 
              style={{ color: 'var(--text-muted)' }}>
           Escuela Superior Politécnica del Litoral
         </div>
-        <div className="splash-spinner" role="status" aria-label="Cargando" />
-        <div className="text-[11px] mt-3" style={{ color: 'var(--text-faint)' }}>
-          Cargando datos y archivos contables…
+        <div className="w-56 h-1.5 rounded-full overflow-hidden" 
+             style={{ background: 'var(--border)' }}>
+          <div className="h-full" style={{ background: 'var(--accent-primary)', width: `${Math.min(100, progress)}%`, transition: 'width 0.3s ease-out' }} />
         </div>
-        <div className="text-[12px] mt-4 max-w-xs italic"
+        <div className="text-[11px] mt-3" style={{ color: 'var(--text-faint)' }}>
+          Cargando datos y archivos contables… {Math.round(progress)}%
+        </div>
+        <div className="text-[12px] mt-4 max-w-xs italic" 
              style={{ color: 'var(--text-muted)', fontFamily: "'Fraunces', serif" }}>
           "{frase}"
         </div>
@@ -3000,59 +3187,63 @@ const APP_STYLES = `
     border-radius: 50%;
     box-shadow: 
       0 0 0 3px var(--accent-primary),
-      0 0 0 6px color-mix(in srgb, var(--accent-primary) 60%, transparent),
-      0 0 0 9px color-mix(in srgb, var(--accent-primary) 30%, transparent);
-    background: radial-gradient(circle at 30% 30%, #f0e8d0, #c4b898);
-    padding: 6px;
+      0 0 0 7px color-mix(in srgb, var(--accent-primary) 50%, transparent),
+      0 0 0 11px color-mix(in srgb, var(--accent-primary) 25%, transparent),
+      0 8px 25px rgba(0,0,0,0.3);
+    background: radial-gradient(circle at 35% 30%, #f5edd5, #c8b898);
+    padding: 8px;
+    display: inline-block;
+    width: 120px;
+    height: 120px;
   }
   .coin-3d img {
     border-radius: 50%;
     display: block;
-    background: #f0e8d0;
+    background: #f5edd5;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    backface-visibility: visible;
+    -webkit-backface-visibility: visible;
   }
   .finapp-root[data-theme='dark'] .coin-3d {
     box-shadow: 
       0 0 0 3px var(--accent-primary),
-      0 0 0 6px color-mix(in srgb, var(--accent-primary) 40%, transparent),
-      0 0 0 9px color-mix(in srgb, var(--accent-primary) 20%, transparent);
-    background: radial-gradient(circle at 30% 30%, #3a3528, #1a1610);
+      0 0 0 7px color-mix(in srgb, var(--accent-primary) 40%, transparent),
+      0 0 0 11px color-mix(in srgb, var(--accent-primary) 20%, transparent),
+      0 8px 25px rgba(0,0,0,0.5);
+    background: radial-gradient(circle at 35% 30%, #3a3528, #1a1610);
   }
   .finapp-root[data-theme='dark'] .coin-3d img {
     background: #2a2518;
   }
-  @keyframes coinSpin {
-    0% { transform: rotateY(0deg); }
-    100% { transform: rotateY(360deg); }
+  @keyframes coinSpin3D {
+    0% { transform: rotateY(0deg) scaleX(1); }
+    15% { transform: rotateY(60deg) scaleX(0.7); }
+    30% { transform: rotateY(120deg) scaleX(0.5); }
+    45% { transform: rotateY(180deg) scaleX(0.7); filter: brightness(0.3); }
+    55% { transform: rotateY(180deg) scaleX(0.7); filter: brightness(0.3); }
+    70% { transform: rotateY(240deg) scaleX(0.5); filter: brightness(1); }
+    85% { transform: rotateY(300deg) scaleX(0.7); }
+    100% { transform: rotateY(360deg) scaleX(1); }
   }
   .coin-spinning {
-    animation: coinSpin 2.5s ease-in-out infinite;
-    backface-visibility: hidden;
-    -webkit-backface-visibility: hidden;
-    will-change: transform;
+    animation: coinSpin3D 3.5s ease-in-out infinite;
+    backface-visibility: visible;
+    -webkit-backface-visibility: visible;
+    will-change: transform, filter;
   }
   .coin-spinning-paused {
-    animation: coinSpin 1.2s ease-in-out 1 forwards;
-    backface-visibility: hidden;
-    -webkit-backface-visibility: hidden;
-    will-change: transform;
+    animation: coinSpin3D 1.8s ease-in-out 1 forwards;
+    backface-visibility: visible;
+    -webkit-backface-visibility: visible;
+    will-change: transform, filter;
   }
   .coin-wrapper {
     display: inline-block;
-    perspective: 400px;
+    perspective: 600px;
     transform-style: preserve-3d;
-    padding: 4px;
-  }
-  @keyframes spinnerRotate { to { transform: rotate(360deg); } }
-  .splash-spinner {
-    width: 44px;
-    height: 44px;
-    border-radius: 50%;
-    border: 3.5px solid color-mix(in srgb, var(--accent-primary) 18%, transparent);
-    border-top-color: var(--accent-primary);
-    animation: spinnerRotate 0.85s linear infinite;
-  }
-  @media (prefers-reduced-motion: reduce) {
-    .splash-spinner, .coin-spinning, .coin-spinning-paused { animation: none; }
+    padding: 8px;
   }
   .tema-checkbox:checked {
     accent-color: var(--accent-primary);
@@ -3127,6 +3318,10 @@ const APP_STYLES = `
       transform: none;
       bottom: 100%;
     }
+    .coin-3d {
+      width: 90px;
+      height: 90px;
+    }
   }
 `;
 
@@ -3154,13 +3349,21 @@ function FinanzasApp() {
   const [entering, setEntering] = useState(false);
   const [leaving, setLeaving] = useState(false);
   const [origin, setOrigin] = useState({ x: 50, y: 15 });
+  const [progress, setProgress] = useState(0);
   const shellRef = useRef(null);
   const TRANSITION_MS = 190;
 
   useEffect(() => {
+    const interval = setInterval(() => {
+      setProgress(p => Math.min(100, p + 1 + Math.random() * 2));
+    }, 30);
+    
     const t1 = setTimeout(() => setBooting(false), 1700);
-    const t2 = setTimeout(() => setSplashDone(true), 2200);
-    return () => { clearTimeout(t1); clearTimeout(t2); };
+    const t2 = setTimeout(() => {
+      setSplashDone(true);
+      clearInterval(interval);
+    }, 2200);
+    return () => { clearTimeout(t1); clearTimeout(t2); clearInterval(interval); };
   }, []);
 
   const toggleTheme = () => setTheme((t) => (t === 'light' ? 'dark' : 'light'));
@@ -3191,7 +3394,7 @@ function FinanzasApp() {
 
   return (
     <div className="finapp-root min-h-screen w-full print:hidden" data-theme={theme} style={{ background: 'radial-gradient(1100px 500px at 85% -10%, rgba(31,77,58,0.07), transparent 60%), radial-gradient(900px 500px at -10% 10%, rgba(138,109,31,0.06), transparent 55%), var(--bg)' }}>
-      {!splashDone && <SplashScreen fadingOut={!booting} />}
+      {!splashDone && <SplashScreen fadingOut={!booting} progress={progress} />}
       <style>{APP_STYLES}</style>
       <div className="max-w-5xl mx-auto px-4 py-6 sm:py-8">
         <header className="relative overflow-hidden rounded-lg mb-5 px-5 py-6 sm:px-8 sm:py-8" style={{ background: 'linear-gradient(135deg, #1F4D3A 0%, #2A6349 55%, #163A2B 100%)' }}>
