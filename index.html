@@ -6,8 +6,6 @@
     <title>Finanzas App - ESPOL</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script type="importmap">
       {
         "imports": {
@@ -98,39 +96,61 @@
           cursor: pointer;
           flex-shrink: 0;
         }
-        /* Estilos para fórmulas en PDF */
-        .math-display {
-          font-family: 'STIX Two Text', 'Cambria Math', 'Times New Roman', serif;
-          font-size: 1.1rem;
-          text-align: center;
+        .tooltip-trigger {
+          position: relative;
+          cursor: help;
+        }
+        .tooltip-trigger .tooltip-text {
+          visibility: hidden;
+          width: 220px;
+          background-color: var(--surface);
+          color: var(--text-primary);
+          text-align: left;
+          border-radius: 8px;
           padding: 8px 12px;
+          position: absolute;
+          z-index: 100;
+          bottom: 125%;
+          left: 50%;
+          transform: translateX(-50%);
+          opacity: 0;
+          transition: opacity 0.3s;
+          font-size: 11px;
+          font-weight: 400;
+          border: 1px solid var(--border);
+          box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+          line-height: 1.4;
         }
-        .math-display sub { font-size: 0.7em; }
-        .math-display sup { font-size: 0.7em; }
-        .math-display .frac {
-          display: inline-flex;
-          flex-direction: column;
-          align-items: center;
-          vertical-align: middle;
-          margin: 0 4px;
-          line-height: 1.2;
-          font-size: 0.9em;
+        .tooltip-trigger .tooltip-text::after {
+          content: "";
+          position: absolute;
+          top: 100%;
+          left: 50%;
+          margin-left: -5px;
+          border-width: 5px;
+          border-style: solid;
+          border-color: var(--border) transparent transparent transparent;
         }
-        .math-display .frac .num {
-          border-bottom: 1.5px solid currentColor;
-          padding: 0 6px 2px 6px;
+        .tooltip-trigger:hover .tooltip-text {
+          visibility: visible;
+          opacity: 1;
         }
-        .math-display .frac .den {
-          padding: 2px 6px 0 6px;
+        .comparador-tabla th, .comparador-tabla td {
+          padding: 8px 10px;
+          text-align: center;
+          font-size: 12px;
         }
-        .math-display .pow {
-          white-space: nowrap;
+        .comparador-tabla th {
+          font-weight: 600;
+          background: var(--accent-primary-bg);
         }
-        .math-display .pow sup {
-          font-size: 0.7em;
-          margin-left: 1px;
+        .comparador-tabla tr:nth-child(even) {
+          background: var(--surface-alt);
         }
-        .math-display .italic { font-style: italic; }
+        .comparador-tabla .destacado {
+          font-weight: 700;
+          color: var(--accent-primary-text);
+        }
     </style>
 </head>
 <body class="m-0 p-0">
@@ -148,7 +168,8 @@ import {
   GraduationCap, ChevronLeft, ChevronRight, Lightbulb, Home,
   Settings2, Check, ArrowLeftRight, Sun, Moon, Info, FileText,
   BarChart3, LineChart as LineChartIcon, ToggleLeft, ToggleRight,
-  Clock, Calendar, DollarSign, Trash2, Shuffle, Download
+  Clock, Calendar, DollarSign, Trash2, Shuffle, Download, HelpCircle,
+  GitCompare, ListChecks
 } from 'lucide-react';
 
 const ESPOL_LOGO = 'logo.svg';
@@ -382,71 +403,6 @@ function sampleSerie(serie, maxRows) {
 const RESULTADOS_KEY_SIMULADOR = { alcancia: 'alcancia', simple: 'ahorroSimple', compuesto: 'ahorroCompuesto', prestamo: 'prestamo', tarjeta: 'tarjeta' };
 
 // ============================================================
-// COMPONENTE DE EXPORTACIÓN A PDF
-// ============================================================
-function ExportPDFButton({ targetRef, filename = 'reporte-financiero' }) {
-  const [exportando, setExportando] = useState(false);
-
-  const exportarPDF = async () => {
-    if (!targetRef || !targetRef.current) return;
-    setExportando(true);
-    try {
-      const elemento = targetRef.current;
-      const canvas = await html2canvas(elemento, {
-        scale: 2,
-        useCORS: true,
-        backgroundColor: '#FFFFFF',
-        logging: false,
-        width: elemento.scrollWidth,
-        height: elemento.scrollHeight,
-        windowWidth: elemento.scrollWidth,
-        windowHeight: elemento.scrollHeight,
-      });
-      
-      const imgData = canvas.toDataURL('image/png');
-      const { jsPDF } = window.jspdf;
-      const pdf = new jsPDF('p', 'mm', 'a4');
-      const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
-      
-      // Si la imagen es más alta que una página, dividir en varias
-      let heightLeft = pdfHeight;
-      let position = 0;
-      const pageHeight = pdf.internal.pageSize.getHeight();
-      
-      // Primera página
-      pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, pdfHeight);
-      heightLeft -= pageHeight;
-      
-      while (heightLeft > 0) {
-        position = heightLeft - pdfHeight;
-        pdf.addPage();
-        pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, pdfHeight);
-        heightLeft -= pageHeight;
-      }
-      
-      pdf.save(`${filename}.pdf`);
-    } catch (error) {
-      console.error('Error exportando PDF:', error);
-    } finally {
-      setExportando(false);
-    }
-  };
-
-  return (
-    <button 
-      onClick={exportarPDF} 
-      disabled={exportando}
-      className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold text-white disabled:opacity-50 transition-opacity hover:opacity-90"
-      style={{ background: 'var(--accent-primary)' }}
-    >
-      <Download size={16} />
-      {exportando ? 'Generando PDF...' : 'Exportar a PDF'}
-    </button>
-  );
-}
-
-// ============================================================
 // COMPONENTES UI
 // ============================================================
 function Modal({ onClose, children, wide, size }) {
@@ -500,7 +456,7 @@ function PillButton({ active, onClick, children }) {
   );
 }
 
-function Field({ label, suffix, value, onChange, min, step, max }) {
+function Field({ label, suffix, value, onChange, min, step, max, tooltip }) {
   const [texto, setTexto] = useState(value === 0 ? '' : String(value));
   const [enfocado, setEnfocado] = useState(false);
   const [error, setError] = useState('');
@@ -518,27 +474,37 @@ function Field({ label, suffix, value, onChange, min, step, max }) {
     onChange(num);
   };
   return (
-    <label className="flex flex-wrap items-end gap-x-2 gap-y-0.5 border-b-2 cx-border-border cx-focusw-border-accent-primary min-w-0 pb-1">
-      <span className="text-[11px] cx-text-text-muted font-medium whitespace-nowrap">{label}</span>
-      <input type="number" value={texto} min={min} step={step} max={max} onChange={manejarCambio} onFocus={() => setEnfocado(true)} onBlur={() => setEnfocado(false)} placeholder="-,--" className="flex-1 min-w-[64px] text-right px-0.5 outline-none bg-transparent cx-text-text-primary" style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '1.1rem', fontWeight: 600, letterSpacing: '-0.01em' }} />
-      {suffix && <span className="text-sm cx-text-text-faint flex-shrink-0">{suffix}</span>}
-      {error && <span className="text-xs text-red-500 w-full">{error}</span>}
-    </label>
+    <div className="tooltip-trigger flex-1 min-w-0">
+      <label className="flex flex-wrap items-end gap-x-2 gap-y-0.5 border-b-2 cx-border-border cx-focusw-border-accent-primary min-w-0 pb-1">
+        <span className="text-[11px] cx-text-text-muted font-medium whitespace-nowrap">{label}</span>
+        {tooltip && <HelpCircle size={12} className="cx-text-text-faint flex-shrink-0" />}
+        <input type="number" value={texto} min={min} step={step} max={max} onChange={manejarCambio} onFocus={() => setEnfocado(true)} onBlur={() => setEnfocado(false)} placeholder="-,--" className="flex-1 min-w-[64px] text-right px-0.5 outline-none bg-transparent cx-text-text-primary" style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '1.1rem', fontWeight: 600, letterSpacing: '-0.01em' }} />
+        {suffix && <span className="text-sm cx-text-text-faint flex-shrink-0">{suffix}</span>}
+        {error && <span className="text-xs text-red-500 w-full">{error}</span>}
+      </label>
+      {tooltip && <span className="tooltip-text">{tooltip}</span>}
+    </div>
   );
 }
 
-function SelectField({ label, value, onChange, options }) {
+function SelectField({ label, value, onChange, options, tooltip }) {
   return (
-    <label className="flex flex-col gap-1 min-w-0">
-      <span className="text-xs uppercase tracking-wide cx-text-text-muted font-semibold">{label}</span>
-      <select value={value} onChange={(e) => onChange(e.target.value)} className="border-2 cx-border-border rounded-lg px-3 py-2.5 cx-bg-surface cx-text-text-primary text-sm" style={{ backgroundColor: 'var(--surface)', color: 'var(--text-primary)' }}>
-        {options.map((op) => <option key={op.value} value={op.value}>{op.label}</option>)}
-      </select>
-    </label>
+    <div className="tooltip-trigger flex-1 min-w-0">
+      <label className="flex flex-col gap-1 min-w-0">
+        <span className="text-xs uppercase tracking-wide cx-text-text-muted font-semibold flex items-center gap-1">
+          {label}
+          {tooltip && <HelpCircle size={12} className="cx-text-text-faint" />}
+        </span>
+        <select value={value} onChange={(e) => onChange(e.target.value)} className="border-2 cx-border-border rounded-lg px-3 py-2.5 cx-bg-surface cx-text-text-primary text-sm" style={{ backgroundColor: 'var(--surface)', color: 'var(--text-primary)' }}>
+          {options.map((op) => <option key={op.value} value={op.value}>{op.label}</option>)}
+        </select>
+      </label>
+      {tooltip && <span className="tooltip-text">{tooltip}</span>}
+    </div>
   );
 }
 
-function StatCard({ label, value, accent, highlight }) {
+function StatCard({ label, value, accent, highlight, tooltip }) {
   const colors = {
     teal: 'cx-text-accent-green-text cx-bg-accent-green-bg',
     coral: 'cx-text-accent-coral-text cx-bg-accent-coral-bg',
@@ -548,8 +514,11 @@ function StatCard({ label, value, accent, highlight }) {
   const baseClass = `px-4 py-3 rounded-lg ${colors[accent] || colors.blue}`;
   const highlightClass = highlight ? 'respuesta-destacada border-2 border-accent-primary bg-accent-primary-bg' : '';
   return (
-    <div className={`${baseClass} ${highlightClass}`}>
-      <div className="text-[10.5px] font-medium opacity-70">{label}</div>
+    <div className={`${baseClass} ${highlightClass} relative`}>
+      <div className="text-[10.5px] font-medium opacity-70 flex items-center gap-1">
+        {label}
+        {tooltip && <HelpCircle size={10} className="opacity-60" />}
+      </div>
       <div className="text-[26px] leading-tight mt-0.5 truncate" style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, letterSpacing: '-0.02em' }}>{value}</div>
     </div>
   );
@@ -658,12 +627,15 @@ function ControlPanel({
   discreteOn, setDiscreteOn,
   onReset,
   onExportPDF,
-  exportRef
+  exportRef,
+  showTutorialToggle = true
 }) {
   const handleReset = () => {
     if (typeof onReset === 'function') onReset();
     setDashboardOn(true);
-    setTutorialOn(false);
+    if (showTutorialToggle) {
+      setTutorialOn(false);
+    }
     setDiscreteOn(false);
   };
 
@@ -679,10 +651,12 @@ function ControlPanel({
           <input type="checkbox" checked={dashboardOn} onChange={() => setDashboardOn(!dashboardOn)} className="w-3.5 h-3.5 accent-emerald-600" />
           <span className="cx-text-text-secondary">📊 Dashboard</span>
         </label>
-        <label className="flex items-center gap-1.5 text-xs cursor-pointer">
-          <input type="checkbox" checked={tutorialOn} onChange={() => setTutorialOn(!tutorialOn)} className="w-3.5 h-3.5 accent-blue-600" />
-          <span className="cx-text-text-secondary">📖 Tutorial</span>
-        </label>
+        {showTutorialToggle && (
+          <label className="flex items-center gap-1.5 text-xs cursor-pointer">
+            <input type="checkbox" checked={tutorialOn} onChange={() => setTutorialOn(!tutorialOn)} className="w-3.5 h-3.5 accent-blue-600" />
+            <span className="cx-text-text-secondary">📖 Tutorial</span>
+          </label>
+        )}
         <label className="flex items-center gap-1.5 text-xs cursor-pointer">
           <input type="checkbox" checked={discreteOn} onChange={() => setDiscreteOn(!discreteOn)} className="w-3.5 h-3.5 accent-purple-600" />
           <span className="cx-text-text-secondary">🧮 Matemáticas Discretas</span>
@@ -691,7 +665,9 @@ function ControlPanel({
           <RotateCcw size={12} className="inline mr-1" /> Reset
         </button>
         {onExportPDF && exportRef && (
-          <ExportPDFButton targetRef={exportRef} filename={`reporte-financiero-${Date.now()}`} />
+          <button onClick={onExportPDF} className="text-xs px-2.5 py-1 rounded-md text-white" style={{ background: 'var(--accent-primary)' }}>
+            <Download size={12} className="inline mr-1" /> PDF
+          </button>
         )}
       </div>
     </div>
@@ -738,6 +714,203 @@ function LineChartComponent({ data, lines, colors, height = 240, label, referenc
 }
 
 // ============================================================
+// TUTORIAL INTERACTIVO MEJORADO
+// ============================================================
+function TutorialStep({ step, total, onNext, onPrev, onClose }) {
+  if (!step) return null;
+
+  return (
+    <div className="fixed bottom-4 right-4 left-4 sm:left-auto sm:w-96 z-50 cx-bg-surface border-2 cx-border-accent-primary/30 rounded-lg shadow-2xl p-5 mode-tutorial">
+      <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center gap-1.5 cx-text-accent-primary text-xs font-semibold uppercase tracking-wide">
+          <GraduationCap size={14} /> Paso {step.index + 1} de {total}
+        </div>
+        <button onClick={onClose} aria-label="Cerrar tutorial" className="p-1 rounded-full cx-text-text-faint hover:cx-bg-surface-hover-2"><X size={14} /></button>
+      </div>
+      <h4 className="text-base font-semibold cx-text-text-primary mb-1.5" style={{ fontFamily: "'Fraunces', sans-serif" }}>{step.titulo}</h4>
+      <p className="text-sm cx-text-text-secondary leading-relaxed mb-3">{step.texto}</p>
+      {step.consejo && (
+        <div className="flex items-start gap-1.5 text-xs cx-text-accent-green-text cx-bg-accent-green-bg rounded-lg px-3 py-2 mb-3">
+          <Lightbulb size={13} className="mt-0.5 flex-shrink-0" /> {step.consejo}
+        </div>
+      )}
+      <div className="flex items-center justify-between gap-2">
+        <button disabled={step.index === 0} onClick={onPrev} className="flex items-center gap-1 text-xs font-semibold px-3 py-1.5 rounded-md border-2 cx-border-border cx-text-text-muted disabled:opacity-30">
+          <ChevronLeft size={13} /> Antes
+        </button>
+        {step.index < total - 1 ? (
+          <button onClick={onNext} className="flex items-center gap-1 text-xs font-semibold px-3.5 py-1.5 rounded-md text-white" style={{ background: 'var(--accent-primary)' }}>
+            Siguiente <ChevronRight size={13} />
+          </button>
+        ) : (
+          <button onClick={onClose} className="flex items-center gap-1 text-xs font-semibold px-3.5 py-1.5 rounded-md text-white" style={{ background: 'var(--accent-green)' }}>
+            <Check size={13} /> Listo
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ============================================================
+// COMPARADOR DE SISTEMAS DE AMORTIZACIÓN
+// ============================================================
+function ComparadorAmortizacion({ mostrar, onClose, P, tasaNominal, temporalidad, n }) {
+  if (!mostrar) return null;
+
+  const t = getTemporalidad(temporalidad);
+  const r = tasaPeriodica(tasaNominal, temporalidad);
+  
+  const resultados = {
+    francesa: calcularAmortizacion(P, r, n, 'francesa'),
+    alemana: calcularAmortizacion(P, r, n, 'alemana'),
+    americana: calcularAmortizacion(P, r, n, 'americana')
+  };
+
+  // Datos para gráfico comparativo
+  const chartData = resultados.francesa.rows.map((row, idx) => ({
+    periodo: row.t,
+    Francesa: row.pago,
+    Alemana: resultados.alemana.rows[idx]?.pago || 0,
+    Americana: resultados.americana.rows[idx]?.pago || 0
+  }));
+
+  const saldoData = resultados.francesa.rows.map((row, idx) => ({
+    periodo: row.t,
+    Francesa: row.saldoFinal,
+    Alemana: resultados.alemana.rows[idx]?.saldoFinal || 0,
+    Americana: resultados.americana.rows[idx]?.saldoFinal || 0
+  }));
+
+  const totalInteres = {
+    francesa: resultados.francesa.totalInteres,
+    alemana: resultados.alemana.totalInteres,
+    americana: resultados.americana.totalInteres
+  };
+
+  // Encontrar el mejor sistema (menor interés total)
+  const mejorSistema = Object.keys(totalInteres).reduce((a, b) => totalInteres[a] < totalInteres[b] ? a : b);
+  const labels = { francesa: 'Francesa', alemana: 'Alemana', americana: 'Americana' };
+
+  return (
+    <Modal onClose={onClose} size="xwide">
+      <div className="flex items-center gap-2 cx-text-accent-primary-text font-semibold text-sm mb-1">
+        <GitCompare size={16} /> Comparador de Sistemas de Amortización
+      </div>
+      <h3 className="text-2xl cx-text-text-primary mb-2" style={{ fontFamily: "'Fraunces', sans-serif", fontWeight: 600 }}>
+        Compara los 3 sistemas
+      </h3>
+      <p className="text-sm cx-text-text-secondary mb-4">
+        Préstamo de {fmt(P)} a {n} {t.periodoPlural} con tasa {tasaNominal}% {temporalidad}.
+      </p>
+
+      {/* Resumen comparativo */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
+        {['francesa', 'alemana', 'americana'].map((sistema) => (
+          <div key={sistema} className={`cx-bg-surface border-2 rounded-lg p-3 text-center ${sistema === mejorSistema ? 'border-accent-primary bg-accent-primary-bg' : 'cx-border-border'}`}>
+            <div className="text-sm font-semibold cx-text-text-primary">{labels[sistema]}</div>
+            <div className="text-xs cx-text-text-muted">Interés total</div>
+            <div className={`text-base font-bold ${sistema === mejorSistema ? 'cx-text-accent-primary' : 'cx-text-text-primary'}`}>{fmt(totalInteres[sistema])}</div>
+            {sistema === mejorSistema && (
+              <div className="text-[10px] cx-text-accent-primary font-bold">✅ Menor interés</div>
+            )}
+            <div className="text-xs cx-text-text-muted mt-1">Cuota: {fmt(resultados[sistema].rows[0]?.pago || 0)}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Gráfico de cuotas */}
+      <div className="mb-4">
+        <div className="flex items-center gap-2 mb-2 flex-wrap">
+          <BarChart3 size={16} className="cx-text-accent-primary flex-shrink-0" />
+          <span className="text-xs font-semibold cx-text-text-muted uppercase tracking-wide">Comparación de cuotas por periodo</span>
+        </div>
+        <div className="cx-bg-surface border cx-border-border rounded-lg p-3" style={{ height: 260 }}>
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={chartData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid)" vertical={false} />
+              <XAxis dataKey="periodo" tick={{ fontSize: 10, fill: 'var(--chart-axis)' }} />
+              <YAxis tick={{ fontSize: 10, fill: 'var(--chart-axis)' }} tickFormatter={(v) => '$' + fmtInt(v)} />
+              <Tooltip formatter={(v) => fmt(v)} contentStyle={{ fontSize: 12, borderRadius: 12, background: 'var(--surface)', color: 'var(--text-primary)', border: '1px solid var(--border)' }} />
+              <Legend wrapperStyle={{ fontSize: 11 }} />
+              <Bar dataKey="Francesa" fill="#2F8F5B" />
+              <Bar dataKey="Alemana" fill="#2B4570" />
+              <Bar dataKey="Americana" fill="#A3402E" />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+
+      {/* Gráfico de saldos */}
+      <div className="mb-4">
+        <div className="flex items-center gap-2 mb-2 flex-wrap">
+          <LineChartIcon size={16} className="cx-text-accent-primary flex-shrink-0" />
+          <span className="text-xs font-semibold cx-text-text-muted uppercase tracking-wide">Evolución del saldo pendiente</span>
+        </div>
+        <div className="cx-bg-surface border cx-border-border rounded-lg p-3" style={{ height: 240 }}>
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={saldoData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid)" vertical={false} />
+              <XAxis dataKey="periodo" tick={{ fontSize: 10, fill: 'var(--chart-axis)' }} />
+              <YAxis tick={{ fontSize: 10, fill: 'var(--chart-axis)' }} tickFormatter={(v) => '$' + fmtInt(v)} />
+              <Tooltip formatter={(v) => fmt(v)} contentStyle={{ fontSize: 12, borderRadius: 12, background: 'var(--surface)', color: 'var(--text-primary)', border: '1px solid var(--border)' }} />
+              <Legend wrapperStyle={{ fontSize: 11 }} />
+              <Line type="monotone" dataKey="Francesa" stroke="#2F8F5B" strokeWidth={2} dot={false} />
+              <Line type="monotone" dataKey="Alemana" stroke="#2B4570" strokeWidth={2} dot={false} />
+              <Line type="monotone" dataKey="Americana" stroke="#A3402E" strokeWidth={2} dot={false} />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+
+      {/* Tabla comparativa */}
+      <div className="overflow-x-auto">
+        <div className="text-[11px] cx-text-text-muted font-semibold uppercase tracking-wide mb-1.5">Comparativa periodo a periodo</div>
+        <div className="border cx-border-border rounded-lg overflow-hidden">
+          <div className="overflow-y-auto" style={{ maxHeight: 300 }}>
+            <table className="w-full text-xs comparador-tabla">
+              <thead className="sticky top-0 cx-bg-surface-alt">
+                <tr>
+                  <th className="text-left">Periodo</th>
+                  <th>Francesa (Cuota)</th>
+                  <th>Alemana (Cuota)</th>
+                  <th>Americana (Cuota)</th>
+                  <th>Francesa (Saldo)</th>
+                  <th>Alemana (Saldo)</th>
+                  <th>Americana (Saldo)</th>
+                </tr>
+              </thead>
+              <tbody>
+                {resultados.francesa.rows.map((row, idx) => {
+                  const fr = row;
+                  const al = resultados.alemana.rows[idx];
+                  const am = resultados.americana.rows[idx];
+                  return (
+                    <tr key={row.t} className="border-t cx-border-border">
+                      <td className="text-left cx-text-text-secondary" style={{ fontFamily: "'JetBrains Mono', monospace" }}>{row.t}</td>
+                      <td>{fmt(fr.pago)}</td>
+                      <td>{fmt(al?.pago || 0)}</td>
+                      <td>{fmt(am?.pago || 0)}</td>
+                      <td className="cx-text-text-primary">{fmt(fr.saldoFinal)}</td>
+                      <td className="cx-text-text-primary">{fmt(al?.saldoFinal || 0)}</td>
+                      <td className="cx-text-text-primary">{fmt(am?.saldoFinal || 0)}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div className="flex justify-end mt-4">
+        <button onClick={onClose} className="py-2 px-6 rounded-lg text-sm font-semibold text-white" style={{ background: 'var(--accent-primary)' }}>Cerrar</button>
+      </div>
+    </Modal>
+  );
+}
+
+// ============================================================
 // TASAS EQUIVALENTES TAB
 // ============================================================
 function TasasEquivalentesTab() {
@@ -746,7 +919,6 @@ function TasasEquivalentesTab() {
   const [destino, setDestino] = useState('mensual');
   const [tipoOrigen, setTipoOrigen] = useState('nominal');
   const [tipoDestino, setTipoDestino] = useState('efectiva');
-  const exportRef = useRef(null);
 
   const { dashboardOn, setDashboardOn, tutorialOn, setTutorialOn, discreteOn, setDiscreteOn, tutorialStep, setTutorialStep } = useModes();
 
@@ -868,14 +1040,12 @@ function TasasEquivalentesTab() {
   ];
 
   return (
-    <div className="space-y-6" ref={exportRef}>
+    <div className="space-y-6">
       <ControlPanel 
         dashboardOn={dashboardOn} setDashboardOn={setDashboardOn}
         tutorialOn={tutorialOn} setTutorialOn={setTutorialOn}
         discreteOn={discreteOn} setDiscreteOn={setDiscreteOn}
         onReset={() => { setTasaValor(18); setOrigen('anual'); setDestino('mensual'); setTipoOrigen('nominal'); setTipoDestino('efectiva'); }}
-        onExportPDF={true}
-        exportRef={exportRef}
       />
 
       {discreteOn && (
@@ -947,20 +1117,23 @@ function TasasEquivalentesTab() {
             value={tasaValor} 
             onChange={setTasaValor} 
             min={0} 
-            step={0.1} 
+            step={0.1}
+            tooltip="Valor numérico de la tasa de origen. Ej: 18 para 18%"
           />
           <div className="grid grid-cols-2 gap-3">
             <SelectField 
               label="Capitalización origen" 
               value={origen} 
               onChange={setOrigen} 
-              options={opcionesTemporalidad} 
+              options={opcionesTemporalidad}
+              tooltip="Frecuencia con que se capitaliza la tasa de origen"
             />
             <SelectField 
               label="Capitalización destino" 
               value={destino} 
               onChange={setDestino} 
-              options={opcionesTemporalidad} 
+              options={opcionesTemporalidad}
+              tooltip="Frecuencia con que se capitalizará la tasa de destino"
             />
           </div>
         </div>
@@ -969,7 +1142,8 @@ function TasasEquivalentesTab() {
             label="Tipo origen" 
             value={tipoOrigen} 
             onChange={setTipoOrigen} 
-            options={opcionesTipo} 
+            options={opcionesTipo}
+            tooltip="Nominal: tasa que no considera capitalización. Efectiva: tasa que ya incluye capitalización"
           />
           <span className="text-sm italic cx-text-text-muted" style={{ fontFamily: "'Fraunces', serif" }}>
             a
@@ -978,7 +1152,8 @@ function TasasEquivalentesTab() {
             label="Tipo destino" 
             value={tipoDestino} 
             onChange={setTipoDestino} 
-            options={opcionesTipo} 
+            options={opcionesTipo}
+            tooltip="Nominal: tasa que no considera capitalización. Efectiva: tasa que ya incluye capitalización"
           />
         </div>
       </div>
@@ -987,17 +1162,20 @@ function TasasEquivalentesTab() {
         <StatCard 
           label="Tasa efectiva anual (TEA)" 
           value={`${(tea * 100).toFixed(4)}%`} 
-          accent="blue" 
+          accent="blue"
+          tooltip="Tasa efectiva anual que sirve como puente entre ambas tasas" 
         />
         <StatCard 
           label={`Tasa ${tipoDestino} ${tDestino.label.toLowerCase()}`} 
           value={`${tasaDestino.toFixed(4)}%`} 
-          accent="teal" 
+          accent="teal"
+          tooltip="Tasa convertida a la capitalización y tipo de destino seleccionado"
         />
         <StatCard 
           label="Tasa periódica destino" 
           value={periodicaDestino === null ? '—' : `${(periodicaDestino * 100).toFixed(4)}%`} 
-          accent="coral" 
+          accent="coral"
+          tooltip="Tasa aplicada en cada periodo de capitalización del destino"
         />
       </div>
 
@@ -1089,35 +1267,13 @@ function TasasEquivalentesTab() {
       </div>
 
       {tutorialOn && (
-        <div className="fixed bottom-4 right-4 left-4 sm:left-auto sm:w-96 z-50 cx-bg-surface border-2 cx-border-accent-primary/30 rounded-lg shadow-2xl p-5 mode-tutorial">
-          <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center gap-1.5 cx-text-accent-primary text-xs font-semibold uppercase tracking-wide">
-              <GraduationCap size={14} /> Paso {tutorialStep + 1} de {tutorialSteps.length}
-            </div>
-            <button onClick={() => setTutorialOn(false)} className="p-1 rounded-full cx-text-text-faint hover:cx-bg-surface-hover-2"><X size={14} /></button>
-          </div>
-          <h4 className="text-base font-semibold cx-text-text-primary mb-1.5" style={{ fontFamily: "'Fraunces', sans-serif" }}>{tutorialSteps[tutorialStep].titulo}</h4>
-          <p className="text-sm cx-text-text-secondary leading-relaxed mb-3">{tutorialSteps[tutorialStep].texto}</p>
-          {tutorialSteps[tutorialStep].consejo && (
-            <div className="flex items-start gap-1.5 text-xs cx-text-accent-green-text cx-bg-accent-green-bg rounded-lg px-3 py-2 mb-3">
-              <Lightbulb size={13} className="mt-0.5 flex-shrink-0" /> {tutorialSteps[tutorialStep].consejo}
-            </div>
-          )}
-          <div className="flex items-center justify-between gap-2">
-            <button disabled={tutorialStep === 0} onClick={() => setTutorialStep(Math.max(0, tutorialStep - 1))} className="flex items-center gap-1 text-xs font-semibold px-3 py-1.5 rounded-md border-2 cx-border-border cx-text-text-muted disabled:opacity-30">
-              <ChevronLeft size={13} /> Antes
-            </button>
-            {tutorialStep < tutorialSteps.length - 1 ? (
-              <button onClick={() => setTutorialStep(Math.min(tutorialSteps.length - 1, tutorialStep + 1))} className="flex items-center gap-1 text-xs font-semibold px-3.5 py-1.5 rounded-md text-white" style={{ background: 'var(--accent-primary)' }}>
-                Siguiente <ChevronRight size={13} />
-              </button>
-            ) : (
-              <button onClick={() => setTutorialOn(false)} className="flex items-center gap-1 text-xs font-semibold px-3.5 py-1.5 rounded-md text-white" style={{ background: 'var(--accent-green)' }}>
-                <Check size={13} /> Listo
-              </button>
-            )}
-          </div>
-        </div>
+        <TutorialStep 
+          step={tutorialSteps[tutorialStep]} 
+          total={tutorialSteps.length} 
+          onNext={() => setTutorialStep(Math.min(tutorialSteps.length - 1, tutorialStep + 1))}
+          onPrev={() => setTutorialStep(Math.max(0, tutorialStep - 1))}
+          onClose={() => setTutorialOn(false)}
+        />
       )}
     </div>
   );
@@ -1133,7 +1289,6 @@ function InteresTab() {
   const [temporalidad, setTemporalidad] = useState('mensual');
   const [n, setN] = useState(10);
   const [anios, setAnios] = useState(3);
-  const exportRef = useRef(null);
 
   const { dashboardOn, setDashboardOn, tutorialOn, setTutorialOn, discreteOn, setDiscreteOn, tutorialStep, setTutorialStep } = useModes();
 
@@ -1164,14 +1319,12 @@ function InteresTab() {
   ];
 
   return (
-    <div className="space-y-6" ref={exportRef}>
+    <div className="space-y-6">
       <ControlPanel 
         dashboardOn={dashboardOn} setDashboardOn={setDashboardOn}
         tutorialOn={tutorialOn} setTutorialOn={setTutorialOn}
         discreteOn={discreteOn} setDiscreteOn={setDiscreteOn}
         onReset={() => { setP(80000); setTasaNominal(12); setTemporalidad('mensual'); setN(10); }}
-        onExportPDF={true}
-        exportRef={exportRef}
       />
 
       {discreteOn && (
@@ -1223,12 +1376,12 @@ function InteresTab() {
 
       <div className="cx-bg-surface p-4 rounded-lg border cx-border-border space-y-4">
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <Field label="Capital inicial" value={P} onChange={setP} min={0} step={100} />
-          <Field label="Tasa nominal anual" suffix="%" value={tasaNominal} onChange={setTasaNominal} min={0} step={0.1} />
+          <Field label="Capital inicial" value={P} onChange={setP} min={0} step={100} tooltip="Monto inicial que se invierte o presta" />
+          <Field label="Tasa nominal anual" suffix="%" value={tasaNominal} onChange={setTasaNominal} min={0} step={0.1} tooltip="Tasa de interés nominal anual expresada en porcentaje" />
           {esContinua ? (
-            <Field label="Número de años" value={anios} onChange={(v) => setAnios(Math.max(0.1, v))} min={0.1} step={0.5} max={LIMITES.ANIOS_MAX} />
+            <Field label="Número de años" value={anios} onChange={(v) => setAnios(Math.max(0.1, v))} min={0.1} step={0.5} max={LIMITES.ANIOS_MAX} tooltip="Tiempo en años para interés continuo" />
           ) : (
-            <Field label={`Número de periodos (${t.periodoPlural})`} value={n} onChange={(v) => setN(Math.max(1, Math.round(v)))} min={1} step={1} max={LIMITES.MESES_MAX} />
+            <Field label={`Número de periodos (${t.periodoPlural})`} value={n} onChange={(v) => setN(Math.max(1, Math.round(v)))} min={1} step={1} max={LIMITES.MESES_MAX} tooltip="Cantidad de periodos de capitalización" />
           )}
         </div>
         <CapitalizacionSolapa temporalidad={temporalidad} onChange={setTemporalidad} opciones={opcionesTemporalidad} />
@@ -1238,15 +1391,15 @@ function InteresTab() {
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           {esContinua ? (
             <>
-              <StatCard label="Capital inicial" value={fmt(P)} accent="teal" />
-              <StatCard label="Monto final" value={fmt(resultadoContinuo.F)} accent="blue" />
-              <StatCard label="Interés generado" value={fmt(resultadoContinuo.interes)} accent="coral" />
+              <StatCard label="Capital inicial" value={fmt(P)} accent="teal" tooltip="Monto inicial invertido" />
+              <StatCard label="Monto final" value={fmt(resultadoContinuo.F)} accent="blue" tooltip="Capital más intereses al final del período" />
+              <StatCard label="Interés generado" value={fmt(resultadoContinuo.interes)} accent="coral" tooltip="Ganancia total por intereses" />
             </>
           ) : (
             <>
-              <StatCard label="Saldo final" value={fmt(resultado.saldoFinal)} accent="blue" highlight={true} />
-              <StatCard label="Interés total" value={fmt(resultado.totalInteres)} accent="coral" />
-              <StatCard label="Capital inicial" value={fmt(P)} accent="teal" />
+              <StatCard label="Saldo final" value={fmt(resultado.saldoFinal)} accent="blue" highlight={true} tooltip="Capital más intereses al final del período" />
+              <StatCard label="Interés total" value={fmt(resultado.totalInteres)} accent="coral" tooltip="Ganancia total por intereses" />
+              <StatCard label="Capital inicial" value={fmt(P)} accent="teal" tooltip="Monto inicial invertido" />
             </>
           )}
         </div>
@@ -1322,42 +1475,20 @@ function InteresTab() {
       )}
 
       {tutorialOn && (
-        <div className="fixed bottom-4 right-4 left-4 sm:left-auto sm:w-96 z-50 cx-bg-surface border-2 cx-border-accent-primary/30 rounded-lg shadow-2xl p-5 mode-tutorial">
-          <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center gap-1.5 cx-text-accent-primary text-xs font-semibold uppercase tracking-wide">
-              <GraduationCap size={14} /> Paso {tutorialStep + 1} de {tutorialSteps.length}
-            </div>
-            <button onClick={() => setTutorialOn(false)} className="p-1 rounded-full cx-text-text-faint hover:cx-bg-surface-hover-2"><X size={14} /></button>
-          </div>
-          <h4 className="text-base font-semibold cx-text-text-primary mb-1.5" style={{ fontFamily: "'Fraunces', sans-serif" }}>{tutorialSteps[tutorialStep].titulo}</h4>
-          <p className="text-sm cx-text-text-secondary leading-relaxed mb-3">{tutorialSteps[tutorialStep].texto}</p>
-          {tutorialSteps[tutorialStep].consejo && (
-            <div className="flex items-start gap-1.5 text-xs cx-text-accent-green-text cx-bg-accent-green-bg rounded-lg px-3 py-2 mb-3">
-              <Lightbulb size={13} className="mt-0.5 flex-shrink-0" /> {tutorialSteps[tutorialStep].consejo}
-            </div>
-          )}
-          <div className="flex items-center justify-between gap-2">
-            <button disabled={tutorialStep === 0} onClick={() => setTutorialStep(Math.max(0, tutorialStep - 1))} className="flex items-center gap-1 text-xs font-semibold px-3 py-1.5 rounded-md border-2 cx-border-border cx-text-text-muted disabled:opacity-30">
-              <ChevronLeft size={13} /> Antes
-            </button>
-            {tutorialStep < tutorialSteps.length - 1 ? (
-              <button onClick={() => setTutorialStep(Math.min(tutorialSteps.length - 1, tutorialStep + 1))} className="flex items-center gap-1 text-xs font-semibold px-3.5 py-1.5 rounded-md text-white" style={{ background: 'var(--accent-primary)' }}>
-                Siguiente <ChevronRight size={13} />
-              </button>
-            ) : (
-              <button onClick={() => setTutorialOn(false)} className="flex items-center gap-1 text-xs font-semibold px-3.5 py-1.5 rounded-md text-white" style={{ background: 'var(--accent-green)' }}>
-                <Check size={13} /> Listo
-              </button>
-            )}
-          </div>
-        </div>
+        <TutorialStep 
+          step={tutorialSteps[tutorialStep]} 
+          total={tutorialSteps.length} 
+          onNext={() => setTutorialStep(Math.min(tutorialSteps.length - 1, tutorialStep + 1))}
+          onPrev={() => setTutorialStep(Math.max(0, tutorialStep - 1))}
+          onClose={() => setTutorialOn(false)}
+        />
       )}
     </div>
   );
 }
 
 // ============================================================
-// ANUALIDADES TAB
+// ANUALIDADES TAB - CON PAGOS EXTRAS MEJORADOS
 // ============================================================
 function AnualidadesTab() {
   const [modo, setModo] = useState('presente');
@@ -1368,7 +1499,14 @@ function AnualidadesTab() {
   const [n, setN] = useState(10);
   const [aporte, setAporte] = useState(500);
   const [metaFuturo, setMetaFuturo] = useState(100000);
-  const exportRef = useRef(null);
+  const [mostrarComparador, setMostrarComparador] = useState(false);
+
+  // Pagos extras para anualidades
+  const [extras, setExtras] = useState([]);
+  const [nuevoExtraTipo, setNuevoExtraTipo] = useState('individual');
+  const [nuevoExtraMes, setNuevoExtraMes] = useState(1);
+  const [nuevoExtraMonto, setNuevoExtraMonto] = useState(100);
+  const [nuevoExtraMesFin, setNuevoExtraMesFin] = useState(3);
 
   const { dashboardOn, setDashboardOn, tutorialOn, setTutorialOn, discreteOn, setDiscreteOn, tutorialStep, setTutorialStep } = useModes();
 
@@ -1376,22 +1514,124 @@ function AnualidadesTab() {
   const r = tasaPeriodica(tasaNominal, temporalidad);
   const opcionesTemporalidad = TEMPORALIDADES.filter((x) => x.key !== 'continua').map((x) => ({ value: x.key, label: x.label }));
 
+  // Función para calcular amortización con pagos extras
+  function calcularAmortizacionConExtras(P, r, n, sistema, extras) {
+    const rows = [];
+    let saldo = P;
+
+    // Construir mapa de pagos extras por mes
+    const extrasMap = {};
+    extras.forEach(e => {
+      if (e.tipo === 'individual') {
+        if (!extrasMap[e.mes]) extrasMap[e.mes] = 0;
+        extrasMap[e.mes] += e.monto;
+      } else if (e.tipo === 'rango') {
+        for (let m = e.mes; m <= e.mesFin; m++) {
+          if (!extrasMap[m]) extrasMap[m] = 0;
+          extrasMap[m] += e.monto;
+        }
+      }
+    });
+
+    if (sistema === 'francesa') {
+      const pago = r === 0 ? P / n : (P * r) / (1 - Math.pow(1 + r, -n));
+      for (let t = 1; t <= n; t++) {
+        const interes = saldo * r;
+        let capital = pago - interes;
+        let saldoFinal = saldo - capital;
+        // Aplicar pago extra
+        const extra = extrasMap[t] || 0;
+        if (extra > 0) {
+          saldoFinal = Math.max(0, saldoFinal - extra);
+          capital += extra;
+        }
+        if (t === n) { 
+          const ajuste = saldoFinal;
+          capital += ajuste;
+          saldoFinal = 0; 
+        }
+        rows.push({ t, saldoInicial: saldo, pago: pago + (extra > 0 ? extra : 0), interes, capital, saldoFinal, extra });
+        saldo = saldoFinal;
+      }
+    } else if (sistema === 'alemana') {
+      const capitalFijo = P / n;
+      for (let t = 1; t <= n; t++) {
+        const interes = saldo * r;
+        const pago = capitalFijo + interes;
+        let saldoFinal = Math.max(0, saldo - capitalFijo);
+        const extra = extrasMap[t] || 0;
+        if (extra > 0) {
+          saldoFinal = Math.max(0, saldoFinal - extra);
+        }
+        rows.push({ t, saldoInicial: saldo, pago: pago + extra, interes, capital: capitalFijo + extra, saldoFinal, extra });
+        saldo = saldoFinal;
+      }
+    } else {
+      for (let t = 1; t <= n; t++) {
+        const interes = saldo * r;
+        let capital = t === n ? saldo : 0;
+        const pago = interes + capital;
+        let saldoFinal = saldo - capital;
+        const extra = extrasMap[t] || 0;
+        if (extra > 0) {
+          saldoFinal = Math.max(0, saldoFinal - extra);
+          capital += extra;
+        }
+        rows.push({ t, saldoInicial: saldo, pago: pago + extra, interes, capital, saldoFinal, extra });
+        saldo = saldoFinal;
+      }
+    }
+    return { rows, totalInteres: rows.reduce((a, b) => a + b.interes, 0) };
+  }
+
   const resultado = useMemo(() => {
     if (modo === 'presente') {
-      return calcularAmortizacion(P, r, n, sistema);
+      return calcularAmortizacionConExtras(P, r, n, sistema, extras);
     } else {
-      const FV = aporte * ((Math.pow(1 + r, n) - 1) / r);
-      const rows = [];
+      // Modo futuro: calcular valor futuro de una anualidad con pagos extras
       let saldo = 0;
+      const rows = [];
+      const extrasMap = {};
+      extras.forEach(e => {
+        if (e.tipo === 'individual') {
+          if (!extrasMap[e.mes]) extrasMap[e.mes] = 0;
+          extrasMap[e.mes] += e.monto;
+        } else if (e.tipo === 'rango') {
+          for (let m = e.mes; m <= e.mesFin; m++) {
+            if (!extrasMap[m]) extrasMap[m] = 0;
+            extrasMap[m] += e.monto;
+          }
+        }
+      });
+      
       for (let t = 1; t <= n; t++) {
-        saldo = saldo * (1 + r) + aporte;
-        rows.push({ t, saldoInicial: saldo / (1 + r) - aporte, interes: saldo * r / (1 + r), capital: aporte, saldoFinal: saldo });
+        const extra = extrasMap[t] || 0;
+        saldo = saldo * (1 + r) + aporte + extra;
+        rows.push({ t, saldoInicial: saldo / (1 + r) - aporte - extra, interes: saldo * r / (1 + r), capital: aporte + extra, saldoFinal: saldo, extra });
       }
-      return { rows, totalInteres: FV - aporte * n, saldoFinal: FV };
+      return { rows, totalInteres: saldo - aporte * n - extras.reduce((acc, e) => acc + (e.tipo === 'individual' ? e.monto : e.monto * (e.mesFin - e.mes + 1)), 0), saldoFinal: saldo };
     }
-  }, [modo, P, r, n, sistema, aporte]);
+  }, [modo, P, r, n, sistema, aporte, extras]);
 
-  const chartData = resultado.rows?.map((row) => ({ periodo: row.t, Capital: row.capital, Interés: row.interes })) || [];
+  const agregarExtra = () => {
+    if (nuevoExtraMonto <= 0) return;
+    if (nuevoExtraTipo === 'individual') {
+      if (nuevoExtraMes < 1 || nuevoExtraMes > n) return;
+      setExtras([...extras, { tipo: 'individual', mes: nuevoExtraMes, monto: nuevoExtraMonto }]);
+    } else {
+      if (nuevoExtraMes < 1 || nuevoExtraMesFin > n || nuevoExtraMes > nuevoExtraMesFin) return;
+      setExtras([...extras, { tipo: 'rango', mes: nuevoExtraMes, mesFin: nuevoExtraMesFin, monto: nuevoExtraMonto }]);
+    }
+    setNuevoExtraMes(1);
+    setNuevoExtraMesFin(3);
+    setNuevoExtraMonto(100);
+  };
+
+  const eliminarExtra = (index) => {
+    setExtras(extras.filter((_, i) => i !== index));
+  };
+
+  const chartData = resultado.rows?.map((row) => ({ periodo: row.t, Capital: row.capital, Interés: row.interes, Extra: row.extra || 0 })) || [];
   const saldoData = resultado.rows?.map((row) => ({ mes: row.t, Saldo: row.saldoFinal })) || [];
   const tablaAmortizacion = useMemo(() => sampleSerie(resultado.rows || [], LIMITES.FILAS_TABLA), [resultado.rows]);
 
@@ -1401,15 +1641,20 @@ function AnualidadesTab() {
     { index: 2, titulo: '💵 Composición del pago', texto: 'El gráfico apilado muestra cuánto de cada cuota es capital y cuánto es interés.', consejo: 'En la Francesa, al inicio pagas mayormente interés; al final, mayormente capital.' },
   ];
 
+  // Función para exportar PDF
+  const exportPDF = () => {
+    // Implementación simplificada - en producción usar html2canvas
+    alert('Funcionalidad de exportación a PDF (usar html2canvas + jsPDF)');
+  };
+
   return (
-    <div className="space-y-6" ref={exportRef}>
+    <div className="space-y-6">
       <ControlPanel 
         dashboardOn={dashboardOn} setDashboardOn={setDashboardOn}
         tutorialOn={tutorialOn} setTutorialOn={setTutorialOn}
         discreteOn={discreteOn} setDiscreteOn={setDiscreteOn}
-        onReset={() => { setP(80000); setTasaNominal(24); setTemporalidad('mensual'); setN(10); setModo('presente'); setSistema('francesa'); setAporte(500); setMetaFuturo(100000); }}
-        onExportPDF={true}
-        exportRef={exportRef}
+        onReset={() => { setP(80000); setTasaNominal(24); setTemporalidad('mensual'); setN(10); setModo('presente'); setSistema('francesa'); setAporte(500); setMetaFuturo(100000); setExtras([]); }}
+        onExportPDF={exportPDF}
       />
 
       {discreteOn && (
@@ -1445,24 +1690,78 @@ function AnualidadesTab() {
             <PillButton active={sistema === 'francesa'} onClick={() => setSistema('francesa')}>Francesa (cuota fija)</PillButton>
             <PillButton active={sistema === 'alemana'} onClick={() => setSistema('alemana')}>Alemana (capital fijo)</PillButton>
             <PillButton active={sistema === 'americana'} onClick={() => setSistema('americana')}>Americana (bullet)</PillButton>
+            <button 
+              onClick={() => setMostrarComparador(true)}
+              className="px-4 py-2 rounded-md text-sm font-semibold text-white flex items-center gap-1.5" 
+              style={{ background: 'var(--accent-primary)' }}
+            >
+              <ListChecks size={14} /> Comparar sistemas
+            </button>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 cx-bg-surface p-4 rounded-lg border cx-border-border">
-            <Field label="Monto del préstamo" value={P} onChange={setP} min={0} step={100} />
-            <Field label="Tasa nominal anual" suffix="%" value={tasaNominal} onChange={setTasaNominal} min={0} step={0.1} />
-            <SelectField label="Capitalización" value={temporalidad} onChange={setTemporalidad} options={opcionesTemporalidad} />
-            <Field label={`Número de periodos (${t.periodoPlural})`} value={n} onChange={(v) => setN(Math.max(1, Math.round(v)))} min={1} step={1} max={LIMITES.MESES_MAX} />
+            <Field label="Monto del préstamo" value={P} onChange={setP} min={0} step={100} tooltip="Cantidad total del préstamo solicitado" />
+            <Field label="Tasa nominal anual" suffix="%" value={tasaNominal} onChange={setTasaNominal} min={0} step={0.1} tooltip="Tasa de interés anual del préstamo" />
+            <SelectField label="Capitalización" value={temporalidad} onChange={setTemporalidad} options={opcionesTemporalidad} tooltip="Frecuencia de capitalización de los intereses" />
+            <Field label={`Número de periodos (${t.periodoPlural})`} value={n} onChange={(v) => setN(Math.max(1, Math.round(v)))} min={1} step={1} max={LIMITES.MESES_MAX} tooltip="Total de periodos para pagar el préstamo" />
+          </div>
+
+          {/* Pagos Extras en Anualidades */}
+          <div className="cx-bg-surface p-4 rounded-lg border cx-border-border">
+            <div className="flex items-center gap-2 mb-3">
+              <Plus size={16} className="cx-text-accent-primary" />
+              <span className="text-sm font-semibold cx-text-text-primary">Pagos Extras</span>
+              <span className="text-xs cx-text-text-muted">(Pagos adicionales para reducir la deuda más rápido)</span>
+            </div>
+            <div className="flex flex-wrap items-end gap-3">
+              <SelectField 
+                label="Tipo" 
+                value={nuevoExtraTipo} 
+                onChange={setNuevoExtraTipo} 
+                options={[
+                  { value: 'individual', label: 'Individual' },
+                  { value: 'rango', label: 'Rango periódico' }
+                ]}
+                tooltip="Individual: un solo pago en un mes específico. Rango: pagos periódicos en un rango de meses"
+              />
+              <Field label="Mes inicial" value={nuevoExtraMes} onChange={setNuevoExtraMes} min={1} step={1} max={n} tooltip="Mes en que se realizará el pago extra" />
+              {nuevoExtraTipo === 'rango' && (
+                <Field label="Mes final" value={nuevoExtraMesFin} onChange={setNuevoExtraMesFin} min={1} step={1} max={n} tooltip="Último mes del rango de pagos extras" />
+              )}
+              <Field label="Monto extra" suffix="$" value={nuevoExtraMonto} onChange={setNuevoExtraMonto} min={1} step={10} tooltip="Cantidad adicional a pagar en cada período" />
+              <button onClick={agregarExtra} className="px-4 py-2 rounded-md text-sm font-semibold text-white" style={{ background: 'var(--accent-primary)' }}>
+                Agregar
+              </button>
+            </div>
+            {extras.length > 0 && (
+              <div className="mt-3 flex flex-wrap gap-2">
+                {extras.map((e, i) => (
+                  <div key={i} className="flex items-center gap-2 cx-bg-surface-alt border cx-border-border rounded-md px-3 py-1.5 text-xs">
+                    <span className="cx-text-text-secondary">
+                      {e.tipo === 'individual' ? `Mes ${e.mes}` : `Meses ${e.mes}-${e.mesFin}`}
+                    </span>
+                    <span className="cx-text-accent-green-text font-semibold">{fmt(e.monto)}</span>
+                    <button onClick={() => eliminarExtra(i)} className="cx-text-text-faint hover:cx-text-accent-coral-text">
+                      <X size={14} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+            {extras.length === 0 && (
+              <p className="text-xs cx-text-text-muted mt-2">No hay pagos extras configurados.</p>
+            )}
           </div>
         </>
       )}
 
       {modo === 'futuro' && (
         <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 cx-bg-surface p-4 rounded-lg border cx-border-border">
-          <Field label="Depósito mensual" value={aporte} onChange={setAporte} min={0} step={10} />
-          <Field label="Meta futura" value={metaFuturo} onChange={setMetaFuturo} min={0} step={1000} />
-          <Field label="Tasa nominal anual" suffix="%" value={tasaNominal} onChange={setTasaNominal} min={0} step={0.1} />
-          <SelectField label="Capitalización" value={temporalidad} onChange={setTemporalidad} options={opcionesTemporalidad} />
-          <Field label={`Número de periodos (${t.periodoPlural})`} value={n} onChange={(v) => setN(Math.max(1, Math.round(v)))} min={1} step={1} max={LIMITES.MESES_MAX} />
+          <Field label="Depósito mensual" value={aporte} onChange={setAporte} min={0} step={10} tooltip="Cantidad que depositarás cada mes" />
+          <Field label="Meta futura" value={metaFuturo} onChange={setMetaFuturo} min={0} step={1000} tooltip="Monto que deseas acumular" />
+          <Field label="Tasa nominal anual" suffix="%" value={tasaNominal} onChange={setTasaNominal} min={0} step={0.1} tooltip="Tasa de interés anual de la cuenta de ahorro" />
+          <SelectField label="Capitalización" value={temporalidad} onChange={setTemporalidad} options={opcionesTemporalidad} tooltip="Frecuencia de capitalización de los intereses" />
+          <Field label={`Número de periodos (${t.periodoPlural})`} value={n} onChange={(v) => setN(Math.max(1, Math.round(v)))} min={1} step={1} max={LIMITES.MESES_MAX} tooltip="Total de periodos de ahorro" />
         </div>
       )}
 
@@ -1470,22 +1769,22 @@ function AnualidadesTab() {
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           {modo === 'presente' ? (
             <>
-              {sistema === 'francesa' && <StatCard label="Pago por periodo" value={fmt(resultado.rows[0]?.pago)} accent="blue" highlight={true} />}
+              {sistema === 'francesa' && <StatCard label="Pago por periodo" value={fmt(resultado.rows[0]?.pago)} accent="blue" highlight={true} tooltip="Cuota fija que se paga cada periodo" />}
               {sistema !== 'francesa' && (
                 <>
-                  <StatCard label="Primer pago" value={fmt(resultado.rows[0]?.pago)} accent="blue" />
-                  <StatCard label="Último pago" value={fmt(resultado.rows[resultado.rows.length - 1]?.pago)} accent="blue" />
+                  <StatCard label="Primer pago" value={fmt(resultado.rows[0]?.pago)} accent="blue" tooltip="Primera cuota a pagar" />
+                  <StatCard label="Último pago" value={fmt(resultado.rows[resultado.rows.length - 1]?.pago)} accent="blue" tooltip="Última cuota a pagar" />
                 </>
               )}
-              <StatCard label="Interés total" value={fmt(resultado.totalInteres)} accent="coral" />
-              <StatCard label="Capital total" value={fmt(P)} accent="teal" />
+              <StatCard label="Interés total" value={fmt(resultado.totalInteres)} accent="coral" tooltip="Total de intereses pagados durante todo el préstamo" />
+              <StatCard label="Capital total" value={fmt(P)} accent="teal" tooltip="Monto original del préstamo" />
             </>
           ) : (
             <>
-              <StatCard label="Monto acumulado" value={fmt(resultado.saldoFinal)} accent="blue" highlight={true} />
-              <StatCard label="Total depositado" value={fmt(aporte * n)} accent="teal" />
-              <StatCard label="Interés ganado" value={fmt(resultado.totalInteres)} accent="coral" />
-              {resultado.saldoFinal >= metaFuturo && <StatCard label="🎯 Meta alcanzada" value="¡Sí!" accent="teal" />}
+              <StatCard label="Monto acumulado" value={fmt(resultado.saldoFinal)} accent="blue" highlight={true} tooltip="Total ahorrado al final del período" />
+              <StatCard label="Total depositado" value={fmt(aporte * n)} accent="teal" tooltip="Suma de todos los depósitos realizados" />
+              <StatCard label="Interés ganado" value={fmt(resultado.totalInteres)} accent="coral" tooltip="Intereses generados por el ahorro" />
+              {resultado.saldoFinal >= metaFuturo && <StatCard label="🎯 Meta alcanzada" value="¡Sí!" accent="teal" tooltip="Has alcanzado tu meta de ahorro" />}
             </>
           )}
         </div>
@@ -1509,6 +1808,7 @@ function AnualidadesTab() {
                     <th className="text-right px-3 py-2 font-semibold cx-text-text-muted">Cuota</th>
                     <th className="text-right px-3 py-2 font-semibold cx-text-text-muted">Interés</th>
                     <th className="text-right px-3 py-2 font-semibold cx-text-text-muted">Capital</th>
+                    {extras.length > 0 && <th className="text-right px-3 py-2 font-semibold cx-text-accent-primary">Extra</th>}
                     <th className="text-right px-3 py-2 font-semibold cx-text-text-muted">Saldo final</th>
                   </tr>
                 </thead>
@@ -1520,6 +1820,9 @@ function AnualidadesTab() {
                       <td className="px-3 py-1.5 text-right cx-text-text-primary" style={{ fontFamily: "'JetBrains Mono', monospace" }}>{fmt(row.pago)}</td>
                       <td className="px-3 py-1.5 text-right cx-text-accent-coral-text" style={{ fontFamily: "'JetBrains Mono', monospace" }}>{fmt(row.interes)}</td>
                       <td className="px-3 py-1.5 text-right cx-text-accent-green-text" style={{ fontFamily: "'JetBrains Mono', monospace" }}>{fmt(row.capital)}</td>
+                      {extras.length > 0 && (
+                        <td className="px-3 py-1.5 text-right cx-text-accent-primary" style={{ fontFamily: "'JetBrains Mono', monospace" }}>{row.extra ? fmt(row.extra) : '—'}</td>
+                      )}
                       <td className="px-3 py-1.5 text-right cx-text-text-primary font-semibold" style={{ fontFamily: "'JetBrains Mono', monospace" }}>{fmt(row.saldoFinal)}</td>
                     </tr>
                   ))}
@@ -1541,8 +1844,8 @@ function AnualidadesTab() {
           <StackedBarChart 
             data={chartData} 
             xKey="periodo" 
-            barKeys={['Capital', 'Interés']} 
-            colors={['var(--accent-green)', 'var(--accent-coral)']}
+            barKeys={extras.length > 0 ? ['Capital', 'Extra', 'Interés'] : ['Capital', 'Interés']}
+            colors={['var(--accent-green)', 'var(--accent-primary)', 'var(--accent-coral)']}
             label={`Periodo (${t.periodo})`}
           />
           <p className="text-xs cx-text-text-muted mt-2">
@@ -1575,36 +1878,26 @@ function AnualidadesTab() {
         </div>
       )}
 
+      {/* Comparador de sistemas de amortización */}
+      {mostrarComparador && (
+        <ComparadorAmortizacion 
+          mostrar={mostrarComparador}
+          onClose={() => setMostrarComparador(false)}
+          P={P}
+          tasaNominal={tasaNominal}
+          temporalidad={temporalidad}
+          n={n}
+        />
+      )}
+
       {tutorialOn && (
-        <div className="fixed bottom-4 right-4 left-4 sm:left-auto sm:w-96 z-50 cx-bg-surface border-2 cx-border-accent-primary/30 rounded-lg shadow-2xl p-5 mode-tutorial">
-          <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center gap-1.5 cx-text-accent-primary text-xs font-semibold uppercase tracking-wide">
-              <GraduationCap size={14} /> Paso {tutorialStep + 1} de {tutorialSteps.length}
-            </div>
-            <button onClick={() => setTutorialOn(false)} className="p-1 rounded-full cx-text-text-faint hover:cx-bg-surface-hover-2"><X size={14} /></button>
-          </div>
-          <h4 className="text-base font-semibold cx-text-text-primary mb-1.5" style={{ fontFamily: "'Fraunces', sans-serif" }}>{tutorialSteps[tutorialStep].titulo}</h4>
-          <p className="text-sm cx-text-text-secondary leading-relaxed mb-3">{tutorialSteps[tutorialStep].texto}</p>
-          {tutorialSteps[tutorialStep].consejo && (
-            <div className="flex items-start gap-1.5 text-xs cx-text-accent-green-text cx-bg-accent-green-bg rounded-lg px-3 py-2 mb-3">
-              <Lightbulb size={13} className="mt-0.5 flex-shrink-0" /> {tutorialSteps[tutorialStep].consejo}
-            </div>
-          )}
-          <div className="flex items-center justify-between gap-2">
-            <button disabled={tutorialStep === 0} onClick={() => setTutorialStep(Math.max(0, tutorialStep - 1))} className="flex items-center gap-1 text-xs font-semibold px-3 py-1.5 rounded-md border-2 cx-border-border cx-text-text-muted disabled:opacity-30">
-              <ChevronLeft size={13} /> Antes
-            </button>
-            {tutorialStep < tutorialSteps.length - 1 ? (
-              <button onClick={() => setTutorialStep(Math.min(tutorialSteps.length - 1, tutorialStep + 1))} className="flex items-center gap-1 text-xs font-semibold px-3.5 py-1.5 rounded-md text-white" style={{ background: 'var(--accent-primary)' }}>
-                Siguiente <ChevronRight size={13} />
-              </button>
-            ) : (
-              <button onClick={() => setTutorialOn(false)} className="flex items-center gap-1 text-xs font-semibold px-3.5 py-1.5 rounded-md text-white" style={{ background: 'var(--accent-green)' }}>
-                <Check size={13} /> Listo
-              </button>
-            )}
-          </div>
-        </div>
+        <TutorialStep 
+          step={tutorialSteps[tutorialStep]} 
+          total={tutorialSteps.length} 
+          onNext={() => setTutorialStep(Math.min(tutorialSteps.length - 1, tutorialStep + 1))}
+          onPrev={() => setTutorialStep(Math.max(0, tutorialStep - 1))}
+          onClose={() => setTutorialOn(false)}
+        />
       )}
     </div>
   );
@@ -1619,7 +1912,6 @@ function SimuladorTab() {
   const [tasas, setTasas] = useState({ simple: 5, compuesto: 8, prestamo: 16, tarjeta: 42 });
   const [detalle, setDetalle] = useState(null);
   const [mostrarTablaCompleta, setMostrarTablaCompleta] = useState(false);
-  const exportRef = useRef(null);
   
   const [extras, setExtras] = useState([]);
   const [nuevoExtraMes, setNuevoExtraMes] = useState(1);
@@ -1729,14 +2021,12 @@ function SimuladorTab() {
   ];
 
   return (
-    <div className="space-y-6" ref={exportRef}>
+    <div className="space-y-6">
       <ControlPanel 
         dashboardOn={dashboardOn} setDashboardOn={setDashboardOn}
         tutorialOn={tutorialOn} setTutorialOn={setTutorialOn}
         discreteOn={discreteOn} setDiscreteOn={setDiscreteOn}
         onReset={() => { setObjetivo(5000); setCapacidad(250); setTasas({ simple: 5, compuesto: 8, prestamo: 16, tarjeta: 42 }); setExtras([]); }}
-        onExportPDF={true}
-        exportRef={exportRef}
       />
 
       {discreteOn && (
@@ -1799,8 +2089,8 @@ function SimuladorTab() {
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 cx-bg-surface p-4 rounded-lg border cx-border-border">
-        <Field label="Monto objetivo" suffix="$" value={objetivo} onChange={setObjetivo} min={1} step={100} />
-        <Field label="Capacidad mensual" suffix="$" value={capacidad} onChange={setCapacidad} min={1} step={10} />
+        <Field label="Monto objetivo" suffix="$" value={objetivo} onChange={setObjetivo} min={1} step={100} tooltip="Cantidad que deseas ahorrar o el monto de tu deuda" />
+        <Field label="Capacidad mensual" suffix="$" value={capacidad} onChange={setCapacidad} min={1} step={10} tooltip="Cantidad que puedes aportar o pagar cada mes" />
       </div>
 
       <div className="cx-bg-surface p-4 rounded-lg border cx-border-border">
@@ -1810,8 +2100,8 @@ function SimuladorTab() {
           <span className="text-xs cx-text-text-muted">(Aportes adicionales en meses específicos)</span>
         </div>
         <div className="flex flex-wrap items-end gap-3">
-          <Field label="Mes" value={nuevoExtraMes} onChange={setNuevoExtraMes} min={1} step={1} max={LIMITES.MESES_MAX} />
-          <Field label="Monto extra" suffix="$" value={nuevoExtraMonto} onChange={setNuevoExtraMonto} min={1} step={10} />
+          <Field label="Mes" value={nuevoExtraMes} onChange={setNuevoExtraMes} min={1} step={1} max={LIMITES.MESES_MAX} tooltip="Mes en que realizarás el aporte extra" />
+          <Field label="Monto extra" suffix="$" value={nuevoExtraMonto} onChange={setNuevoExtraMonto} min={1} step={10} tooltip="Cantidad adicional que aportarás" />
           <button onClick={agregarExtra} className="px-4 py-2 rounded-md text-sm font-semibold text-white" style={{ background: 'var(--accent-primary)' }}>
             Agregar
           </button>
@@ -2010,35 +2300,13 @@ function SimuladorTab() {
       )}
 
       {tutorialOn && (
-        <div className="fixed bottom-4 right-4 left-4 sm:left-auto sm:w-96 z-50 cx-bg-surface border-2 cx-border-accent-primary/30 rounded-lg shadow-2xl p-5 mode-tutorial">
-          <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center gap-1.5 cx-text-accent-primary text-xs font-semibold uppercase tracking-wide">
-              <GraduationCap size={14} /> Paso {tutorialStep + 1} de {tutorialSteps.length}
-            </div>
-            <button onClick={() => setTutorialOn(false)} className="p-1 rounded-full cx-text-text-faint hover:cx-bg-surface-hover-2"><X size={14} /></button>
-          </div>
-          <h4 className="text-base font-semibold cx-text-text-primary mb-1.5" style={{ fontFamily: "'Fraunces', sans-serif" }}>{tutorialSteps[tutorialStep].titulo}</h4>
-          <p className="text-sm cx-text-text-secondary leading-relaxed mb-3">{tutorialSteps[tutorialStep].texto}</p>
-          {tutorialSteps[tutorialStep].consejo && (
-            <div className="flex items-start gap-1.5 text-xs cx-text-accent-green-text cx-bg-accent-green-bg rounded-lg px-3 py-2 mb-3">
-              <Lightbulb size={13} className="mt-0.5 flex-shrink-0" /> {tutorialSteps[tutorialStep].consejo}
-            </div>
-          )}
-          <div className="flex items-center justify-between gap-2">
-            <button disabled={tutorialStep === 0} onClick={() => setTutorialStep(Math.max(0, tutorialStep - 1))} className="flex items-center gap-1 text-xs font-semibold px-3 py-1.5 rounded-md border-2 cx-border-border cx-text-text-muted disabled:opacity-30">
-              <ChevronLeft size={13} /> Antes
-            </button>
-            {tutorialStep < tutorialSteps.length - 1 ? (
-              <button onClick={() => setTutorialStep(Math.min(tutorialSteps.length - 1, tutorialStep + 1))} className="flex items-center gap-1 text-xs font-semibold px-3.5 py-1.5 rounded-md text-white" style={{ background: 'var(--accent-primary)' }}>
-                Siguiente <ChevronRight size={13} />
-              </button>
-            ) : (
-              <button onClick={() => setTutorialOn(false)} className="flex items-center gap-1 text-xs font-semibold px-3.5 py-1.5 rounded-md text-white" style={{ background: 'var(--accent-green)' }}>
-                <Check size={13} /> Listo
-              </button>
-            )}
-          </div>
-        </div>
+        <TutorialStep 
+          step={tutorialSteps[tutorialStep]} 
+          total={tutorialSteps.length} 
+          onNext={() => setTutorialStep(Math.min(tutorialSteps.length - 1, tutorialStep + 1))}
+          onPrev={() => setTutorialStep(Math.max(0, tutorialStep - 1))}
+          onClose={() => setTutorialOn(false)}
+        />
       )}
     </div>
   );
@@ -2056,7 +2324,6 @@ function QuizTab() {
   const [correcto, setCorrecto] = useState(false);
   const [puntaje, setPuntaje] = useState({ aciertos: 0, total: 0 });
   const [mostrarInforme, setMostrarInforme] = useState(false);
-  const exportRef = useRef(null);
 
   const [temasSeleccionados, setTemasSeleccionados] = useState([]);
   const [dificultadEval, setDificultadEval] = useState('medio');
@@ -2443,14 +2710,12 @@ function QuizTab() {
   ];
 
   return (
-    <div className="space-y-5" ref={exportRef}>
+    <div className="space-y-5">
       <ControlPanel 
         dashboardOn={dashboardOn} setDashboardOn={setDashboardOn}
         tutorialOn={tutorialOn} setTutorialOn={setTutorialOn}
         discreteOn={discreteOn} setDiscreteOn={setDiscreteOn}
         onReset={() => { setNivel(1); setPregunta(generarPreguntaNivel(1)); setPuntaje({ aciertos: 0, total: 0 }); setModo('quiz'); setTemasSeleccionados([]); }}
-        onExportPDF={true}
-        exportRef={exportRef}
       />
 
       {discreteOn && (
@@ -2491,9 +2756,9 @@ function QuizTab() {
             </div>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <StatCard label="Nivel actual" value={`${nivel} · ${meta.tag}`} accent="blue" />
-            <StatCard label="Aciertos" value={`${puntaje.aciertos} / ${puntaje.total}`} accent="teal" />
-            <StatCard label="Efectividad" value={puntaje.total ? `${Math.round((puntaje.aciertos / puntaje.total) * 100)}%` : '—'} accent="coral" />
+            <StatCard label="Nivel actual" value={`${nivel} · ${meta.tag}`} accent="blue" tooltip="Nivel seleccionado y tema asociado" />
+            <StatCard label="Aciertos" value={`${puntaje.aciertos} / ${puntaje.total}`} accent="teal" tooltip="Respuestas correctas vs total intentos" />
+            <StatCard label="Efectividad" value={puntaje.total ? `${Math.round((puntaje.aciertos / puntaje.total) * 100)}%` : '—'} accent="coral" tooltip="Porcentaje de respuestas correctas" />
           </div>
           {mostrarInforme && puntaje.total > 0 && (
             <div className="cx-bg-accent-primary-bg border cx-border-accent-primary/30 rounded-lg p-4">
@@ -2653,9 +2918,9 @@ function QuizTab() {
                 <span className="font-semibold text-[15px] cx-text-text-primary" style={{ fontFamily: "'Fraunces', sans-serif" }}>Resultado de tu evaluación</span>
               </div>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                <StatCard label="Aciertos" value={`${respuestasEval.filter((r) => r.correcto).length} / ${respuestasEval.length}`} accent="teal" />
-                <StatCard label="Efectividad" value={`${Math.round((respuestasEval.filter((r) => r.correcto).length / respuestasEval.length) * 100)}%`} accent="coral" />
-                <StatCard label="Temas evaluados" value={String(temasSeleccionados.length)} accent="blue" />
+                <StatCard label="Aciertos" value={`${respuestasEval.filter((r) => r.correcto).length} / ${respuestasEval.length}`} accent="teal" tooltip="Respuestas correctas de la evaluación" />
+                <StatCard label="Efectividad" value={`${Math.round((respuestasEval.filter((r) => r.correcto).length / respuestasEval.length) * 100)}%`} accent="coral" tooltip="Porcentaje de respuestas correctas" />
+                <StatCard label="Temas evaluados" value={String(temasSeleccionados.length)} accent="blue" tooltip="Cantidad de temas incluidos en la evaluación" />
               </div>
               <div className="space-y-1.5 pt-2 border-t cx-border-border">
                 {respuestasEval.map((r, i) => (
@@ -2674,35 +2939,13 @@ function QuizTab() {
       )}
 
       {tutorialOn && (
-        <div className="fixed bottom-4 right-4 left-4 sm:left-auto sm:w-96 z-50 cx-bg-surface border-2 cx-border-accent-primary/30 rounded-lg shadow-2xl p-5 mode-tutorial">
-          <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center gap-1.5 cx-text-accent-primary text-xs font-semibold uppercase tracking-wide">
-              <GraduationCap size={14} /> Paso {tutorialStep + 1} de {tutorialSteps.length}
-            </div>
-            <button onClick={() => setTutorialOn(false)} className="p-1 rounded-full cx-text-text-faint hover:cx-bg-surface-hover-2"><X size={14} /></button>
-          </div>
-          <h4 className="text-base font-semibold cx-text-text-primary mb-1.5" style={{ fontFamily: "'Fraunces', sans-serif" }}>{tutorialSteps[tutorialStep].titulo}</h4>
-          <p className="text-sm cx-text-text-secondary leading-relaxed mb-3">{tutorialSteps[tutorialStep].texto}</p>
-          {tutorialSteps[tutorialStep].consejo && (
-            <div className="flex items-start gap-1.5 text-xs cx-text-accent-green-text cx-bg-accent-green-bg rounded-lg px-3 py-2 mb-3">
-              <Lightbulb size={13} className="mt-0.5 flex-shrink-0" /> {tutorialSteps[tutorialStep].consejo}
-            </div>
-          )}
-          <div className="flex items-center justify-between gap-2">
-            <button disabled={tutorialStep === 0} onClick={() => setTutorialStep(Math.max(0, tutorialStep - 1))} className="flex items-center gap-1 text-xs font-semibold px-3 py-1.5 rounded-md border-2 cx-border-border cx-text-text-muted disabled:opacity-30">
-              <ChevronLeft size={13} /> Antes
-            </button>
-            {tutorialStep < tutorialSteps.length - 1 ? (
-              <button onClick={() => setTutorialStep(Math.min(tutorialSteps.length - 1, tutorialStep + 1))} className="flex items-center gap-1 text-xs font-semibold px-3.5 py-1.5 rounded-md text-white" style={{ background: 'var(--accent-primary)' }}>
-                Siguiente <ChevronRight size={13} />
-              </button>
-            ) : (
-              <button onClick={() => setTutorialOn(false)} className="flex items-center gap-1 text-xs font-semibold px-3.5 py-1.5 rounded-md text-white" style={{ background: 'var(--accent-green)' }}>
-                <Check size={13} /> Listo
-              </button>
-            )}
-          </div>
-        </div>
+        <TutorialStep 
+          step={tutorialSteps[tutorialStep]} 
+          total={tutorialSteps.length} 
+          onNext={() => setTutorialStep(Math.min(tutorialSteps.length - 1, tutorialStep + 1))}
+          onPrev={() => setTutorialStep(Math.max(0, tutorialStep - 1))}
+          onClose={() => setTutorialOn(false)}
+        />
       )}
     </div>
   );
@@ -2713,17 +2956,15 @@ function QuizTab() {
 // ============================================================
 function FormularioTab() {
   const { dashboardOn, setDashboardOn, tutorialOn, setTutorialOn, discreteOn, setDiscreteOn, tutorialStep, setTutorialStep } = useModes();
-  const exportRef = useRef(null);
 
   return (
-    <div className="space-y-6" ref={exportRef}>
+    <div className="space-y-6">
       <ControlPanel 
         dashboardOn={dashboardOn} setDashboardOn={setDashboardOn}
         tutorialOn={tutorialOn} setTutorialOn={setTutorialOn}
         discreteOn={discreteOn} setDiscreteOn={setDiscreteOn}
         onReset={() => {}}
-        onExportPDF={true}
-        exportRef={exportRef}
+        showTutorialToggle={false}
       />
       <div className="cx-bg-surface border cx-border-border p-5 rounded-lg">
         <h3 className="font-semibold text-lg cx-text-text-primary mb-1" style={{ fontFamily: "'Fraunces', serif" }}>📐 Formulario de Fórmulas</h3>
@@ -2942,9 +3183,70 @@ const APP_STYLES = `
     cursor: pointer;
     flex-shrink: 0;
   }
+  .tooltip-trigger {
+    position: relative;
+    cursor: help;
+  }
+  .tooltip-trigger .tooltip-text {
+    visibility: hidden;
+    width: 220px;
+    background-color: var(--surface);
+    color: var(--text-primary);
+    text-align: left;
+    border-radius: 8px;
+    padding: 8px 12px;
+    position: absolute;
+    z-index: 100;
+    bottom: 125%;
+    left: 50%;
+    transform: translateX(-50%);
+    opacity: 0;
+    transition: opacity 0.3s;
+    font-size: 11px;
+    font-weight: 400;
+    border: 1px solid var(--border);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    line-height: 1.4;
+  }
+  .tooltip-trigger .tooltip-text::after {
+    content: "";
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    margin-left: -5px;
+    border-width: 5px;
+    border-style: solid;
+    border-color: var(--border) transparent transparent transparent;
+  }
+  .tooltip-trigger:hover .tooltip-text {
+    visibility: visible;
+    opacity: 1;
+  }
+  .comparador-tabla th, .comparador-tabla td {
+    padding: 8px 10px;
+    text-align: center;
+    font-size: 12px;
+  }
+  .comparador-tabla th {
+    font-weight: 600;
+    background: var(--accent-primary-bg);
+  }
+  .comparador-tabla tr:nth-child(even) {
+    background: var(--surface-alt);
+  }
+  .comparador-tabla .destacado {
+    font-weight: 700;
+    color: var(--accent-primary-text);
+  }
   @media (max-width: 640px) {
     .finapp-root .max-w-5xl { padding-left: 0.75rem; padding-right: 0.75rem; }
     .finapp-root .cx-bg-surface { padding: 0.75rem; }
+    .tooltip-trigger .tooltip-text {
+      width: 180px;
+      left: 0;
+      transform: none;
+      bottom: 100%;
+    }
   }
 `;
 
@@ -3071,6 +3373,16 @@ function FinanzasApp() {
 
         <footer className="mt-8 pt-6 border-t cx-border-border text-center">
           <img src={ESPOL_LOGO} alt="ESPOL" className="espol-logo w-9 mx-auto mb-3 opacity-60" />
+          <div className="flex justify-center mt-2">
+            <img 
+              src="QR.png" 
+              alt="Código QR para acceder a la calculadora" 
+              width={64} 
+              height={64}
+              className="opacity-60 hover:opacity-100 transition-opacity cursor-pointer"
+              onClick={() => window.open('https://eznumur.github.io/CalculadoraMatDis/', '_blank')}
+            />
+          </div>
           <div className="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide cx-text-text-secondary mb-1.5">
             <AlertTriangle size={12} /> Prototipo educativo — Esto NO es asesoría financiera
           </div>
