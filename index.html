@@ -6,6 +6,8 @@
     <title>Finanzas App - ESPOL</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script type="importmap">
       {
         "imports": {
@@ -87,7 +89,6 @@
           transform-style: preserve-3d;
           padding: 4px;
         }
-        /* Estilos para checkboxes personalizados */
         .tema-checkbox:checked {
           accent-color: var(--accent-primary);
         }
@@ -97,6 +98,39 @@
           cursor: pointer;
           flex-shrink: 0;
         }
+        /* Estilos para fórmulas en PDF */
+        .math-display {
+          font-family: 'STIX Two Text', 'Cambria Math', 'Times New Roman', serif;
+          font-size: 1.1rem;
+          text-align: center;
+          padding: 8px 12px;
+        }
+        .math-display sub { font-size: 0.7em; }
+        .math-display sup { font-size: 0.7em; }
+        .math-display .frac {
+          display: inline-flex;
+          flex-direction: column;
+          align-items: center;
+          vertical-align: middle;
+          margin: 0 4px;
+          line-height: 1.2;
+          font-size: 0.9em;
+        }
+        .math-display .frac .num {
+          border-bottom: 1.5px solid currentColor;
+          padding: 0 6px 2px 6px;
+        }
+        .math-display .frac .den {
+          padding: 2px 6px 0 6px;
+        }
+        .math-display .pow {
+          white-space: nowrap;
+        }
+        .math-display .pow sup {
+          font-size: 0.7em;
+          margin-left: 1px;
+        }
+        .math-display .italic { font-style: italic; }
     </style>
 </head>
 <body class="m-0 p-0">
@@ -114,7 +148,7 @@ import {
   GraduationCap, ChevronLeft, ChevronRight, Lightbulb, Home,
   Settings2, Check, ArrowLeftRight, Sun, Moon, Info, FileText,
   BarChart3, LineChart as LineChartIcon, ToggleLeft, ToggleRight,
-  Clock, Calendar, DollarSign, Trash2, Shuffle
+  Clock, Calendar, DollarSign, Trash2, Shuffle, Download
 } from 'lucide-react';
 
 const ESPOL_LOGO = 'logo.svg';
@@ -348,6 +382,71 @@ function sampleSerie(serie, maxRows) {
 const RESULTADOS_KEY_SIMULADOR = { alcancia: 'alcancia', simple: 'ahorroSimple', compuesto: 'ahorroCompuesto', prestamo: 'prestamo', tarjeta: 'tarjeta' };
 
 // ============================================================
+// COMPONENTE DE EXPORTACIÓN A PDF
+// ============================================================
+function ExportPDFButton({ targetRef, filename = 'reporte-financiero' }) {
+  const [exportando, setExportando] = useState(false);
+
+  const exportarPDF = async () => {
+    if (!targetRef || !targetRef.current) return;
+    setExportando(true);
+    try {
+      const elemento = targetRef.current;
+      const canvas = await html2canvas(elemento, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: '#FFFFFF',
+        logging: false,
+        width: elemento.scrollWidth,
+        height: elemento.scrollHeight,
+        windowWidth: elemento.scrollWidth,
+        windowHeight: elemento.scrollHeight,
+      });
+      
+      const imgData = canvas.toDataURL('image/png');
+      const { jsPDF } = window.jspdf;
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+      
+      // Si la imagen es más alta que una página, dividir en varias
+      let heightLeft = pdfHeight;
+      let position = 0;
+      const pageHeight = pdf.internal.pageSize.getHeight();
+      
+      // Primera página
+      pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, pdfHeight);
+      heightLeft -= pageHeight;
+      
+      while (heightLeft > 0) {
+        position = heightLeft - pdfHeight;
+        pdf.addPage();
+        pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, pdfHeight);
+        heightLeft -= pageHeight;
+      }
+      
+      pdf.save(`${filename}.pdf`);
+    } catch (error) {
+      console.error('Error exportando PDF:', error);
+    } finally {
+      setExportando(false);
+    }
+  };
+
+  return (
+    <button 
+      onClick={exportarPDF} 
+      disabled={exportando}
+      className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold text-white disabled:opacity-50 transition-opacity hover:opacity-90"
+      style={{ background: 'var(--accent-primary)' }}
+    >
+      <Download size={16} />
+      {exportando ? 'Generando PDF...' : 'Exportar a PDF'}
+    </button>
+  );
+}
+
+// ============================================================
 // COMPONENTES UI
 // ============================================================
 function Modal({ onClose, children, wide, size }) {
@@ -557,7 +656,9 @@ function ControlPanel({
   dashboardOn, setDashboardOn,
   tutorialOn, setTutorialOn,
   discreteOn, setDiscreteOn,
-  onReset 
+  onReset,
+  onExportPDF,
+  exportRef
 }) {
   const handleReset = () => {
     if (typeof onReset === 'function') onReset();
@@ -589,6 +690,9 @@ function ControlPanel({
         <button onClick={handleReset} className="text-xs px-2.5 py-1 rounded-md cx-bg-surface cx-text-text-muted border cx-border-border hover:cx-border-border-hover transition-colors">
           <RotateCcw size={12} className="inline mr-1" /> Reset
         </button>
+        {onExportPDF && exportRef && (
+          <ExportPDFButton targetRef={exportRef} filename={`reporte-financiero-${Date.now()}`} />
+        )}
       </div>
     </div>
   );
@@ -642,6 +746,7 @@ function TasasEquivalentesTab() {
   const [destino, setDestino] = useState('mensual');
   const [tipoOrigen, setTipoOrigen] = useState('nominal');
   const [tipoDestino, setTipoDestino] = useState('efectiva');
+  const exportRef = useRef(null);
 
   const { dashboardOn, setDashboardOn, tutorialOn, setTutorialOn, discreteOn, setDiscreteOn, tutorialStep, setTutorialStep } = useModes();
 
@@ -763,12 +868,14 @@ function TasasEquivalentesTab() {
   ];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" ref={exportRef}>
       <ControlPanel 
         dashboardOn={dashboardOn} setDashboardOn={setDashboardOn}
         tutorialOn={tutorialOn} setTutorialOn={setTutorialOn}
         discreteOn={discreteOn} setDiscreteOn={setDiscreteOn}
-        onReset={() => { setTasaValor(18); setOrigen('anual'); setDestino('mensual'); setTipoOrigen('nominal'); setTipoDestino('efectiva'); }} 
+        onReset={() => { setTasaValor(18); setOrigen('anual'); setDestino('mensual'); setTipoOrigen('nominal'); setTipoDestino('efectiva'); }}
+        onExportPDF={true}
+        exportRef={exportRef}
       />
 
       {discreteOn && (
@@ -1026,6 +1133,7 @@ function InteresTab() {
   const [temporalidad, setTemporalidad] = useState('mensual');
   const [n, setN] = useState(10);
   const [anios, setAnios] = useState(3);
+  const exportRef = useRef(null);
 
   const { dashboardOn, setDashboardOn, tutorialOn, setTutorialOn, discreteOn, setDiscreteOn, tutorialStep, setTutorialStep } = useModes();
 
@@ -1056,12 +1164,14 @@ function InteresTab() {
   ];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" ref={exportRef}>
       <ControlPanel 
         dashboardOn={dashboardOn} setDashboardOn={setDashboardOn}
         tutorialOn={tutorialOn} setTutorialOn={setTutorialOn}
         discreteOn={discreteOn} setDiscreteOn={setDiscreteOn}
         onReset={() => { setP(80000); setTasaNominal(12); setTemporalidad('mensual'); setN(10); }}
+        onExportPDF={true}
+        exportRef={exportRef}
       />
 
       {discreteOn && (
@@ -1258,6 +1368,7 @@ function AnualidadesTab() {
   const [n, setN] = useState(10);
   const [aporte, setAporte] = useState(500);
   const [metaFuturo, setMetaFuturo] = useState(100000);
+  const exportRef = useRef(null);
 
   const { dashboardOn, setDashboardOn, tutorialOn, setTutorialOn, discreteOn, setDiscreteOn, tutorialStep, setTutorialStep } = useModes();
 
@@ -1291,12 +1402,14 @@ function AnualidadesTab() {
   ];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" ref={exportRef}>
       <ControlPanel 
         dashboardOn={dashboardOn} setDashboardOn={setDashboardOn}
         tutorialOn={tutorialOn} setTutorialOn={setTutorialOn}
         discreteOn={discreteOn} setDiscreteOn={setDiscreteOn}
         onReset={() => { setP(80000); setTasaNominal(24); setTemporalidad('mensual'); setN(10); setModo('presente'); setSistema('francesa'); setAporte(500); setMetaFuturo(100000); }}
+        onExportPDF={true}
+        exportRef={exportRef}
       />
 
       {discreteOn && (
@@ -1498,7 +1611,7 @@ function AnualidadesTab() {
 }
 
 // ============================================================
-// SIMULADOR TAB - CON PAGOS EXTRAS Y 10 NIVELES DE QUIZZES
+// SIMULADOR TAB
 // ============================================================
 function SimuladorTab() {
   const [objetivo, setObjetivo] = useState(5000);
@@ -1506,8 +1619,8 @@ function SimuladorTab() {
   const [tasas, setTasas] = useState({ simple: 5, compuesto: 8, prestamo: 16, tarjeta: 42 });
   const [detalle, setDetalle] = useState(null);
   const [mostrarTablaCompleta, setMostrarTablaCompleta] = useState(false);
+  const exportRef = useRef(null);
   
-  // Pagos extras
   const [extras, setExtras] = useState([]);
   const [nuevoExtraMes, setNuevoExtraMes] = useState(1);
   const [nuevoExtraMonto, setNuevoExtraMonto] = useState(100);
@@ -1616,12 +1729,14 @@ function SimuladorTab() {
   ];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" ref={exportRef}>
       <ControlPanel 
         dashboardOn={dashboardOn} setDashboardOn={setDashboardOn}
         tutorialOn={tutorialOn} setTutorialOn={setTutorialOn}
         discreteOn={discreteOn} setDiscreteOn={setDiscreteOn}
         onReset={() => { setObjetivo(5000); setCapacidad(250); setTasas({ simple: 5, compuesto: 8, prestamo: 16, tarjeta: 42 }); setExtras([]); }}
+        onExportPDF={true}
+        exportRef={exportRef}
       />
 
       {discreteOn && (
@@ -1688,7 +1803,6 @@ function SimuladorTab() {
         <Field label="Capacidad mensual" suffix="$" value={capacidad} onChange={setCapacidad} min={1} step={10} />
       </div>
 
-      {/* Pagos Extras */}
       <div className="cx-bg-surface p-4 rounded-lg border cx-border-border">
         <div className="flex items-center gap-2 mb-3">
           <Plus size={16} className="cx-text-accent-primary" />
@@ -1931,10 +2045,10 @@ function SimuladorTab() {
 }
 
 // ============================================================
-// QUIZ TAB - 10 NIVELES COMPLETOS CON CHECKLIST Y DIFICULTAD
+// QUIZ TAB
 // ============================================================
 function QuizTab() {
-  const [modo, setModo] = useState('quiz'); // 'quiz' o 'evaluacion'
+  const [modo, setModo] = useState('quiz');
   const [nivel, setNivel] = useState(1);
   const [pregunta, setPregunta] = useState(null);
   const [respuestaTexto, setRespuestaTexto] = useState('');
@@ -1942,8 +2056,8 @@ function QuizTab() {
   const [correcto, setCorrecto] = useState(false);
   const [puntaje, setPuntaje] = useState({ aciertos: 0, total: 0 });
   const [mostrarInforme, setMostrarInforme] = useState(false);
+  const exportRef = useRef(null);
 
-  // Evaluación personalizada
   const [temasSeleccionados, setTemasSeleccionados] = useState([]);
   const [dificultadEval, setDificultadEval] = useState('medio');
   const [evaluacionActiva, setEvaluacionActiva] = useState(false);
@@ -1957,7 +2071,6 @@ function QuizTab() {
 
   const { dashboardOn, setDashboardOn, tutorialOn, setTutorialOn, discreteOn, setDiscreteOn, tutorialStep, setTutorialStep } = useModes();
 
-  // Definición de temas
   const TEMAS = [
     { id: 'interes_simple', label: 'Interés Simple', icon: '📊' },
     { id: 'interes_compuesto', label: 'Interés Compuesto', icon: '📈' },
@@ -1975,7 +2088,6 @@ function QuizTab() {
     { id: 'master', label: '👑 Master', color: 'text-red-600' },
   ];
 
-  // Mapas de niveles por tema
   const NIVELES_POR_TEMA = {
     interes_simple: [1, 2],
     interes_compuesto: [3, 4],
@@ -1985,7 +2097,6 @@ function QuizTab() {
     problemas_integradores: [9, 10],
   };
 
-  // Generadores de preguntas por nivel
   function randInt(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
   function randChoice(arr) { return arr[randInt(0, arr.length - 1)]; }
   function round2(n) { return Math.round(n * 100) / 100; }
@@ -1999,7 +2110,6 @@ function QuizTab() {
     return Math.abs(valorUsuario - correcto) <= Math.abs(correcto) * 0.02;
   }
 
-  // Generadores de preguntas por nivel
   function nivel1_interesSimpleGanado() {
     const P = randInt(5, 50) * 1000;
     const r = randInt(4, 24);
@@ -2233,7 +2343,6 @@ function QuizTab() {
     return [facil, dificilN];
   }
 
-  // Funciones para modo quiz
   useEffect(() => {
     setPregunta(generarPreguntaNivel(1));
   }, []);
@@ -2266,7 +2375,6 @@ function QuizTab() {
 
   const meta = NIVELES_META[nivel - 1] || NIVELES_META[0];
 
-  // Funciones para modo evaluación
   const seleccionarTodos = () => {
     if (temasSeleccionados.length === TEMAS.length) {
       setTemasSeleccionados([]);
@@ -2335,12 +2443,14 @@ function QuizTab() {
   ];
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-5" ref={exportRef}>
       <ControlPanel 
         dashboardOn={dashboardOn} setDashboardOn={setDashboardOn}
         tutorialOn={tutorialOn} setTutorialOn={setTutorialOn}
         discreteOn={discreteOn} setDiscreteOn={setDiscreteOn}
-        onReset={() => { setNivel(1); setPregunta(generarPreguntaNivel(1)); setPuntaje({ aciertos: 0, total: 0 }); setModo('quiz'); setTemasSeleccionados([]); }} 
+        onReset={() => { setNivel(1); setPregunta(generarPreguntaNivel(1)); setPuntaje({ aciertos: 0, total: 0 }); setModo('quiz'); setTemasSeleccionados([]); }}
+        onExportPDF={true}
+        exportRef={exportRef}
       />
 
       {discreteOn && (
@@ -2369,7 +2479,6 @@ function QuizTab() {
       </div>
 
       {modo === 'quiz' ? (
-        // Modo Práctica por niveles
         <>
           <div>
             <div className="text-xs uppercase tracking-wide cx-text-text-muted font-semibold mb-2">Nivel de dificultad</div>
@@ -2431,12 +2540,10 @@ function QuizTab() {
           <p className="text-[11px] cx-text-text-faint">Cada nivel genera preguntas nuevas con números aleatorios.</p>
         </>
       ) : (
-        // Modo Evaluación personalizada
         <div className="cx-bg-surface border cx-border-border rounded-lg p-5 space-y-4">
           <h3 className="text-base font-semibold cx-text-text-primary" style={{ fontFamily: "'Fraunces', sans-serif" }}>📊 Configura tu evaluación</h3>
           <p className="text-sm cx-text-text-secondary">Selecciona los temas que quieres evaluar y la dificultad.</p>
 
-          {/* Checklist de temas */}
           <div>
             <div className="flex items-center justify-between mb-2 flex-wrap">
               <span className="text-xs font-semibold cx-text-text-muted uppercase tracking-wide">Temas a evaluar</span>
@@ -2474,7 +2581,6 @@ function QuizTab() {
             </div>
           </div>
 
-          {/* Selector de dificultad */}
           <div>
             <span className="text-xs font-semibold cx-text-text-muted uppercase tracking-wide">Dificultad</span>
             <div className="flex flex-wrap gap-2 mt-1">
@@ -2500,7 +2606,6 @@ function QuizTab() {
             {temasSeleccionados.length === 0 ? 'Selecciona al menos un tema' : `Iniciar evaluación (${temasSeleccionados.length * 2} preguntas)`}
           </button>
 
-          {/* Evaluación activa */}
           {evaluacionActiva && preguntasEval.length > 0 && preguntaEvalIndex < preguntasEval.length && (
             <div className="cx-bg-surface-alt border cx-border-border rounded-lg p-4 sm:p-5 space-y-4 mt-2">
               <div className="flex items-center justify-between flex-wrap gap-2">
@@ -2541,7 +2646,6 @@ function QuizTab() {
             </div>
           )}
 
-          {/* Resultado de evaluación */}
           {evaluacionCompletada && (
             <div className="cx-bg-accent-primary-bg border cx-border-accent-primary/30 rounded-lg p-5 space-y-3 mt-2">
               <div className="flex items-center gap-2">
@@ -2609,14 +2713,17 @@ function QuizTab() {
 // ============================================================
 function FormularioTab() {
   const { dashboardOn, setDashboardOn, tutorialOn, setTutorialOn, discreteOn, setDiscreteOn, tutorialStep, setTutorialStep } = useModes();
+  const exportRef = useRef(null);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" ref={exportRef}>
       <ControlPanel 
         dashboardOn={dashboardOn} setDashboardOn={setDashboardOn}
         tutorialOn={tutorialOn} setTutorialOn={setTutorialOn}
         discreteOn={discreteOn} setDiscreteOn={setDiscreteOn}
-        onReset={() => {}} 
+        onReset={() => {}}
+        onExportPDF={true}
+        exportRef={exportRef}
       />
       <div className="cx-bg-surface border cx-border-border p-5 rounded-lg">
         <h3 className="font-semibold text-lg cx-text-text-primary mb-1" style={{ fontFamily: "'Fraunces', serif" }}>📐 Formulario de Fórmulas</h3>
@@ -2673,7 +2780,7 @@ function GameMenu({ onSelect }) {
 }
 
 // ============================================================
-// SPLASH SCREEN - MONEDA CON GIRO DE 360° Y GROSOR
+// SPLASH SCREEN
 // ============================================================
 function SplashScreen({ fadingOut, progress }) {
   const [frase] = useState(() => FRASES_CARGA[Math.floor(Math.random() * FRASES_CARGA.length)]);
