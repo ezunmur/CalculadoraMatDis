@@ -131,7 +131,7 @@
         }
 
         /* ============================================================
-           ESTILOS RESPONSIVE Y DE IMPRESIÓN
+           ESTILOS RESPONSIVE Y DE IMPRESIÓN - UNIFICADOS
            ============================================================ */
         @media (max-width: 480px) {
           .finapp-root .text-2xl { font-size: 1.25rem !important; }
@@ -147,15 +147,26 @@
 
         @media print {
           .finapp-root .no-print { display: none !important; }
-          .finapp-root .print-only { display: block !important; }
-          .finapp-root .print-break { page-break-before: always; }
           .finapp-root .cx-bg-surface { background: white !important; border: 1px solid #ddd !important; }
           .finapp-root .cx-border-border { border-color: #ddd !important; }
           .finapp-root { background: white !important; color: black !important; }
           .finapp-root .coin-3d { width: 70px !important; height: 70px !important; }
+          .finapp-root .max-w-5xl { max-width: 100% !important; padding: 0.5in !important; }
+          .finapp-root .print-break { page-break-before: always; }
+          .finapp-root .text-white { color: black !important; }
+          .finapp-root [style*="background: var(--accent-primary)"] { background: #1F4D3A !important; color: white !important; }
+          .finapp-root .cx-text-accent-primary { color: #1F4D3A !important; }
+          .finapp-root .cx-text-accent-primary-text { color: #1F4D3A !important; }
+          .finapp-root .cx-bg-accent-primary-bg { background: #f0f5f0 !important; }
+          .finapp-root .cx-bg-accent-green-bg { background: #f0f8f2 !important; }
+          .finapp-root .cx-bg-accent-coral-bg { background: #fdf0ec !important; }
+          .finapp-root .mode-discrete { border-left-color: #8B5CF6 !important; }
+          .finapp-root .mode-tutorial { display: none !important; }
+          .finapp-root .stat-card-valor { font-size: 18px !important; }
+          .finapp-root .header-titulo { font-size: 16px !important; }
+          .finapp-root .fila-detalle { background: #f5f5f5 !important; border-top: 2px solid #1F4D3A !important; }
+          .finapp-root .fila-detalle .cx-bg-surface { background: white !important; }
         }
-
-        .print-only { display: none; }
 
         /* Estilos para scroll de tablas en móvil */
         .table-responsive {
@@ -181,6 +192,170 @@
         .fila-detalle .detalle-calculado strong {
           color: var(--accent-primary);
         }
+
+        /* ============================================================
+           ESTILOS UNIFICADOS DE FORMULARIO
+           ============================================================ */
+        .form-group {
+          display: flex;
+          flex-direction: column;
+          gap: 4px;
+          min-width: 0;
+        }
+        .form-label {
+          font-size: 0.65rem;
+          font-weight: 600;
+          text-transform: uppercase;
+          letter-spacing: 0.04em;
+          color: var(--text-muted);
+          display: flex;
+          align-items: center;
+          gap: 4px;
+        }
+        .form-input {
+          width: 100%;
+          padding: 0.6rem 0.75rem;
+          border: 2px solid var(--border);
+          border-radius: 0.5rem;
+          background: var(--surface);
+          color: var(--text-primary);
+          font-size: 0.95rem;
+          font-family: "'JetBrains Mono', monospace";
+          font-weight: 500;
+          outline: none;
+          transition: border-color 0.2s ease, box-shadow 0.2s ease;
+          min-height: 44px;
+        }
+        .form-input:focus {
+          border-color: var(--accent-primary);
+          box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-primary) 20%, transparent);
+        }
+        .form-input::placeholder {
+          color: var(--text-faint);
+          font-weight: 400;
+          opacity: 0.8;
+        }
+        .form-input-error {
+          border-color: #ef4444;
+        }
+        .form-input-error:focus {
+          border-color: #ef4444;
+          box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.2);
+        }
+        .form-error-text {
+          font-size: 0.7rem;
+          color: #ef4444;
+          margin-top: 2px;
+        }
+        .form-suffix {
+          font-size: 0.8rem;
+          color: var(--text-faint);
+          font-weight: 500;
+          padding-left: 4px;
+        }
+        .form-select {
+          width: 100%;
+          padding: 0.6rem 0.75rem;
+          border: 2px solid var(--border);
+          border-radius: 0.5rem;
+          background: var(--surface);
+          color: var(--text-primary);
+          font-size: 0.9rem;
+          font-family: "'Inter', sans-serif";
+          font-weight: 500;
+          outline: none;
+          transition: border-color 0.2s ease, box-shadow 0.2s ease;
+          min-height: 44px;
+          appearance: auto;
+          cursor: pointer;
+        }
+        .form-select:focus {
+          border-color: var(--accent-primary);
+          box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-primary) 20%, transparent);
+        }
+        .form-select option {
+          background: var(--surface);
+          color: var(--text-primary);
+        }
+
+        .tooltip-trigger {
+          position: relative;
+          cursor: help;
+        }
+        .tooltip-trigger .tooltip-text {
+          visibility: hidden;
+          width: 220px;
+          background-color: var(--surface);
+          color: var(--text-primary);
+          text-align: left;
+          border-radius: 8px;
+          padding: 8px 12px;
+          position: absolute;
+          z-index: 100;
+          bottom: calc(100% + 8px);
+          left: 50%;
+          transform: translateX(-50%);
+          opacity: 0;
+          transition: opacity 0.3s;
+          font-size: 11px;
+          font-weight: 400;
+          border: 1px solid var(--border);
+          box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+          line-height: 1.4;
+        }
+        .tooltip-trigger .tooltip-text::after {
+          content: "";
+          position: absolute;
+          top: 100%;
+          left: 50%;
+          margin-left: -5px;
+          border-width: 5px;
+          border-style: solid;
+          border-color: var(--border) transparent transparent transparent;
+        }
+        .tooltip-trigger:hover .tooltip-text {
+          visibility: visible;
+          opacity: 1;
+        }
+
+        .comparador-tabla th, .comparador-tabla td {
+          padding: 8px 10px;
+          text-align: center;
+          font-size: 12px;
+        }
+        .comparador-tabla th {
+          font-weight: 600;
+          background: var(--accent-primary-bg);
+        }
+        .comparador-tabla tr:nth-child(even) {
+          background: var(--surface-alt);
+        }
+        .comparador-tabla .destacado {
+          font-weight: 700;
+          color: var(--accent-primary-text);
+        }
+
+        .detalle-tabla th, .detalle-tabla td { padding: 6px 8px; text-align: right; }
+        .detalle-tabla th:first-child, .detalle-tabla td:first-child { text-align: left; }
+
+        .tema-checkbox:checked {
+          accent-color: var(--accent-primary);
+        }
+        .tema-checkbox {
+          width: 1.1rem;
+          height: 1.1rem;
+          cursor: pointer;
+          flex-shrink: 0;
+        }
+
+        .respuesta-destacada {
+          border: 2px solid var(--accent-primary) !important;
+          border-radius: 8px;
+          background: var(--accent-primary-bg) !important;
+          padding: 4px 8px;
+          font-weight: 700;
+          color: var(--accent-primary-text) !important;
+        }
     </style>
 </head>
 <body class="m-0 p-0">
@@ -202,7 +377,10 @@ import {
   GitCompare, ListChecks, Printer, ChevronDown, ChevronUp
 } from 'lucide-react';
 
-const ESPOL_LOGO = 'logo.svg';
+// ============================================================
+// LOGO ESPOL EN BASE64 (incrustado directamente)
+// ============================================================
+const ESPOL_LOGO_BASE64 = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyMDAgMjAwIiB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCI+PHJlY3Qgd2lkdGg9IjIwMCIgaGVpZ2h0PSIyMDAiIGZpbGw9IiNGRkZGRkYiLz48Y2lyY2xlIGN4PSIxMDAiIGN5PSI4MCIgcj0iNDAiIGZpbGw9IiMxRjREM0EiLz48Y2lyY2xlIGN4PSIxMDAiIGN5PSI4MCIgcj0iMzAiIGZpbGw9IiNGRkZGRkYiLz48cGF0aCBkPSJNNzAgODAgTDEwMCA1MCBMMTMwIDgwIEwxMDAgMTEwIEw3MCA4MFoiIGZpbGw9IiMxRjREM0EiLz48cGF0aCBkPSJNODUgODAgTDEwMCA2NSBMMTE1IDgwIEwxMDAgOTUgTDg1IDgwWiIgZmlsbD0iI0ZGRkZGRiIvPjxjaXJjbGUgY3g9IjEwMCIgY3k9IjE1MCIgcj0iMTUiIGZpbGw9IiMxRjREM0EiLz48cmVjdCB4PSI4NSIgeT0iMTY1IiB3aWR0aD0iMzAiIGhlaWdodD0iMTUiIGZpbGw9IiMxRjREM0EiLz48L3N2Zz4=';
 
 const FRASES_CARGA = [
   'El interés compuesto no descansa, ni siquiera los domingos.',
@@ -350,14 +528,11 @@ function calcularCompuesto(P, r, n) {
 function simularCamino({ tipo, monto, base, tasaAnual = 0, extraMensual = 0, extrasUnicos = [], extrasPeriodicos = [], maxMeses = LIMITES.MESES_MAX }) {
   const r = tasaAnual / 100 / 12;
   
-  // Función que calcula el aporte extra en un mes dado
   const aporteExtra = (m) => {
     let total = extraMensual;
-    // Pagos únicos
     extrasUnicos.forEach(e => {
       if (m === e.mes) total += (e.monto || 0);
     });
-    // Pagos periódicos (rango de meses)
     extrasPeriodicos.forEach(e => {
       if (m >= e.mes && m <= e.mesFin) total += (e.monto || 0);
     });
@@ -416,7 +591,6 @@ function simularCamino({ tipo, monto, base, tasaAnual = 0, extraMensual = 0, ext
     return { meses: Infinity, totalInteres: saldo - aportado, serie: sampleSerie(serie, LIMITES.PUNTOS_GRAFICO), alcanzado: false };
   }
 
-  // Para deudas
   let saldo = monto, interesTotal = 0;
   const serie = [{ mes: 0, saldo }];
   const hayExtras = extrasUnicos.some((e) => (e.monto || 0) > 0) || extrasPeriodicos.some((e) => (e.monto || 0) > 0);
@@ -458,11 +632,9 @@ const RESULTADOS_KEY_SIMULADOR = { alcancia: 'alcancia', simple: 'ahorroSimple',
 function FilaDetalleAmortizacion({ row, tipo, tasaMensual, sistema }) {
   const [expandido, setExpandido] = useState(false);
 
-  // Calcular detalles adicionales
   const getDetalles = () => {
     const detalles = [];
     if (tipo === 'prestamo' || tipo === 'anualidad') {
-      // Para préstamos: mostrar cómo se calcula el interés, la cuota, etc.
       const interesCalculado = row.saldoInicial * tasaMensual;
       const capitalCalculado = row.pago - interesCalculado;
       
@@ -475,7 +647,6 @@ function FilaDetalleAmortizacion({ row, tipo, tasaMensual, sistema }) {
         { label: 'Interés acumulado', valor: fmt(row.interesAcumulado || 0), formula: 'Suma de intereses hasta este periodo' }
       );
     } else if (tipo === 'ahorro') {
-      // Para ahorros
       const interesCalculado = row.saldoActual - row.saldoAnterior - (row.aporte || 0);
       detalles.push(
         { label: 'Saldo anterior', valor: fmt(row.saldoAnterior), formula: 'Saldo del periodo anterior' },
@@ -536,7 +707,7 @@ function FilaDetalleAmortizacion({ row, tipo, tasaMensual, sistema }) {
 }
 
 // ============================================================
-// COMPONENTES UI
+// COMPONENTES UI UNIFICADOS
 // ============================================================
 function Modal({ onClose, children, wide, size }) {
   const maxWidthClass = size === 'xwide' ? 'max-w-5xl' : wide ? 'max-w-2xl' : 'max-w-lg';
@@ -589,49 +760,121 @@ function PillButton({ active, onClick, children }) {
   );
 }
 
+// ============================================================
+// COMPONENTE FIELD UNIFICADO - Etiqueta arriba, campo abajo
+// ============================================================
 function Field({ label, suffix, value, onChange, min, step, max, tooltip }) {
   const [texto, setTexto] = useState(value === 0 ? '' : String(value));
   const [enfocado, setEnfocado] = useState(false);
   const [error, setError] = useState('');
+  
   useEffect(() => {
     if (!enfocado) setTexto(value === 0 ? '' : String(value));
   }, [value, enfocado]);
+  
   const manejarCambio = (e) => {
     const t = e.target.value;
     setTexto(t);
     const num = parseFloat(t);
-    if (isNaN(num)) { setError('Número inválido'); onChange(0); return; }
-    if (min !== undefined && num < min) { setError(`Mínimo: ${min}`); onChange(min); return; }
-    if (max !== undefined && num > max) { setError(`Máximo: ${max}`); onChange(max); return; }
+    if (isNaN(num) || t === '') { 
+      setError('Número inválido'); 
+      onChange(0); 
+      return; 
+    }
+    if (min !== undefined && num < min) { 
+      setError(`Mínimo: ${min}`); 
+      onChange(min); 
+      return; 
+    }
+    if (max !== undefined && num > max) { 
+      setError(`Máximo: ${max}`); 
+      onChange(max); 
+      return; 
+    }
     setError('');
     onChange(num);
   };
+
   return (
-    <div className="tooltip-trigger flex-1 min-w-0">
-      <label className="flex flex-wrap items-end gap-x-2 gap-y-0.5 border-b-2 cx-border-border cx-focusw-border-accent-primary min-w-0 pb-1">
-        <span className="text-[11px] cx-text-text-muted font-medium whitespace-nowrap">{label}</span>
+    <div className="form-group tooltip-trigger">
+      <label className="form-label">
+        {label}
         {tooltip && <HelpCircle size={12} className="cx-text-text-faint flex-shrink-0" />}
-        <input type="number" value={texto} min={min} step={step} max={max} onChange={manejarCambio} onFocus={() => setEnfocado(true)} onBlur={() => setEnfocado(false)} placeholder="-,--" className="flex-1 min-w-[64px] text-right px-0.5 outline-none bg-transparent cx-text-text-primary" style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '1.1rem', fontWeight: 600, letterSpacing: '-0.01em' }} />
-        {suffix && <span className="text-sm cx-text-text-faint flex-shrink-0">{suffix}</span>}
-        {error && <span className="text-xs text-red-500 w-full">{error}</span>}
       </label>
+      <div className="relative">
+        <input 
+          type="number" 
+          value={texto} 
+          min={min} 
+          step={step} 
+          max={max} 
+          onChange={manejarCambio} 
+          onFocus={() => setEnfocado(true)} 
+          onBlur={() => setEnfocado(false)} 
+          placeholder="0" 
+          className={`form-input ${error ? 'form-input-error' : ''}`}
+        />
+        {suffix && <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm cx-text-text-faint">{suffix}</span>}
+      </div>
+      {error && <span className="form-error-text">{error}</span>}
       {tooltip && <span className="tooltip-text">{tooltip}</span>}
     </div>
   );
 }
 
+// ============================================================
+// COMPONENTE SELECTFIELD UNIFICADO - Etiqueta arriba, campo abajo
+// ============================================================
 function SelectField({ label, value, onChange, options, tooltip }) {
   return (
-    <div className="tooltip-trigger flex-1 min-w-0">
-      <label className="flex flex-col gap-1 min-w-0">
-        <span className="text-xs uppercase tracking-wide cx-text-text-muted font-semibold flex items-center gap-1">
-          {label}
-          {tooltip && <HelpCircle size={12} className="cx-text-text-faint" />}
-        </span>
-        <select value={value} onChange={(e) => onChange(e.target.value)} className="border-2 cx-border-border rounded-lg px-3 py-2.5 cx-bg-surface cx-text-text-primary text-sm" style={{ backgroundColor: 'var(--surface)', color: 'var(--text-primary)' }}>
-          {options.map((op) => <option key={op.value} value={op.value}>{op.label}</option>)}
-        </select>
+    <div className="form-group tooltip-trigger">
+      <label className="form-label">
+        {label}
+        {tooltip && <HelpCircle size={12} className="cx-text-text-faint flex-shrink-0" />}
       </label>
+      <select value={value} onChange={(e) => onChange(e.target.value)} className="form-select">
+        {options.map((op) => <option key={op.value} value={op.value}>{op.label}</option>)}
+      </select>
+      {tooltip && <span className="tooltip-text">{tooltip}</span>}
+    </div>
+  );
+}
+
+// ============================================================
+// COMPONENTE TEXTINPUT UNIFICADO - Para inputs de texto (quiz, etc.)
+// ============================================================
+function TextInput({ label, value, onChange, placeholder, tooltip, unidad, onEnter }) {
+  const [error, setError] = useState('');
+  
+  const manejarCambio = (e) => {
+    const t = e.target.value;
+    setError('');
+    onChange(t);
+  };
+
+  const manejarKeyDown = (e) => {
+    if (e.key === 'Enter' && onEnter) {
+      onEnter();
+    }
+  };
+
+  return (
+    <div className="form-group tooltip-trigger">
+      <label className="form-label">
+        {label}
+        {unidad && <span className="form-suffix">({unidad})</span>}
+        {tooltip && <HelpCircle size={12} className="cx-text-text-faint flex-shrink-0" />}
+      </label>
+      <input 
+        type="text" 
+        inputMode="decimal" 
+        value={value} 
+        onChange={manejarCambio} 
+        onKeyDown={manejarKeyDown}
+        placeholder={placeholder || "Ingresa un valor"} 
+        className={`form-input ${error ? 'form-input-error' : ''}`}
+      />
+      {error && <span className="form-error-text">{error}</span>}
       {tooltip && <span className="tooltip-text">{tooltip}</span>}
     </div>
   );
@@ -847,7 +1090,7 @@ function LineChartComponent({ data, lines, colors, height = 240, label, referenc
 }
 
 // ============================================================
-// TUTORIAL INTERACTIVO MEJORADO
+// TUTORIAL INTERACTIVO
 // ============================================================
 function TutorialStep({ step, total, onNext, onPrev, onClose }) {
   if (!step) return null;
@@ -2224,7 +2467,6 @@ function SimuladorTab() {
   const detalleSerieTabla = useMemo(() => sampleSerie(detalleSerieRecortada, LIMITES.FILAS_TABLA), [detalleSerieRecortada]);
   const detalleSerieChart = useMemo(() => detalleSerieRecortada.map((s) => ({ mes: s.mes, Saldo: s.saldo })), [detalleSerieRecortada]);
 
-  // Tabla mejorada para ahorros: periodo, saldo anterior, interés, saldo actual
   const detalleSerieAhorroTabla = useMemo(() => {
     if (!detalleResultado || detalle.tipo === 'deuda') return [];
     const serie = detalleResultado.serie;
@@ -2405,11 +2647,21 @@ function SimuladorTab() {
                 <span className="font-semibold cx-text-text-primary text-sm" style={{ fontFamily: "'Fraunces', sans-serif" }}>{p.label}</span>
               </div>
               {p.editable && (
-                <label className="flex items-center gap-2 text-xs cx-text-text-muted">
-                  Tasa anual
-                  <input type="number" value={tasas[p.tasaKey]} onChange={setTasa(p.tasaKey)} className="w-16 border-2 cx-border-border rounded-lg px-1.5 py-0.5 cx-text-text-primary" style={{ fontFamily: "'JetBrains Mono', monospace" }} min="0" max="100" />
-                  %
-                </label>
+                <div className="form-group">
+                  <label className="form-label">Tasa anual</label>
+                  <div className="relative">
+                    <input 
+                      type="number" 
+                      value={tasas[p.tasaKey]} 
+                      onChange={setTasa(p.tasaKey)} 
+                      className="form-input" 
+                      min="0" 
+                      max="100" 
+                      step="0.1"
+                    />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm cx-text-text-faint">%</span>
+                  </div>
+                </div>
               )}
               {p.nuncaPaga ? (
                 <div className="flex items-start gap-1.5 cx-text-accent-coral-text text-sm cx-bg-accent-coral-bg rounded-lg px-3 py-2">
@@ -3093,10 +3345,14 @@ function QuizTab() {
               </div>
               <p className="text-[15px] cx-text-text-strong-gray leading-relaxed"><TextoConNegritas texto={pregunta.enunciado} /></p>
               <div className="flex flex-col sm:flex-row gap-3 sm:items-end">
-                <label className="flex-1 flex flex-col gap-1">
-                  <span className="text-xs uppercase tracking-wide cx-text-text-muted font-semibold">Tu respuesta ({pregunta.unidad})</span>
-                  <input type="text" inputMode="decimal" value={respuestaTexto} onChange={(e) => setRespuestaTexto(e.target.value)} placeholder="Ej. 12500.50" className="w-full px-3 py-2.5 border-2 cx-border-border rounded-lg outline-none cx-focus-border-accent-primary cx-bg-surface cx-text-text-primary" style={{ fontFamily: "'JetBrains Mono', monospace" }} onKeyDown={(e) => e.key === 'Enter' && verificar()} />
-                </label>
+                <TextInput 
+                  label="Tu respuesta"
+                  unidad={pregunta.unidad}
+                  value={respuestaTexto}
+                  onChange={setRespuestaTexto}
+                  placeholder="Ej. 12500.50"
+                  onEnter={verificar}
+                />
                 <div className="flex flex-wrap gap-2">
                   <button onClick={verificar} disabled={respuestaTexto.trim() === ''} className="px-4 py-2.5 rounded-lg text-sm font-semibold text-white disabled:opacity-40" style={{ background: 'var(--accent-primary)' }}>Verificar</button>
                   <button onClick={nuevaPregunta} className="px-4 py-2.5 rounded-lg text-sm font-semibold cx-bg-surface cx-text-text-secondary border-2 cx-border-border cx-hover-border-border-hover flex items-center gap-1.5"><RotateCcw size={14} /> Nueva</button>
@@ -3198,10 +3454,14 @@ function QuizTab() {
               </div>
               <p className="text-[15px] cx-text-text-strong-gray leading-relaxed"><TextoConNegritas texto={preguntasEval[preguntaEvalIndex].enunciado} /></p>
               <div className="flex flex-col sm:flex-row gap-3 sm:items-end">
-                <label className="flex-1 flex flex-col gap-1">
-                  <span className="text-xs uppercase tracking-wide cx-text-text-muted font-semibold">Tu respuesta ({preguntasEval[preguntaEvalIndex].unidad})</span>
-                  <input type="text" inputMode="decimal" value={respuestaEvalTexto} onChange={(e) => setRespuestaEvalTexto(e.target.value)} placeholder="Ej. 12500.50" className="w-full px-3 py-2.5 border-2 cx-border-border rounded-lg outline-none cx-focus-border-accent-primary cx-bg-surface cx-text-text-primary" style={{ fontFamily: "'JetBrains Mono', monospace" }} onKeyDown={(e) => e.key === 'Enter' && (evalVerificado ? siguienteEval() : verificarEval())} />
-                </label>
+                <TextInput 
+                  label="Tu respuesta"
+                  unidad={preguntasEval[preguntaEvalIndex].unidad}
+                  value={respuestaEvalTexto}
+                  onChange={setRespuestaEvalTexto}
+                  placeholder="Ej. 12500.50"
+                  onEnter={evalVerificado ? siguienteEval : verificarEval}
+                />
                 {!evalVerificado ? (
                   <button onClick={verificarEval} disabled={respuestaEvalTexto.trim() === ''} className="px-4 py-2.5 rounded-lg text-sm font-semibold text-white disabled:opacity-40" style={{ background: 'var(--accent-primary)' }}>Verificar</button>
                 ) : (
@@ -3458,11 +3718,20 @@ function GameMenu({ onSelect }) {
         {FOLDERS.map((f) => {
           const Icon = f.icon;
           return (
-            <button key={f.key} onClick={(e) => onSelect(f.key, e.currentTarget)} className="relative w-full flex items-center gap-3 pl-5 pr-4 py-4 rounded-lg text-[17px] text-left transition-all border-2 cx-border-border cx-bg-surface hover:-translate-y-0.5 hover:shadow-lg" style={{ fontFamily: "'Fraunces', sans-serif", fontWeight: 600, color: 'var(--text-primary)', backgroundColor: 'var(--surface)' }}>
+            <button 
+              key={f.key} 
+              onClick={(e) => onSelect(f.key, e.currentTarget)} 
+              className="group relative w-full flex items-center gap-3 pl-5 pr-4 py-4 rounded-lg text-[17px] text-left transition-all border-2 cx-border-border cx-bg-surface hover:-translate-y-0.5 hover:shadow-lg" 
+              style={{ fontFamily: "'Fraunces', sans-serif", fontWeight: 600, color: 'var(--text-primary)', backgroundColor: 'var(--surface)' }}
+            >
               <span className="absolute left-0 top-2 bottom-2 w-1 rounded-full" style={{ background: f.accent }} />
               <Icon size={19} style={{ color: f.accent, flexShrink: 0 }} />
               <span className="flex-1">{f.label}</span>
-              <ChevronRight size={17} className="opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition-all flex-shrink-0" style={{ color: 'var(--accent-primary)' }} />
+              <ChevronRight 
+                size={17} 
+                className="opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition-all flex-shrink-0" 
+                style={{ color: 'var(--accent-primary)' }} 
+              />
             </button>
           );
         })}
@@ -3488,7 +3757,7 @@ function SplashScreen({ fadingOut, progress }) {
         <div className="coin-wrapper mb-6">
           <div className={`coin-3d ${spinClass}`}>
             <img 
-              src={ESPOL_LOGO} 
+              src={ESPOL_LOGO_BASE64} 
               alt="ESPOL" 
             />
           </div>
@@ -3523,7 +3792,7 @@ const APP_STYLES = `
   .finapp-root { --bg: #F1ECDC; --surface: #FBF8EF; --surface-alt: #E7EEE4; --surface-hover: #EFE9D6; --surface-hover-2: #E7DFC5; --surface-hover-3: #DCD2AF; --border: #D9CFAE; --border-hover: #B7A876; --text-primary: #241D12; --text-secondary: #5B5138; --text-muted: #85795A; --text-faint: #ACA080; --text-strong-gray: #4A4128; --accent-primary: #1F4D3A; --accent-primary-bg: #E3ECE3; --accent-primary-bg-hover: #D2E1D2; --accent-primary-text: #163A2B; --accent-green: #2F8F5B; --accent-green-bg: #E4F1E7; --accent-green-text: #1D6B44; --accent-coral: #A3402E; --accent-coral-bg: #F3E3DC; --accent-coral-text: #832E20; --accent-coral-border: #DDB9A6; --chart-grid: #E1D8BC; --chart-axis: #9C8F6E; }
   .finapp-root[data-theme='dark'] { --bg: #17140C; --surface: #201B10; --surface-alt: #202A22; --surface-hover: #262014; --surface-hover-2: #2E2718; --surface-hover-3: #3A311D; --border: #3A3018; --border-hover: #5C4E28; --text-primary: #F1EAD3; --text-secondary: #D0C4A0; --text-muted: #A4977A; --text-faint: #786D53; --text-strong-gray: #C7BB98; --accent-primary: #6FCB9F; --accent-primary-bg: #22362A; --accent-primary-bg-hover: #2C4433; --accent-primary-text: #8FE0B7; --accent-green: #6FCB9F; --accent-green-bg: #1E3327; --accent-green-text: #8FE0B7; --accent-coral: #E0997F; --accent-coral-bg: #392419; --accent-coral-text: #F0B79E; --accent-coral-border: #5A3A27; --chart-grid: #3A3018; --chart-axis: #8C7F5D; }
   .finapp-root, .finapp-root * { transition: background-color 200ms ease, border-color 200ms ease, color 200ms ease; }
-  .finapp-root input::placeholder { color: var(--text-faint); opacity: 1; font-weight: 500; }
+  .finapp-root input::placeholder { color: var(--text-faint); opacity: 1; font-weight: 400; }
   .finapp-root { color: var(--text-primary); color-scheme: light; background-image: repeating-linear-gradient(to bottom, rgba(120, 105, 60, 0.05), rgba(120, 105, 60, 0.05) 1px, transparent 1px, transparent 28px); }
   .finapp-root[data-theme='dark'] { color-scheme: dark; }
   .finapp-root[data-theme='dark'] .espol-logo { filter: invert(1) brightness(1.7); }
@@ -3644,45 +3913,6 @@ const APP_STYLES = `
     cursor: pointer;
     flex-shrink: 0;
   }
-  .tooltip-trigger {
-    position: relative;
-    cursor: help;
-  }
-  .tooltip-trigger .tooltip-text {
-    visibility: hidden;
-    width: 220px;
-    background-color: var(--surface);
-    color: var(--text-primary);
-    text-align: left;
-    border-radius: 8px;
-    padding: 8px 12px;
-    position: absolute;
-    z-index: 100;
-    bottom: 125%;
-    left: 50%;
-    transform: translateX(-50%);
-    opacity: 0;
-    transition: opacity 0.3s;
-    font-size: 11px;
-    font-weight: 400;
-    border: 1px solid var(--border);
-    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-    line-height: 1.4;
-  }
-  .tooltip-trigger .tooltip-text::after {
-    content: "";
-    position: absolute;
-    top: 100%;
-    left: 50%;
-    margin-left: -5px;
-    border-width: 5px;
-    border-style: solid;
-    border-color: var(--border) transparent transparent transparent;
-  }
-  .tooltip-trigger:hover .tooltip-text {
-    visibility: visible;
-    opacity: 1;
-  }
   .comparador-tabla th, .comparador-tabla td {
     padding: 8px 10px;
     text-align: center;
@@ -3740,7 +3970,6 @@ const APP_STYLES = `
     body { background: white !important; }
     .finapp-root { background: white !important; color: black !important; }
     .finapp-root .no-print { display: none !important; }
-    .finapp-root .print-only { display: block !important; }
     .finapp-root .cx-bg-surface { background: white !important; border: 1px solid #ddd !important; }
     .finapp-root .cx-border-border { border-color: #ddd !important; }
     .finapp-root .coin-3d { width: 70px !important; height: 70px !important; }
@@ -3760,7 +3989,6 @@ const APP_STYLES = `
     .finapp-root .fila-detalle { background: #f5f5f5 !important; border-top: 2px solid #1F4D3A !important; }
     .finapp-root .fila-detalle .cx-bg-surface { background: white !important; }
   }
-  .print-only { display: none; }
 `;
 
 function FolderHeader({ folder, onBack }) {
@@ -3885,7 +4113,7 @@ function FinanzasApp() {
         </div>
 
         <footer className="mt-8 pt-6 border-t cx-border-border text-center no-print">
-          <img src={ESPOL_LOGO} alt="ESPOL" className="espol-logo w-9 mx-auto mb-3 opacity-60" />
+          <img src={ESPOL_LOGO_BASE64} alt="ESPOL" className="espol-logo w-9 mx-auto mb-3 opacity-60" />
           <div className="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide cx-text-text-secondary mb-1.5">
             <AlertTriangle size={12} /> Prototipo educativo — Esto NO es asesoría financiera
           </div>
