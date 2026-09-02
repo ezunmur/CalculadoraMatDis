@@ -356,6 +356,25 @@
           font-weight: 700;
           color: var(--accent-primary-text) !important;
         }
+
+        /* Estilo para contenedor de video responsivo */
+        .video-container {
+          position: relative;
+          width: 100%;
+          padding-bottom: 56.25%;
+          height: 0;
+          border-radius: 0.5rem;
+          overflow: hidden;
+        }
+        .video-container iframe {
+          position: absolute;
+          top: 0;
+          left: 0;
+          width: 100%;
+          height: 100%;
+          border: none;
+          border-radius: 0.5rem;
+        }
     </style>
 </head>
 <body class="m-0 p-0">
@@ -922,12 +941,16 @@ function CapitalizacionSolapa({ temporalidad, onChange, opciones }) {
   );
 }
 
-function TemaIntro({ tipo, sistema, modo }) {
+// ============================================================
+// TemaIntro MODIFICADO - Con soporte para video en modo tutorial
+// ============================================================
+function TemaIntro({ tipo, sistema, modo, tutorialOn }) {
   const content = {
     simple: {
       titulo: '¿Qué es el interés simple?',
       color: 'teal',
       texto: 'Cada periodo ganas exactamente lo mismo, calculado sobre el monto inicial.',
+      videoId: 'Gt5K6xtkZpg',
       formulas: [{ nombre: 'Monto final', formula: <MathBlock><Var>F</Var> = <Var>P</Var> · (1 + <Var>r</Var> · <Var>t</Var>)</MathBlock> }],
       variables: [{ simbolo: 'P', desc: 'Capital inicial' }, { simbolo: 'r', desc: 'Tasa por periodo' }, { simbolo: 't', desc: 'Número de periodos' }],
     },
@@ -935,6 +958,7 @@ function TemaIntro({ tipo, sistema, modo }) {
       titulo: '¿Qué es el interés compuesto?',
       color: 'teal',
       texto: 'El interés se calcula sobre el saldo acumulado. Es "interés sobre interés".',
+      videoId: 'Gt5K6xtkZpg',
       formulas: [{ nombre: 'Monto final', formula: <MathBlock><Var>F</Var> = <Var>P</Var> · <Pow base={<>(1 + <Var>r</Var>)</>} exp={<Var>t</Var>} /></MathBlock> }],
       variables: [{ simbolo: 'P', desc: 'Capital inicial' }, { simbolo: 'r', desc: 'Tasa por periodo' }, { simbolo: 't', desc: 'Número de periodos' }],
     },
@@ -973,6 +997,29 @@ function TemaIntro({ tipo, sistema, modo }) {
         <Sparkles size={16} /> {c.titulo}
       </div>
       <p className="text-sm cx-text-text-strong-gray leading-relaxed mb-4">{c.texto}</p>
+      
+      {/* ============================================================
+          VIDEO DE YOUTUBE - Solo se muestra si el modo tutorial está activado
+          ============================================================ */}
+      {tutorialOn && c.videoId && (
+        <div className="mb-4">
+          <div className="flex items-center gap-2 mb-2">
+            <span className="text-xs font-semibold uppercase tracking-wide cx-text-accent-primary">🎬 Video explicativo</span>
+            <span className="text-[9px] cx-text-text-muted bg-cx-bg-surface px-2 py-0.5 rounded-full">Tutorial</span>
+          </div>
+          <div className="video-container">
+            <iframe 
+              src={`https://www.youtube.com/embed/${c.videoId}`}
+              title="Video explicativo de interés"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowFullScreen
+              loading="lazy"
+            />
+          </div>
+          <p className="text-[10px] cx-text-text-faint mt-1.5 text-center">📺 Activa el modo tutorial para ver este video explicativo</p>
+        </div>
+      )}
+      
       <div className="grid sm:grid-cols-2 gap-3">
         {c.formulas.map((f) => (
           <div key={f.nombre} className={`px-3 py-3 rounded-lg cx-bg-surface border ${f.activo ? 'border-2 cx-border-accent-primary' : 'cx-border-border'}`}>
@@ -1650,7 +1697,7 @@ function TasasEquivalentesTab() {
 }
 
 // ============================================================
-// INTERES TAB
+// INTERES TAB - MODIFICADO PARA PASAR tutorialOn a TemaIntro
 // ============================================================
 function InteresTab() {
   const [tipo, setTipo] = useState('compuesto');
@@ -1742,7 +1789,10 @@ function InteresTab() {
         <PillButton active={tipo === 'compuesto'} onClick={() => cambiarTipo('compuesto')}>Interés compuesto</PillButton>
       </div>
 
-      <TemaIntro tipo={tipo} sistema={null} />
+      {/* ============================================================
+          TemaIntro recibe tutorialOn para mostrar el video
+          ============================================================ */}
+      <TemaIntro tipo={tipo} sistema={null} tutorialOn={tutorialOn} />
 
       <div className="cx-bg-surface p-4 rounded-lg border cx-border-border space-y-4">
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -2089,7 +2139,7 @@ function AnualidadesTab() {
         <PillButton active={modo === 'futuro'} onClick={() => { setModo('futuro'); }}>💰 Ahorro (Valor Futuro)</PillButton>
       </div>
 
-      <TemaIntro tipo="anualidad" sistema={sistema} modo={modo} />
+      <TemaIntro tipo="anualidad" sistema={sistema} modo={modo} tutorialOn={tutorialOn} />
 
       {modo === 'presente' && (
         <>
@@ -3944,6 +3994,23 @@ const APP_STYLES = `
   .fila-detalle .detalle-calculado strong {
     color: var(--accent-primary);
   }
+  .video-container {
+    position: relative;
+    width: 100%;
+    padding-bottom: 56.25%;
+    height: 0;
+    border-radius: 0.5rem;
+    overflow: hidden;
+  }
+  .video-container iframe {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    border: none;
+    border-radius: 0.5rem;
+  }
   @media (max-width: 640px) {
     .finapp-root .max-w-5xl { padding-left: 0.75rem; padding-right: 0.75rem; }
     .finapp-root .cx-bg-surface { padding: 0.75rem; }
@@ -3988,6 +4055,7 @@ const APP_STYLES = `
     .finapp-root .header-titulo { font-size: 16px !important; }
     .finapp-root .fila-detalle { background: #f5f5f5 !important; border-top: 2px solid #1F4D3A !important; }
     .finapp-root .fila-detalle .cx-bg-surface { background: white !important; }
+    .finapp-root .video-container { max-width: 100% !important; }
   }
 `;
 
